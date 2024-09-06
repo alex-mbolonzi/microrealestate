@@ -124,6 +124,19 @@ async function main() {
   try {
     switch (command) {
       case 'build':
+        console.log('Updating TypeScript and @types/node...');
+        await new Promise((resolve, reject) => {
+          const child = require('child_process').exec(
+            'yarn add -D typescript@latest @types/node@latest',
+            (error) => {
+              if (error) reject(error);
+              else resolve();
+            }
+          );
+          child.stdout.pipe(process.stdout);
+          child.stderr.pipe(process.stderr);
+        });
+        console.log('TypeScript and @types/node updated. Proceeding with build...');
         await build({ service: serviceArg });
         break;
       case 'start':
@@ -158,6 +171,7 @@ async function main() {
       default: // do nothing
     }
   } catch (error) {
+    console.error(chalk.red('Error details:'));
     console.error(chalk.red(error.stack || error));
     process.exit(1);
   }
