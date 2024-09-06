@@ -393,7 +393,7 @@ function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
         { name: 'no data (keep existing data)', value: 'no_data' },
         { name: 'demonstration data', value: 'demo_data' }
       ],
-      default: 'empty_data'
+      default: 'no_data'
     },
     {
       name: 'emailConfig',
