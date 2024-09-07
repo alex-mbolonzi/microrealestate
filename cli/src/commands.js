@@ -384,172 +384,173 @@ function displayHelp() {
 }
 
 function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
-  // const questions = [
-  //   {
-  //     name: 'dbData',
-  //     type: 'list',
-  //     message: 'Do you want the database to be populated with?',
-  //     choices: [
-  //       { name: 'no data (keep existing data)', value: 'no_data' },
-  //       { name: 'demonstration data', value: 'demo_data' }
-  //     ],
-  //     default: 'no_data'
-  //   },
-  //   {
-  //     name: 'emailConfig',
-  //     type: 'list',
-  //     message:
-  //       'Select your email delivery service? (required for password reset and tenant sign in)',
-  //     choices: [
-  //       {
-  //         name: 'Gmail',
-  //         description: 'https://support.google.com/accounts/answer/185833',
-  //         value: 'gmail'
-  //       },
-  //       {
-  //         name: 'Mailgun',
-  //         description: 'https://www.mailgun.com/',
-  //         value: 'mailgun'
-  //       },
-  //       { name: 'SMTP server', value: 'smtp' },
-  //       { name: 'None', value: 'none' }
-  //     ],
-  //     default: 'gmail'
-  //   },
-  //   {
-  //     name: 'gmailEmail',
-  //     type: 'input',
-  //     message: 'Enter your Gmail email address:',
-  //     validate: (input) => validEmail(input),
-  //     when: (answers) => answers.emailConfig === 'gmail'
-  //   },
-  //   {
-  //     name: 'gmailAppPassword',
-  //     type: 'password',
-  //     message: 'Enter your Gmail app password:',
-  //     when: (answers) => answers.emailConfig === 'gmail'
-  //   },
-  //   {
-  //     name: 'mailgunApiKey',
-  //     type: 'input',
-  //     message: 'Enter the mailgun API key:',
-  //     validate: (input) => !!input,
-  //     when: (answers) => answers.emailConfig === 'mailgun'
-  //   },
-  //   {
-  //     name: 'mailgunDomain',
-  //     type: 'input',
-  //     message: 'Enter the mailgun domain:',
-  //     validate: (input) => !!input,
-  //     when: (answers) => answers.emailConfig === 'mailgun'
-  //   },
-  //   {
-  //     name: 'smtpServer',
-  //     type: 'input',
-  //     message: 'Enter the SMTP server:',
-  //     validate: (input) => !!input,
-  //     when: (answers) => answers.emailConfig === 'smtp'
-  //   },
-  //   {
-  //     name: 'smtpPort',
-  //     type: 'input',
-  //     message: 'Enter the SMTP port:',
-  //     default: 587,
-  //     when: (answers) => answers.emailConfig === 'smtp'
-  //   },
-  //   {
-  //     name: 'smtpSecure',
-  //     type: 'confirm',
-  //     message: 'Is the SMTP server use SSL?',
-  //     default: false,
-  //     when: (answers) => answers.emailConfig === 'smtp'
-  //   },
-  //   {
-  //     name: 'smtpUsername',
-  //     type: 'input',
-  //     message: 'Enter the SMTP username:',
-  //     when: (answers) => answers.emailConfig === 'smtp'
-  //   },
-  //   {
-  //     name: 'smtpPassword',
-  //     type: 'password',
-  //     message: 'Enter the SMTP password:',
-  //     when: (answers) => answers.emailConfig === 'smtp'
-  //   },
-  //   {
-  //     name: 'fromEmail',
-  //     type: 'input',
-  //     message: 'Enter the sender email address (from):',
-  //     validate: (input) => validEmail(input),
-  //     default: (answers) => answers.gmailEmail || null,
-  //     when: (answers) => answers.emailConfig !== 'none'
-  //   },
-  //   {
-  //     name: 'replyToEmail',
-  //     type: 'input',
-  //     message: 'Enter the reply to email address (reply to):',
-  //     validate: (input) => validEmail(input),
-  //     default: (answers) => answers.fromEmail || '',
-  //     when: (answers) => answers.emailConfig !== 'none'
-  //   },
-  //   {
-  //     name: 'landlordAppUrl',
-  //     type: 'input',
-  //     message: 'Enter the URL to access the landlord front-end:',
-  //     validate: (input) => {
-  //       try {
-  //         new URL(input);
-  //         return true;
-  //       } catch (error) {
-  //         return false;
-  //       }
-  //     },
-  //     default: envConfig?.LANDLORD_APP_URL || 'http://localhost:8080/landlord'
-  //   },
-  //   {
-  //     name: 'tenantAppUrl',
-  //     type: 'input',
-  //     message:
-  //       'Enter the URL to access the tenant front-end (it should share the same domain and port as the landlord front-end URL):',
-  //     validate: (input, answers) => {
-  //       try {
-  //         const { domain: tenantDomain, port: tenantPort } = destructUrl(input);
-  //         const { domain: landlordDomain, port: landlordPort } = destructUrl(
-  //           answers.landlordAppUrl
-  //         );
+  const questions = [
+    // {
+    //   name: 'dbData',
+    //   type: 'list',
+    //   message: 'Do you want the database to be populated with?',
+    //   choices: [
+    //     { name: 'no data (keep existing data)', value: 'no_data' },
+    //     { name: 'demonstration data', value: 'demo_data' }
+    //   ],
+    //   default: 'no_data'
+    // },
+    // {
+    //   name: 'emailConfig',
+    //   type: 'list',
+    //   message:
+    //     'Select your email delivery service? (required for password reset and tenant sign in)',
+    //   choices: [
+    //     {
+    //       name: 'Gmail',
+    //       description: 'https://support.google.com/accounts/answer/185833',
+    //       value: 'gmail'
+    //     },
+    //     {
+    //       name: 'Mailgun',
+    //       description: 'https://www.mailgun.com/',
+    //       value: 'mailgun'
+    //     },
+    //     { name: 'SMTP server', value: 'smtp' },
+    //     { name: 'None', value: 'none' }
+    //   ],
+    //   default: 'gmail'
+    // },
+    // {
+    //   name: 'gmailEmail',
+    //   type: 'input',
+    //   message: 'Enter your Gmail email address:',
+    //   validate: (input) => validEmail(input),
+    //   when: (answers) => answers.emailConfig === 'gmail'
+    // },
+    // {
+    //   name: 'gmailAppPassword',
+    //   type: 'password',
+    //   message: 'Enter your Gmail app password:',
+    //   when: (answers) => answers.emailConfig === 'gmail'
+    // },
+    // {
+    //   name: 'mailgunApiKey',
+    //   type: 'input',
+    //   message: 'Enter the mailgun API key:',
+    //   validate: (input) => !!input,
+    //   when: (answers) => answers.emailConfig === 'mailgun'
+    // },
+    // {
+    //   name: 'mailgunDomain',
+    //   type: 'input',
+    //   message: 'Enter the mailgun domain:',
+    //   validate: (input) => !!input,
+    //   when: (answers) => answers.emailConfig === 'mailgun'
+    // },
+    // {
+    //   name: 'smtpServer',
+    //   type: 'input',
+    //   message: 'Enter the SMTP server:',
+    //   validate: (input) => !!input,
+    //   when: (answers) => answers.emailConfig === 'smtp'
+    // },
+    // {
+    //   name: 'smtpPort',
+    //   type: 'input',
+    //   message: 'Enter the SMTP port:',
+    //   default: 587,
+    //   when: (answers) => answers.emailConfig === 'smtp'
+    // },
+    // {
+    //   name: 'smtpSecure',
+    //   type: 'confirm',
+    //   message: 'Is the SMTP server use SSL?',
+    //   default: false,
+    //   when: (answers) => answers.emailConfig === 'smtp'
+    // },
+    // {
+    //   name: 'smtpUsername',
+    //   type: 'input',
+    //   message: 'Enter the SMTP username:',
+    //   when: (answers) => answers.emailConfig === 'smtp'
+    // },
+    // {
+    //   name: 'smtpPassword',
+    //   type: 'password',
+    //   message: 'Enter the SMTP password:',
+    //   when: (answers) => answers.emailConfig === 'smtp'
+    // },
+    // {
+    //   name: 'fromEmail',
+    //   type: 'input',
+    //   message: 'Enter the sender email address (from):',
+    //   validate: (input) => validEmail(input),
+    //   default: (answers) => answers.gmailEmail || null,
+    //   when: (answers) => answers.emailConfig !== 'none'
+    // },
+    // {
+    //   name: 'replyToEmail',
+    //   type: 'input',
+    //   message: 'Enter the reply to email address (reply to):',
+    //   validate: (input) => validEmail(input),
+    //   default: (answers) => answers.fromEmail || '',
+    //   when: (answers) => answers.emailConfig !== 'none'
+    // },
+    // {
+    //   name: 'landlordAppUrl',
+    //   type: 'input',
+    //   message: 'Enter the URL to access the landlord front-end:',
+    //   validate: (input) => {
+    //     try {
+    //       new URL(input);
+    //       return true;
+    //     } catch (error) {
+    //       return false;
+    //     }
+    //   },
+    //   default: envConfig?.LANDLORD_APP_URL || 'http://localhost:8080/landlord'
+    // },
+    // {
+    //   name: 'tenantAppUrl',
+    //   type: 'input',
+    //   message:
+    //     'Enter the URL to access the tenant front-end (it should share the same domain and port as the landlord front-end URL):',
+    //   validate: (input, answers) => {
+    //     try {
+    //       const { domain: tenantDomain, port: tenantPort } = destructUrl(input);
+    //       const { domain: landlordDomain, port: landlordPort } = destructUrl(
+    //         answers.landlordAppUrl
+    //       );
 
-  //         return tenantDomain === landlordDomain && tenantPort === landlordPort;
-  //       } catch (error) {
-  //         return false;
-  //       }
-  //     },
-  //     default: (answers) => {
-  //       try {
-  //         const { protocol, subDomain, domain, port, basePath } = destructUrl(
-  //           answers.landlordAppUrl
-  //         );
-  //         if (basePath) {
-  //           return buildUrl({
-  //             protocol,
-  //             subDomain,
-  //             domain,
-  //             port,
-  //             basePath: '/tenant'
-  //           });
-  //         }
-  //         return buildUrl({
-  //           protocol,
-  //           subDomain: 'tenant',
-  //           domain,
-  //           port
-  //         });
-  //       } catch (error) {
-  //         return 'http://localhost:8080/tenant';
-  //       }
-  //     }
-  //   }
-  // ];
+    //       return tenantDomain === landlordDomain && tenantPort === landlordPort;
+    //     } catch (error) {
+    //       return false;
+    //     }
+    //   },
+    //   default: (answers) => {
+    //     try {
+    //       const { protocol, subDomain, domain, port, basePath } = destructUrl(
+    //         answers.landlordAppUrl
+    //       );
+    //       if (basePath) {
+    //         return buildUrl({
+    //           protocol,
+    //           subDomain,
+    //           domain,
+    //           port,
+    //           basePath: '/tenant'
+    //         });
+    //       }
+    //       return buildUrl({
+    //         protocol,
+    //         subDomain: 'tenant',
+    //         domain,
+    //         port
+    //       });
+    //     } catch (error) {
+    //       return 'http://localhost:8080/tenant';
+    //     }
+    //   }
+    // }
+  ];
   return inquirer.prompt(
+    questions,
     ignorePreviousAnswers
       ? {}
       : {
