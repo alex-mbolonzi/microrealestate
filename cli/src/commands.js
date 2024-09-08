@@ -582,7 +582,7 @@ function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
           smtpPassword: envConfig?.SMTP_PASSWORD,
           fromEmail: envConfig?.EMAIL_FROM,
           replyToEmail: envConfig?.EMAIL_REPLY_TO,
-          landlordAppUrl: envConfig?.LANDLORD_APP_URL,
+          landlordAppUrl: envConfig?.APP_URL || envConfig?.LANDLORD_APP_URL,
           tenantAppUrl: envConfig?.TENANT_APP_URL
         }
   );
@@ -649,12 +649,14 @@ function writeDotEnv(promptsConfig, envConfig) {
     envConfig?.AUTHENTICATOR_RESET_TOKEN_SECRET || generateRandomToken(64);
   const appcrezTokenSecret =
     envConfig?.AUTHENTICATOR_APPCREDZ_TOKEN_SECRET || generateRandomToken(64);
+  console.log('landlordAppUrl:', promptsConfig.landlordAppUrl);
   const {
     protocol,
     domain,
     port,
     basePath: landlordBasePath
   } = destructUrl(promptsConfig.landlordAppUrl);
+  console.log('Destructured URL parts:', { protocol, domain, port, landlordBasePath });
   const { basePath: tenantBasePath } = destructUrl(promptsConfig.tenantAppUrl);
   const sendEmails =
     envConfig?.ALLOW_SENDING_EMAILS === 'true' ||
