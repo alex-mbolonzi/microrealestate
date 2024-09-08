@@ -81,7 +81,7 @@ async function start() {
 
   initDirectories();
 
-  await runCompose('start', [], { runMode: 'prod' });
+  // await runCompose('start', [], { runMode: 'prod' });
 
   if (!await checkHealth()) {
     return;
