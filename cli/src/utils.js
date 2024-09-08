@@ -70,7 +70,8 @@ async function findCRI() {
     return ['podman', 'compose'];
   }
 
-  throw new Error('Cannot find a valid runtime to run containers');
+  return ['buildpack'];
+  // throw new Error('Cannot find a valid runtime to run containers');
 }
 
 function getBackupPath() {
