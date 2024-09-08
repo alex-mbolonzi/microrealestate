@@ -383,7 +383,7 @@ function displayHelp() {
   });
 }
 
-async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false, timeout = 30000) {
+async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false, timeout = 5000) {
   const questions = [
     {
       name: 'dbData',
