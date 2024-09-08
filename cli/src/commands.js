@@ -13,7 +13,6 @@ const {
   validEmail,
   getBackupPath
 } = require('./utils');
-require('events').EventEmitter.defaultMaxListeners = 15;
 
 function initDirectories() {
   const mongoDir = path.join('.', 'data', 'mongodb');
@@ -384,7 +383,8 @@ function displayHelp() {
   });
 }
 
-async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false, timeout = 5000) {
+function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
+
   const questions = [
     {
       name: 'dbData',
@@ -415,7 +415,7 @@ async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = fal
         { name: 'SMTP server', value: 'smtp' },
         { name: 'None', value: 'none' }
       ],
-      default: 'mailgun'
+      default: 'gmail'
     },
     {
       name: 'gmailEmail',
@@ -434,7 +434,6 @@ async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = fal
       name: 'mailgunApiKey',
       type: 'input',
       message: 'Enter the mailgun API key:',
-      default: '{{ MAILGUN_API_KEY }}',
       validate: (input) => !!input,
       when: (answers) => answers.emailConfig === 'mailgun'
     },
@@ -442,7 +441,6 @@ async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = fal
       name: 'mailgunDomain',
       type: 'input',
       message: 'Enter the mailgun domain:',
-      default: '{{ MAILGUN_DOMAIN }}',
       validate: (input) => !!input,
       when: (answers) => answers.emailConfig === 'mailgun'
     },
@@ -484,7 +482,7 @@ async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = fal
       type: 'input',
       message: 'Enter the sender email address (from):',
       validate: (input) => validEmail(input),
-      default: '{{ EMAIL_FROM }}' || null,
+      default: (answers) => answers.gmailEmail || null,
       when: (answers) => answers.emailConfig !== 'none'
     },
     {
@@ -492,7 +490,7 @@ async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = fal
       type: 'input',
       message: 'Enter the reply to email address (reply to):',
       validate: (input) => validEmail(input),
-      default: '{{ EMAIL_FROM }}' || '',
+      default: (answers) => answers.fromEmail || '',
       when: (answers) => answers.emailConfig !== 'none'
     },
     {
@@ -507,7 +505,7 @@ async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = fal
           return false;
         }
       },
-      default: '{{ LANDLORD_APP_URL }}' || 'http://localhost:8080/landlord'
+      default: envConfig?.LANDLORD_APP_URL || 'http://localhost:8080/landlord'
     },
     {
       name: 'tenantAppUrl',
@@ -552,20 +550,6 @@ async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = fal
       }
     }
   ];
-
-  const results = {};
-
-  for (const question of questions) {
-    if (typeof question.when === 'function' && !question.when(results)) continue;
-
-    const result = await Promise.race([
-      inquirer.prompt([question], results),
-      new Promise(resolve => setTimeout(() => resolve({ [question.name]: question.default }), timeout))
-    ]);
-
-    Object.assign(results, result);
-  }
-  
   return inquirer.prompt(
     questions,
     ignorePreviousAnswers
@@ -574,7 +558,7 @@ async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = fal
           dbData:
             envConfig?.DEMO_MODE === undefined
               ? undefined
-              : envConfig?.DEMO_MODE === 'false'
+              : envConfig?.DEMO_MODE === 'true'
                 ? 'demo_data'
                 : 'empty_data',
           emailConfig: envConfig?.GMAIL_EMAIL
@@ -601,6 +585,59 @@ async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = fal
           tenantAppUrl: envConfig?.TENANT_APP_URL
         }
   );
+}
+
+function setEnvironmentVariables(envConfig) {
+  const answers = {
+    dbData: envConfig?.DEMO_MODE === 'true' ? 'demo_data' : 'no_data',
+    emailConfig: envConfig?.GMAIL_EMAIL
+      ? 'gmail'
+      : envConfig?.SMTP_SERVER
+      ? 'smtp'
+      : envConfig?.MAILGUN_API_KEY
+      ? 'mailgun'
+      : envConfig?.ALLOW_SENDING_EMAILS === 'false'
+      ? 'none'
+      : 'none', // Set a default here if necessary
+    gmailEmail: envConfig?.GMAIL_EMAIL || '',
+    gmailAppPassword: envConfig?.GMAIL_APP_PASSWORD || '',
+    mailgunApiKey: envConfig?.MAILGUN_API_KEY || '',
+    mailgunDomain: envConfig?.MAILGUN_DOMAIN || '',
+    smtpServer: envConfig?.SMTP_SERVER || '',
+    smtpPort: envConfig?.SMTP_PORT || 587,
+    smtpSecure: envConfig?.SMTP_SECURE || false,
+    smtpUsername: envConfig?.SMTP_USERNAME || '',
+    smtpPassword: envConfig?.SMTP_PASSWORD || '',
+    fromEmail: envConfig?.EMAIL_FROM || envConfig?.GMAIL_EMAIL || '',
+    replyToEmail: envConfig?.EMAIL_REPLY_TO || envConfig?.EMAIL_FROM || '',
+    landlordAppUrl: envConfig?.LANDLORD_APP_URL || 'http://localhost:8080/landlord',
+    tenantAppUrl: (() => {
+      try {
+        const { protocol, subDomain, domain, port, basePath } = destructUrl(
+          envConfig?.LANDLORD_APP_URL || 'http://localhost:8080/landlord'
+        );
+        if (basePath) {
+          return buildUrl({
+            protocol,
+            subDomain,
+            domain,
+            port,
+            basePath: '/tenant'
+          });
+        }
+        return buildUrl({
+          protocol,
+          subDomain: 'tenant',
+          domain,
+          port
+        });
+      } catch (error) {
+        return 'http://localhost:8080/tenant';
+      }
+    })()
+  };
+
+  return answers;
 }
 
 function askRunMode() {
@@ -664,14 +701,12 @@ function writeDotEnv(promptsConfig, envConfig) {
     envConfig?.AUTHENTICATOR_RESET_TOKEN_SECRET || generateRandomToken(64);
   const appcrezTokenSecret =
     envConfig?.AUTHENTICATOR_APPCREDZ_TOKEN_SECRET || generateRandomToken(64);
-  console.log('landlordAppUrl:', promptsConfig.landlordAppUrl);
   const {
     protocol,
     domain,
     port,
     basePath: landlordBasePath
   } = destructUrl(promptsConfig.landlordAppUrl);
-  console.log('Destructured URL parts:', { protocol, domain, port, landlordBasePath });
   const { basePath: tenantBasePath } = destructUrl(promptsConfig.tenantAppUrl);
   const sendEmails =
     envConfig?.ALLOW_SENDING_EMAILS === 'true' ||
@@ -874,6 +909,7 @@ module.exports = {
   displayHelp,
   displayConfigWarningsAndErrors,
   askForEnvironmentVariables,
+  setEnvironmentVariables,
   askRunMode,
   askBackupFile,
   writeDotEnv,

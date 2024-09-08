@@ -13,6 +13,7 @@ const {
   askRunMode,
   showConfig,
   askForEnvironmentVariables,
+  setEnvironmentVariables,
   writeDotEnv,
   restoreDB,
   dumpDB,
@@ -109,10 +110,12 @@ async function main() {
       loadEnv({ ignoreBaseEnv: false, ignoreProcessEnv: true })
     );
   }
-  const promptsConfig = await askForEnvironmentVariables(
-    envConfig,
-    command === 'configure'
-  );
+  // const promptsConfig = await askForEnvironmentVariables(
+  //   envConfig,
+  //   command === 'configure'
+  // );
+  const promptsConfig = setEnvironmentVariables(envConfig);
+  
   writeDotEnv(promptsConfig, envConfig);
 
   if (command === 'configure') {
