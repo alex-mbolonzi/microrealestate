@@ -109,10 +109,10 @@ async function main() {
       loadEnv({ ignoreBaseEnv: false, ignoreProcessEnv: true })
     );
   }
-  const promptsConfig = askForEnvironmentVariables(
-    envConfig,
-    command === 'configure'
-  );
+  const promptsConfig = await Promise.race([
+    askForEnvironmentVariables(envConfig),
+    new Promise(resolve => setTimeout(() => resolve(envConfig), 10000)) // 60 seconds timeout
+  ]);
   writeDotEnv(promptsConfig, envConfig);
 
   if (command === 'configure') {
