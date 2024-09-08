@@ -70,7 +70,7 @@ async function findCRI() {
     return ['podman', 'compose'];
   }
 
-  return ['docker'];
+  return ['docker', 'compose'];
   // throw new Error('Cannot find a valid runtime to run containers');
 }
 
