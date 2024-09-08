@@ -109,7 +109,7 @@ async function main() {
       loadEnv({ ignoreBaseEnv: true, ignoreProcessEnv: true })
     );
   }
-  const promptsConfig = await askForEnvironmentVariables(
+  const promptsConfig = askForEnvironmentVariables(
     envConfig,
     command === 'configure'
   );
