@@ -71,7 +71,7 @@ async function build({ service = 'all' }) {
     composeArgs.push(service);
   }
 
-  await runCompose('build', composeArgs, { runMode: 'prod' });
+  // await runCompose('build', composeArgs, { runMode: 'prod' });
 
   console.log(chalk.green('build completed'));
 }
