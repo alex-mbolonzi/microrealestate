@@ -582,7 +582,7 @@ function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
           smtpPassword: envConfig?.SMTP_PASSWORD,
           fromEmail: envConfig?.EMAIL_FROM,
           replyToEmail: envConfig?.EMAIL_REPLY_TO,
-          landlordAppUrl: envConfig?.APP_URL || envConfig?.LANDLORD_APP_URL,
+          landlordAppUrl: '{{ APP_URL }} '|| envConfig?.LANDLORD_APP_URL,
           tenantAppUrl: envConfig?.TENANT_APP_URL
         }
   );
