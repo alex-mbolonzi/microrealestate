@@ -256,10 +256,10 @@ async function consoleMoveCursorToPrevLine(countLine) {
     return;
   }
   
-  for (let count=0; count < countLine; count++) {
-    // await new Promise((resolve) => process.stdout.moveCursor(0, -1, resolve));
-    await new Promise((resolve) => process.stdout.clearLine(0, resolve));
-  }
+  // for (let count=0; count < countLine; count++) {
+  //   // await new Promise((resolve) => process.stdout.moveCursor(0, -1, resolve));
+  //   await new Promise((resolve) => process.stdout.clearLine(0, resolve));
+  // }
 }
 
 module.exports = {
