@@ -383,7 +383,7 @@ function displayHelp() {
   });
 }
 
-function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
+async function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false, timeout = 30000) {
   const questions = [
     {
       name: 'dbData',
@@ -551,6 +551,20 @@ function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
       }
     }
   ];
+
+  const results = {};
+
+  for (const question of questions) {
+    if (typeof question.when === 'function' && !question.when(results)) continue;
+
+    const result = await Promise.race([
+      inquirer.prompt([question], results),
+      new Promise(resolve => setTimeout(() => resolve({ [question.name]: question.default }), timeout))
+    ]);
+
+    Object.assign(results, result);
+  }
+  
   return inquirer.prompt(
     questions,
     ignorePreviousAnswers
