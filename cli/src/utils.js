@@ -54,7 +54,7 @@ async function runCommand(cmd, parameters = []) {
 
 async function findCRI() {
 
-  if (process.env.PACK_RUNNING_IN_BUILDER) {
+  if (await which('buildpack', { nothrow: true })) {
     return ['buildpack-runtime']; // or skip CRI selection
   }
 
