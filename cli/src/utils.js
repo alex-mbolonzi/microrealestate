@@ -53,11 +53,6 @@ async function runCommand(cmd, parameters = []) {
 }
 
 async function findCRI() {
-
-  if (await which('buildpack', { nothrow: true })) {
-    return ['buildpack-runtime']; // or skip CRI selection
-  }
-
   // Resolve the CRI to be used
   if (await which('docker-compose', { nothrow: true })) {
     return ['docker-compose'];

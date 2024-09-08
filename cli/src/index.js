@@ -114,6 +114,8 @@ async function main() {
   //   envConfig,
   //   command === 'configure'
   // );
+  command === 'configure';
+
   const promptsConfig = setEnvironmentVariables(envConfig);
   
   writeDotEnv(promptsConfig, envConfig);
