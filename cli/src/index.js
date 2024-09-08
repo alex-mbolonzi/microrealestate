@@ -106,7 +106,7 @@ async function main() {
   let envConfig;
   if (fs.existsSync(path.resolve(process.cwd(), '.env'))) {
     envConfig = migrateEnvConfig(
-      loadEnv({ ignoreBaseEnv: true, ignoreProcessEnv: true })
+      loadEnv({ ignoreBaseEnv: false, ignoreProcessEnv: false })
     );
   }
   const promptsConfig = askForEnvironmentVariables(
