@@ -506,7 +506,7 @@ function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
           return false;
         }
       },
-      default: envConfig?.LANDLORD_APP_URL || 'http://localhost:8080/landlord'
+      default: '{{ LANDLORD_APP_URL }}' || 'http://localhost:8080/landlord'
     },
     {
       name: 'tenantAppUrl',
