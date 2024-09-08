@@ -83,9 +83,9 @@ async function start() {
 
   // await runCompose('start', [], { runMode: 'prod' });
 
-  // if (!await checkHealth()) {
-  //   return;
-  // }
+  if (!await checkHealth()) {
+    return;
+  }
 
   const landlordAppUrl = process.env.APP_URL || process.env.LANDLORD_APP_URL;
   console.log(
