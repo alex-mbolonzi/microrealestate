@@ -257,7 +257,7 @@ async function consoleMoveCursorToPrevLine(countLine) {
   }
   
   for (let count=0; count < countLine; count++) {
-    await new Promise((resolve) => process.stdout.moveCursor(0, -1, resolve));
+    // await new Promise((resolve) => process.stdout.moveCursor(0, -1, resolve));
     await new Promise((resolve) => process.stdout.clearLine(0, resolve));
   }
 }
