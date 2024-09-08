@@ -115,7 +115,7 @@ async function main() {
   //   command === 'configure'
   // );
   const promptsConfig = setEnvironmentVariables(envConfig);
-
+  
   writeDotEnv(promptsConfig, envConfig);
 
   if (command === 'configure') {
@@ -127,7 +127,7 @@ async function main() {
   try {
     switch (command) {
       case 'build':
-        await build();
+        await build({ service: serviceArg });
         break;
       case 'start':
         await start();
