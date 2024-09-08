@@ -13,6 +13,7 @@ const {
   validEmail,
   getBackupPath
 } = require('./utils');
+require('events').EventEmitter.defaultMaxListeners = 15;
 
 function initDirectories() {
   const mongoDir = path.join('.', 'data', 'mongodb');
