@@ -154,19 +154,19 @@ async function runCompose(
     process.env.NODE_ENV = 'test';
   }
 
-  const baseCmd = await findCRI();
+  // const baseCmd = await findCRI();
 
-  const actionArgs = getComposeActions(baseCmd[0], composeAction);
-  if (!actionArgs) {
-    return;
-  }
+  // const actionArgs = getComposeActions(baseCmd[0], composeAction);
+  // if (!actionArgs) {
+  //   return;
+  // }
 
-  await runCommand(baseCmd[0], [
-    ...baseCmd.slice(1),
-    ...composeFilesArgs,
-    ...actionArgs,
-    ...composeArgs
-  ]);
+  // await runCommand(baseCmd[0], [
+  //   ...baseCmd.slice(1),
+  //   ...composeFilesArgs,
+  //   ...actionArgs,
+  //   ...composeArgs
+  // ]);
 }
 
 function validEmail(email) {
