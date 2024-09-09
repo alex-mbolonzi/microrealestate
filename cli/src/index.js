@@ -12,7 +12,6 @@ const {
   displayHeader,
   askRunMode,
   showConfig,
-  askForEnvironmentVariables,
   setEnvironmentVariables,
   writeDotEnv,
   restoreDB,
@@ -168,4 +167,4 @@ async function main() {
   process.exit(0);
 }
 
-main();
+// main();
