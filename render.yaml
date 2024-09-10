@@ -6,11 +6,11 @@ databases:
     maxmemoryPolicy: noeviction
     envVars:
       - key: REDIS_PASSWORD
-        password: {{ REDIS_PASSWORD }}
+        password: ${REDIS_PASSWORD}
       - key: REDIS_PORT
-        value: {{ REDIS_PORT }}
+        value: ${REDIS_PORT}
       - key: REDIS_URL
-        value: {{ REDIS_URL }}
+        value: ${REDIS_URL}
 
 services:
   # Mongo
@@ -46,22 +46,22 @@ services:
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: NODE_ENV
-        value: {{ NODE_ENV }}
+        value: ${NODE_ENV}
       - key: PORT
-        value: {{ RESETSERVICE_PORT }}
+        value: ${RESETSERVICE_PORT}
       - key: LOGGER_LEVEL
-        value: {{ LOGGER_LEVEL }}
+        value: ${LOGGER_LEVEL}
       - key: REDIS_URL
-        value: {{ REDIS_URL }}
+        value: ${REDIS_URL}
       - key: REDIS_PASSWORD
-        value: {{ REDIS_PASSWORD }}
+        value: ${REDIS_PASSWORD}
       - key: MONGO_URL
-        value: {{ MONGO_URL }}
+        value: ${MONGO_URL}
     ports:
       - name: RESETSERVICE_DEBUG_PORT
-        port: {{ RESETSERVICE_DEBUG_PORT }}
+        port: ${RESETSERVICE_DEBUG_PORT}
       - name: RESETSERVICE_PORT
-        port: {{ RESETSERVICE_PORT }}
+        port: ${RESETSERVICE_PORT}
     region: oregon
 
   # Gateway
@@ -78,10 +78,10 @@ services:
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: RESETSERVICE_URL
-        value: {{ RESETSERVICE_URL }}
+        value: ${RESETSERVICE_URL}
     ports:
       - name: GATEWAY_DEBUG_PORT
-        port: {{ GATEWAY_DEBUG_PORT }}
+        port: ${GATEWAY_DEBUG_PORT}
     region: oregon
 
   # Authenticator
@@ -99,7 +99,7 @@ services:
         value: --trace-warnings
     ports:
       - name: AUTHENTICATOR_DEBUG_PORT
-        port: {{ AUTHENTICATOR_DEBUG_PORT }}
+        port: ${AUTHENTICATOR_DEBUG_PORT}
     region: oregon
 
   # PDFGenerator
@@ -117,7 +117,7 @@ services:
         value: --trace-warnings
     ports:
       - name: PDFGENERATOR_DEBUG_PORT
-        port: {{ PDFGENERATOR_DEBUG_PORT }}
+        port: ${PDFGENERATOR_DEBUG_PORT}
     region: oregon
 
   # Emailer
@@ -135,7 +135,7 @@ services:
         value: --trace-warnings
     ports:
       - name: EMAILER_DEBUG_PORT
-        port: {{ EMAILER_DEBUG_PORT }}
+        port: ${EMAILER_DEBUG_PORT}
     region: oregon
 
   # API
@@ -153,7 +153,7 @@ services:
         value: --trace-warnings
     ports:
       - name: API_DEBUG_PORT
-        port: {{ API_DEBUG_PORT }}
+        port: ${API_DEBUG_PORT}
     region: oregon
 
   # TenantAPI
@@ -171,7 +171,7 @@ services:
         value: --trace-warnings
     ports:
       - name: TENANTAPI_DEBUG_PORT
-        port: {{ TENANTAPI_DEBUG_PORT }}
+        port: ${TENANTAPI_DEBUG_PORT}
     region: oregon
 
   # Landlord Frontend
