@@ -27,9 +27,9 @@ services:
       sizeGB: 10
     envVars:
       - key: MONGO_PORT
-        value: {{ MONGO_PORT }}
+        value: ${MONGO_PORT}
       - key: MONGO_URL
-        value: {{ MONGO_URL }}
+        value: ${MONGO_URL}
     region: oregon
 
   # ResetService
