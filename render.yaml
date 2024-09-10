@@ -1,11 +1,6 @@
-databases:
-  # Redis
-  - name: redis
-    plan: free # or choose a plan that suits your needs
-
 services:
   # Mongo
-  - type: pserv
+  - type: web
     name: mongo
     env: docker
     dockerContext: .
