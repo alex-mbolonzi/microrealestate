@@ -1,8 +1,8 @@
 databases:
-   # Redis
+  # Redis
   - name: redis
     plan: free # or choose a plan that suits your needs
-    
+
 services:
   # Mongo
   - type: pserv
@@ -12,10 +12,10 @@ services:
     dockerfilePath: ./docker/Dockerfile.mongo
     rootDir: .
     plan: free
-    disk:
-      name: mongo-data
-      mountPath: /data/db
-      sizeGB: 10
+    # disk:
+    #   name: mongo-data
+    #   mountPath: /data/db
+    #   sizeGB: 10
     envVars:
       - key: MONGO_PORT
         value: ${MONGO_PORT}
@@ -87,7 +87,7 @@ services:
         value: --trace-warnings
       - key: PORT
         value: ${AUTHENTICATOR_PORT}
-      - name: AUTHENTICATOR_DEBUG_PORT
+      - key: AUTHENTICATOR_DEBUG_PORT
         value: ${AUTHENTICATOR_DEBUG_PORT}
     region: oregon
 
@@ -105,8 +105,8 @@ services:
         value: --trace-warnings
       - key: PORT
         value: ${PDFGENERATOR_PORT}
-      - name: PDFGENERATOR_DEBUG_PORT
-        port: ${PDFGENERATOR_DEBUG_PORT}
+      - key: PDFGENERATOR_DEBUG_PORT
+        value: ${PDFGENERATOR_DEBUG_PORT}
     region: oregon
 
   # Emailer
@@ -123,8 +123,8 @@ services:
         value: --trace-warnings
       - key: PORT
         value: ${EMAILER_PORT}
-      - name: EMAILER_DEBUG_PORT
-        port: ${EMAILER_DEBUG_PORT}
+      - key: EMAILER_DEBUG_PORT
+        value: ${EMAILER_DEBUG_PORT}
     region: oregon
 
   # API
@@ -141,8 +141,8 @@ services:
         value: --trace-warnings
       - key: PORT
         value: ${API_PORT}
-      - name: API_DEBUG_PORT
-        port: ${API_DEBUG_PORT}
+      - key: API_DEBUG_PORT
+        value: ${API_DEBUG_PORT}
     region: oregon
 
   # TenantAPI
@@ -159,8 +159,8 @@ services:
         value: --trace-warnings
       - key: PORT
         value: ${TENANTAPI_PORT}
-      - name: TENANTAPI_DEBUG_PORT
-        port: ${TENANTAPI_DEBUG_PORT}
+      - key: TENANTAPI_DEBUG_PORT
+        value: ${TENANTAPI_DEBUG_PORT}
     region: oregon
 
   # Landlord Frontend
@@ -171,7 +171,6 @@ services:
     dockerfilePath: ./webapps/landlord/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t landlord-frontend -f webapps/landlord/dev.Dockerfile --build-arg BASE_PATH=$LANDLORD_BASE_PATH .
-    startCommand: docker run landlord-frontend
     plan: free
     envVars:
       - key: PORT
