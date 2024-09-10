@@ -48,11 +48,10 @@ services:
         value: ${REDIS_PASSWORD}
       - key: MONGO_URL
         value: ${MONGO_URL}
-    ports:
-      - name: RESETSERVICE_DEBUG_PORT
-        port: ${RESETSERVICE_DEBUG_PORT}
-      - name: RESETSERVICE_PORT
-        port: ${RESETSERVICE_PORT}
+      - key: RESETSERVICE_DEBUG_PORT
+        value: ${RESETSERVICE_DEBUG_PORT}
+      - key: PORT
+        value: ${RESETSERVICE_PORT}
     region: oregon
 
   # Gateway
@@ -70,9 +69,10 @@ services:
         value: --trace-warnings
       - key: RESETSERVICE_URL
         value: ${RESETSERVICE_URL}
-    ports:
-      - name: GATEWAY_DEBUG_PORT
-        port: ${GATEWAY_DEBUG_PORT}
+      - key: PORT
+        value: ${GATEWAY_PORT}
+      - key: GATEWAY_DEBUG_PORT
+        value: ${GATEWAY_DEBUG_PORT}
     region: oregon
 
   # Authenticator
@@ -88,9 +88,10 @@ services:
     envVars:
       - key: NODE_OPTIONS
         value: --trace-warnings
-    ports:
+      - key: PORT
+        value: ${AUTHENTICATOR_PORT}
       - name: AUTHENTICATOR_DEBUG_PORT
-        port: ${AUTHENTICATOR_DEBUG_PORT}
+        value: ${AUTHENTICATOR_DEBUG_PORT}
     region: oregon
 
   # PDFGenerator
@@ -106,7 +107,8 @@ services:
     envVars:
       - key: NODE_OPTIONS
         value: --trace-warnings
-    ports:
+      - key: PORT
+        value: ${PDFGENERATOR_PORT}
       - name: PDFGENERATOR_DEBUG_PORT
         port: ${PDFGENERATOR_DEBUG_PORT}
     region: oregon
@@ -124,7 +126,8 @@ services:
     envVars:
       - key: NODE_OPTIONS
         value: --trace-warnings
-    ports:
+      - key: PORT
+        value: ${EMAILER_PORT}
       - name: EMAILER_DEBUG_PORT
         port: ${EMAILER_DEBUG_PORT}
     region: oregon
@@ -142,7 +145,8 @@ services:
     envVars:
       - key: NODE_OPTIONS
         value: --trace-warnings
-    ports:
+      - key: PORT
+        value: ${API_PORT}
       - name: API_DEBUG_PORT
         port: ${API_DEBUG_PORT}
     region: oregon
@@ -160,7 +164,8 @@ services:
     envVars:
       - key: NODE_OPTIONS
         value: --trace-warnings
-    ports:
+      - key: PORT
+        value: ${TENANTAPI_PORT}
       - name: TENANTAPI_DEBUG_PORT
         port: ${TENANTAPI_DEBUG_PORT}
     region: oregon
@@ -175,6 +180,9 @@ services:
     buildCommand: docker build -t landlord-frontend -f webapps/landlord/dev.Dockerfile --build-arg BASE_PATH=$LANDLORD_BASE_PATH .
     startCommand: docker run landlord-frontend
     plan: free
+    envVars:
+      - key: PORT
+        value: ${LANDLORD_FRONTEND_PORT}
     region: oregon
 
   # Tenant Frontend
@@ -187,4 +195,6 @@ services:
     buildCommand: docker build -t tenant-frontend -f webapps/tenant/dev.Dockerfile --build-arg BASE_PATH=$TENANT_BASE_PATH .
     startCommand: docker run tenant-frontend
     plan: free
+      - key: PORT
+        value: ${TENANT_FRONTEND_PORT}
     region: oregon
