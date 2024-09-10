@@ -1,0 +1,199 @@
+databases:
+   # Redis
+  - type: redis
+    name: redis
+    plan: free # or choose a plan that suits your needs
+    maxmemoryPolicy: noeviction
+    envVars:
+      - key: REDIS_PASSWORD
+        password: {{ REDIS_PASSWORD }}
+      - key: REDIS_PORT
+        value: {{ REDIS_PORT }}
+      - key: REDIS_URL
+        value: {{ REDIS_URL }}
+
+services:
+  # Mongo
+  - type: pserv
+    name: mongo
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./docker/Dockerfile.mongo
+    rootDir: .
+    plan: free
+    disk:
+      name: mongo-data
+      mountPath: /data/db
+      sizeGB: 10
+    envVars:
+      - key: MONGO_PORT
+        value: {{ MONGO_PORT }}
+      - key: MONGO_URL
+        value: {{ MONGO_URL }}
+    region: oregon
+
+  # ResetService
+  - type: web
+    name: resetservice
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/resetservice/dev.Dockerfile
+    rootDir: .
+    buildCommand: docker build -t resetservice -f services/resetservice/dev.Dockerfile .
+    startCommand: docker run resetservice
+    plan: free
+    envVars:
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+      - key: NODE_ENV
+        value: {{ NODE_ENV }}
+      - key: PORT
+        value: {{ RESETSERVICE_PORT }}
+      - key: LOGGER_LEVEL
+        value: {{ LOGGER_LEVEL }}
+      - key: REDIS_URL
+        value: {{ REDIS_URL }}
+      - key: REDIS_PASSWORD
+        value: {{ REDIS_PASSWORD }}
+      - key: MONGO_URL
+        value: {{ MONGO_URL }}
+    ports:
+      - name: RESETSERVICE_DEBUG_PORT
+        port: {{ RESETSERVICE_DEBUG_PORT }}
+      - name: RESETSERVICE_PORT
+        port: {{ RESETSERVICE_PORT }}
+    region: oregon
+
+  # Gateway
+  - type: web
+    name: gateway
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/gateway/dev.Dockerfile
+    rootDir: .
+    buildCommand: docker build -t gateway -f services/gateway/dev.Dockerfile .
+    startCommand: docker run gateway
+    plan: free
+    envVars:
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+      - key: RESETSERVICE_URL
+        value: {{ RESETSERVICE_URL }}
+    ports:
+      - name: GATEWAY_DEBUG_PORT
+        port: {{ GATEWAY_DEBUG_PORT }}
+    region: oregon
+
+  # Authenticator
+  - type: web
+    name: authenticator
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/authenticator/dev.Dockerfile
+    rootDir: .
+    buildCommand: docker build -t authenticator -f services/authenticator/dev.Dockerfile .
+    startCommand: docker run authenticator
+    plan: free
+    envVars:
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+    ports:
+      - name: AUTHENTICATOR_DEBUG_PORT
+        port: {{ AUTHENTICATOR_DEBUG_PORT }}
+    region: oregon
+
+  # PDFGenerator
+  - type: web
+    name: pdfgenerator
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/pdfgenerator/dev.Dockerfile
+    rootDir: .
+    buildCommand: docker build -t pdfgenerator -f services/pdfgenerator/dev.Dockerfile .
+    startCommand: docker run pdfgenerator
+    plan: free
+    envVars:
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+    ports:
+      - name: PDFGENERATOR_DEBUG_PORT
+        port: {{ PDFGENERATOR_DEBUG_PORT }}
+    region: oregon
+
+  # Emailer
+  - type: web
+    name: emailer
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/emailer/dev.Dockerfile
+    rootDir: .
+    buildCommand: docker build -t emailer -f services/emailer/dev.Dockerfile .
+    startCommand: docker run emailer
+    plan: free
+    envVars:
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+    ports:
+      - name: EMAILER_DEBUG_PORT
+        port: {{ EMAILER_DEBUG_PORT }}
+    region: oregon
+
+  # API
+  - type: web
+    name: api
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/api/dev.Dockerfile
+    rootDir: .
+    buildCommand: docker build -t api -f services/api/dev.Dockerfile .
+    startCommand: docker run api
+    plan: free
+    envVars:
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+    ports:
+      - name: API_DEBUG_PORT
+        port: {{ API_DEBUG_PORT }}
+    region: oregon
+
+  # TenantAPI
+  - type: web
+    name: tenantapi
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/tenantapi/dev.Dockerfile
+    rootDir: .
+    buildCommand: docker build -t tenantapi -f services/tenantapi/dev.Dockerfile .
+    startCommand: docker run tenantapi
+    plan: free
+    envVars:
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+    ports:
+      - name: TENANTAPI_DEBUG_PORT
+        port: {{ TENANTAPI_DEBUG_PORT }}
+    region: oregon
+
+  # Landlord Frontend
+  - type: web
+    name: landlord-frontend
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./webapps/landlord/dev.Dockerfile
+    rootDir: .
+    buildCommand: docker build -t landlord-frontend -f webapps/landlord/dev.Dockerfile --build-arg BASE_PATH=$LANDLORD_BASE_PATH .
+    startCommand: docker run landlord-frontend
+    plan: free
+    region: oregon
+
+  # Tenant Frontend
+  - type: web
+    name: tenant-frontend
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./webapps/tenant/dev.Dockerfile
+    rootDir: .
+    buildCommand: docker build -t tenant-frontend -f webapps/tenant/dev.Dockerfile --build-arg BASE_PATH=$TENANT_BASE_PATH .
+    startCommand: docker run tenant-frontend
+    plan: free
+    region: oregon
