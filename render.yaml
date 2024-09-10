@@ -22,7 +22,7 @@ services:
   - type: web
     name: resetservice
     env: docker
-    dockerContext: .
+    dockerContext: ./services/resetservice/
     dockerfilePath: ./services/resetservice/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t resetservice -f services/resetservice/dev.Dockerfile .
@@ -38,8 +38,6 @@ services:
         value: ${LOGGER_LEVEL}
       - key: REDIS_URL
         value: ${REDIS_URL}
-      - key: REDIS_PASSWORD
-        value: ${REDIS_PASSWORD}
       - key: MONGO_URL
         value: ${MONGO_URL}
       - key: RESETSERVICE_DEBUG_PORT
@@ -50,7 +48,7 @@ services:
   - type: web
     name: gateway
     env: docker
-    dockerContext: .
+    dockerContext: ./services/gateway/
     dockerfilePath: ./services/gateway/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t gateway -f services/gateway/dev.Dockerfile .
@@ -70,7 +68,7 @@ services:
   - type: web
     name: authenticator
     env: docker
-    dockerContext: .
+    dockerContext: ./services/authenticator/
     dockerfilePath: ./services/authenticator/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t authenticator -f services/authenticator/dev.Dockerfile .
@@ -88,7 +86,7 @@ services:
   - type: web
     name: pdfgenerator
     env: docker
-    dockerContext: .
+    dockerContext: ./services/pdfgenerator/
     dockerfilePath: ./services/pdfgenerator/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t pdfgenerator -f services/pdfgenerator/dev.Dockerfile .
@@ -106,7 +104,7 @@ services:
   - type: web
     name: emailer
     env: docker
-    dockerContext: .
+    dockerContext: ./services/emailer/
     dockerfilePath: ./services/emailer/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t emailer -f services/emailer/dev.Dockerfile .
@@ -124,7 +122,7 @@ services:
   - type: web
     name: api
     env: docker
-    dockerContext: .
+    dockerContext: ./services/api/
     dockerfilePath: ./services/api/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t api -f services/api/dev.Dockerfile .
@@ -142,7 +140,7 @@ services:
   - type: web
     name: tenantapi
     env: docker
-    dockerContext: .
+    dockerContext: ./services/tenantapi/
     dockerfilePath: ./services/tenantapi/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t tenantapi -f services/tenantapi/dev.Dockerfile .
@@ -160,7 +158,7 @@ services:
   - type: web
     name: landlord-frontend
     env: docker
-    dockerContext: .
+    dockerContext: ./webapps/landlord/
     dockerfilePath: ./webapps/landlord/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t landlord-frontend -f webapps/landlord/dev.Dockerfile --build-arg BASE_PATH=$LANDLORD_BASE_PATH .
@@ -174,7 +172,7 @@ services:
   - type: web
     name: tenant-frontend
     env: docker
-    dockerContext: .
+    dockerContext: ./webapps/tenant/
     dockerfilePath: ./webapps/tenant/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t tenant-frontend -f webapps/tenant/dev.Dockerfile --build-arg BASE_PATH=$TENANT_BASE_PATH .
