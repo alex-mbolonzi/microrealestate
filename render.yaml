@@ -18,40 +18,12 @@ services:
         value: ${MONGO_URL}
     region: oregon
 
-  # ResetService
-  - type: web
-    name: resetservice
-    env: docker
-    dockerContext: ./services/resetservice/
-    dockerfilePath: ./services/resetservice/dev.Dockerfile
-    rootDir: .
-    buildCommand: docker build -t resetservice -f services/resetservice/dev.Dockerfile .
-    plan: free
-    envVars:
-      - key: NODE_OPTIONS
-        value: --trace-warnings
-      - key: NODE_ENV
-        value: ${NODE_ENV}
-      - key: PORT
-        value: ${RESETSERVICE_PORT}
-      - key: LOGGER_LEVEL
-        value: ${LOGGER_LEVEL}
-      - key: REDIS_URL
-        value: ${REDIS_URL}
-      - key: MONGO_URL
-        value: ${MONGO_URL}
-      - key: RESETSERVICE_DEBUG_PORT
-        value: ${RESETSERVICE_DEBUG_PORT}
-    region: oregon
-
   # Gateway
   - type: web
     name: gateway
     env: docker
-    dockerContext: ./services/gateway/
-    dockerfilePath: ./services/gateway/dev.Dockerfile
-    rootDir: .
-    buildCommand: docker build -t gateway -f services/gateway/dev.Dockerfile .
+    dockerContext: .
+    dockerfilePath: ./services/gateway/Dockerfile
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -68,10 +40,8 @@ services:
   - type: web
     name: authenticator
     env: docker
-    dockerContext: ./services/authenticator/
-    dockerfilePath: ./services/authenticator/dev.Dockerfile
-    rootDir: .
-    buildCommand: docker build -t authenticator -f services/authenticator/dev.Dockerfile .
+    dockerContext: .
+    dockerfilePath: ./services/authenticator/Dockerfile
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -86,10 +56,8 @@ services:
   - type: web
     name: pdfgenerator
     env: docker
-    dockerContext: ./services/pdfgenerator/
-    dockerfilePath: ./services/pdfgenerator/dev.Dockerfile
-    rootDir: .
-    buildCommand: docker build -t pdfgenerator -f services/pdfgenerator/dev.Dockerfile .
+    dockerContext: .
+    dockerfilePath: ./services/pdfgenerator/Dockerfile
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -104,10 +72,8 @@ services:
   - type: web
     name: emailer
     env: docker
-    dockerContext: ./services/emailer/
-    dockerfilePath: ./services/emailer/dev.Dockerfile
-    rootDir: .
-    buildCommand: docker build -t emailer -f services/emailer/dev.Dockerfile .
+    dockerContext: .
+    dockerfilePath: ./services/emailer/Dockerfile
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -122,10 +88,8 @@ services:
   - type: web
     name: api
     env: docker
-    dockerContext: ./services/api/
-    dockerfilePath: ./services/api/dev.Dockerfile
-    rootDir: .
-    buildCommand: docker build -t api -f services/api/dev.Dockerfile .
+    dockerContext: .
+    dockerfilePath: ./services/api/Dockerfile
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -140,10 +104,8 @@ services:
   - type: web
     name: tenantapi
     env: docker
-    dockerContext: ./services/tenantapi/
-    dockerfilePath: ./services/tenantapi/dev.Dockerfile
-    rootDir: .
-    buildCommand: docker build -t tenantapi -f services/tenantapi/dev.Dockerfile .
+    dockerContext: .
+    dockerfilePath: ./services/tenantapi/Dockerfile
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -158,10 +120,8 @@ services:
   - type: web
     name: landlord-frontend
     env: docker
-    dockerContext: ./webapps/landlord/
-    dockerfilePath: ./webapps/landlord/dev.Dockerfile
-    rootDir: .
-    buildCommand: docker build -t landlord-frontend -f webapps/landlord/dev.Dockerfile --build-arg BASE_PATH=$LANDLORD_BASE_PATH .
+    dockerContext: .
+    dockerfilePath: ./webapps/landlord/Dockerfile
     plan: free
     envVars:
       - key: PORT
