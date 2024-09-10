@@ -1,17 +1,8 @@
 databases:
    # Redis
-  - type: redis
-    name: redis
+  - name: redis
     plan: free # or choose a plan that suits your needs
-    maxmemoryPolicy: noeviction
-    envVars:
-      - key: REDIS_PASSWORD
-        password: ${REDIS_PASSWORD}
-      - key: REDIS_PORT
-        value: ${REDIS_PORT}
-      - key: REDIS_URL
-        value: ${REDIS_URL}
-
+    
 services:
   # Mongo
   - type: pserv
