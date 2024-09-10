@@ -31,7 +31,6 @@ services:
     dockerfilePath: ./services/resetservice/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t resetservice -f services/resetservice/dev.Dockerfile .
-    startCommand: docker run resetservice
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -62,7 +61,6 @@ services:
     dockerfilePath: ./services/gateway/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t gateway -f services/gateway/dev.Dockerfile .
-    startCommand: docker run gateway
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -83,7 +81,6 @@ services:
     dockerfilePath: ./services/authenticator/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t authenticator -f services/authenticator/dev.Dockerfile .
-    startCommand: docker run authenticator
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -102,7 +99,6 @@ services:
     dockerfilePath: ./services/pdfgenerator/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t pdfgenerator -f services/pdfgenerator/dev.Dockerfile .
-    startCommand: docker run pdfgenerator
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -121,7 +117,6 @@ services:
     dockerfilePath: ./services/emailer/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t emailer -f services/emailer/dev.Dockerfile .
-    startCommand: docker run emailer
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -140,7 +135,6 @@ services:
     dockerfilePath: ./services/api/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t api -f services/api/dev.Dockerfile .
-    startCommand: docker run api
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -159,7 +153,6 @@ services:
     dockerfilePath: ./services/tenantapi/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t tenantapi -f services/tenantapi/dev.Dockerfile .
-    startCommand: docker run tenantapi
     plan: free
     envVars:
       - key: NODE_OPTIONS
@@ -193,7 +186,6 @@ services:
     dockerfilePath: ./webapps/tenant/dev.Dockerfile
     rootDir: .
     buildCommand: docker build -t tenant-frontend -f webapps/tenant/dev.Dockerfile --build-arg BASE_PATH=$TENANT_BASE_PATH .
-    startCommand: docker run tenant-frontend
     plan: free
     envVars:
       - key: PORT
