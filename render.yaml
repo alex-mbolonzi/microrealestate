@@ -195,6 +195,7 @@ services:
     buildCommand: docker build -t tenant-frontend -f webapps/tenant/dev.Dockerfile --build-arg BASE_PATH=$TENANT_BASE_PATH .
     startCommand: docker run tenant-frontend
     plan: free
+    envVars:
       - key: PORT
         value: ${TENANT_FRONTEND_PORT}
     region: oregon
