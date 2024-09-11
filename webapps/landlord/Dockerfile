@@ -32,6 +32,7 @@ COPY webapps/landlord/package.json webapps/landlord
 COPY webapps/landlord/postcss.config.js webapps/landlord
 COPY webapps/landlord/tailwind.config.js webapps/landlord
 COPY webapps/landlord/tsconfig.json webapps/landlord
+RUN  yarn install
 RUN  yarn workspace @microrealestate/landlord run build
 
 FROM gcr.io/distroless/nodejs20-debian12
