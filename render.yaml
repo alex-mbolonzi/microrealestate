@@ -12,10 +12,10 @@ services:
     #   mountPath: /data/db
     #   sizeGB: 10
     envVars:
-      - key: MONGO_PORT
+      - key: PORT
         value: MONGO_PORT
-      - key: MONGO_URL
-        value: MONGO_URL
+      # - key: MONGO_URL
+      #   value: MONGO_URL
       - fromGroup: microrealestate
     region: oregon
 
@@ -93,8 +93,30 @@ services:
     envVars:
       - key: NODE_OPTIONS
         value: --trace-warnings
+      - key: CHROMIUM_BIN
+        value: CHROMIUM_BIN
+      - key: DATA_DIRECTORY
+        value: DATA_DIRECTORY
+      - key: LOGGER_LEVEL
+        value: LOGGER_LEVEL
+      - key: MONGO_URL
+        value: MONGO_URL
+      - key: PDF_DIRECTORY
+        value: PDF_DIRECTORY
       - key: PORT
         value: PDFGENERATOR_PORT
+      - key: PRODUCTION
+        value: true
+      - key: REDIS_URL
+        value: REDIS_URL
+      - key: TEMPLATES_DIRECTORY
+        value: TEMPLATES_DIRECTORY
+      - key: TEMPORARY_DIRECTORY
+        value: TEMPORARY_DIRECTORY
+      - key: UPLOAD_MAX_SIZE
+        value: UPLOAD_MAX_SIZE
+      - key: UPLOADS_DIRECTORY
+        value: UPLOADS_DIRECTORY
       - key: PDFGENERATOR_DEBUG_PORT
         value: PDFGENERATOR_DEBUG_PORT
       - fromGroup: microrealestate
