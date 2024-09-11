@@ -264,12 +264,28 @@ services:
   - type: web
     name: tenant-frontend
     env: docker
-    dockerContext: ./webapps/tenant/
+    dockerContext: .
     dockerfilePath: ./webapps/tenant/Dockerfile
     rootDir: .
     plan: free
     envVars:
       - fromGroup: microrealestate
+      - key: BASE_PATH
+        value: "/tenant"
       - key: PORT
-        value: ${TENANT_FRONTEND_PORT}
+        value: 8190
+      - key: DOCKER_GATEWAY_URL
+        sync: false
+      - key: APP_NAME
+        sync: false
+      - key: CORS_ENABLED
+        sync: false
+      - key: DEMO_MODE
+        sync: false
+      - key: GATEWAY_URL
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: DOMAIN_URL
+        sync: false
     region: oregon
