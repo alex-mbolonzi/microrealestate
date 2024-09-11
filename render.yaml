@@ -26,8 +26,8 @@ services:
     dockerContext: .
     dockerfilePath: ./services/gateway/Dockerfile
     plan: free
-  - fromGroup: microrealestate
     envVars:
+      - fromGroup: microrealestate
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: CORS_ENABLED
@@ -59,8 +59,8 @@ services:
     dockerContext: .
     dockerfilePath: ./services/authenticator/Dockerfile
     plan: free
-  - fromGroup: microrealestate
     envVars:
+      - fromGroup: microrealestate
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: EMAILER_URL
@@ -90,8 +90,8 @@ services:
     dockerContext: .
     dockerfilePath: ./services/pdfgenerator/Dockerfile
     plan: free
-  - fromGroup: microrealestate
     envVars:
+      - fromGroup: microrealestate
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: CHROMIUM_BIN
@@ -129,8 +129,8 @@ services:
     dockerContext: .
     dockerfilePath: ./services/emailer/Dockerfile
     plan: free
-  - fromGroup: microrealestate
     envVars:
+      - fromGroup: microrealestate
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: ALLOW_SENDING_EMAILS
@@ -172,8 +172,8 @@ services:
     dockerContext: .
     dockerfilePath: ./services/api/Dockerfile
     plan: free
-  - fromGroup: microrealestate
     envVars:
+      - fromGroup: microrealestate
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: CIPHER_IV_KEY
@@ -212,13 +212,13 @@ services:
     dockerfilePath: ./services/tenantapi/Dockerfile
     plan: free
     envVars:
+      - fromGroup: microrealestate
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: PORT
         value: TENANTAPI_PORT
       - key: TENANTAPI_DEBUG_PORT
         value: TENANTAPI_DEBUG_PORT
-      - fromGroup: microrealestate
     region: oregon
 
   # Landlord Frontend
@@ -229,9 +229,9 @@ services:
     dockerfilePath: ./webapps/landlord/Dockerfile
     plan: free
     envVars:
+      - fromGroup: microrealestate
       - key: PORT
         value: LANDLORD_FRONTEND_PORT
-      - fromGroup: microrealestate
     region: oregon
 
   # Tenant Frontend
@@ -239,11 +239,11 @@ services:
     name: tenant-frontend
     env: docker
     dockerContext: ./webapps/tenant/
-    dockerfilePath: ./webapps/tenant/dev.Dockerfile
+    dockerfilePath: ./webapps/tenant/Dockerfile
     rootDir: .
-    buildCommand: docker build -t tenant-frontend -f webapps/tenant/dev.Dockerfile --build-arg BASE_PATH=$TENANT_BASE_PATH .
     plan: free
     envVars:
+      - fromGroup: microrealestate
       - key: PORT
         value: ${TENANT_FRONTEND_PORT}
     region: oregon
