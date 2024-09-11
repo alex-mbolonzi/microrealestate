@@ -1,6 +1,6 @@
 services:
   # Mongo
-  - type: web
+  - type: pserv
     name: mongo
     env: docker
     dockerContext: .
@@ -53,7 +53,7 @@ services:
     region: oregon
 
   # Authenticator
-  - type: web
+  - type: pserv
     name: authenticator
     env: docker
     dockerContext: .
@@ -84,7 +84,7 @@ services:
     region: oregon
 
   # PDFGenerator
-  - type: web
+  - type: pserv
     name: pdfgenerator
     env: docker
     dockerContext: .
@@ -123,7 +123,7 @@ services:
     region: oregon
 
   # Emailer
-  - type: web
+  - type: pserv
     name: emailer
     env: docker
     dockerContext: .
@@ -166,7 +166,7 @@ services:
     region: oregon
 
   # API
-  - type: web
+  - type: pserv
     name: api
     env: docker
     dockerContext: .
@@ -205,7 +205,7 @@ services:
     region: oregon
 
   # TenantAPI
-  - type: web
+  - type: pserv
     name: tenantapi
     env: docker
     dockerContext: .
@@ -238,7 +238,7 @@ services:
     region: oregon
 
   # Landlord Frontend
-  - type: web
+  - type: pserv
     name: landlord-frontend
     env: docker
     dockerContext: .
@@ -251,7 +251,7 @@ services:
     region: oregon
 
   # Tenant Frontend
-  - type: web
+  - type: pserv
     name: tenant-frontend
     env: docker
     dockerContext: ./webapps/tenant/
