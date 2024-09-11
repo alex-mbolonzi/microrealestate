@@ -13,9 +13,10 @@ services:
     #   sizeGB: 10
     envVars:
       - key: MONGO_PORT
-        value: ${MONGO_PORT}
+        value: MONGO_PORT
       - key: MONGO_URL
-        value: ${MONGO_URL}
+        value: MONGO_URL
+      - fromGroup: microrealestate
     region: oregon
 
   # Gateway
@@ -61,10 +62,25 @@ services:
     envVars:
       - key: NODE_OPTIONS
         value: --trace-warnings
+      - key: EMAILER_URL
+        value: EMAILER_URL
+      - key: LOGGER_LEVEL
+        value: LOGGER_LEVEL
+      - key: MONGO_URL
+        value: MONGO_URL
       - key: PORT
-        value: ${AUTHENTICATOR_PORT}
+        value: AUTHENTICATOR_PORT
+      - key: PRODUCTION
+        value: true
+      - key: REDIS_URL
+        value: REDIS_URL
+      - key: SIGNUP
+        value: false
+      - key: TOKEN_COOKIE_ATTRIBUTES
+        value: TOKEN_COOKIE_ATTRIBUTES
       - key: AUTHENTICATOR_DEBUG_PORT
-        value: ${AUTHENTICATOR_DEBUG_PORT}
+        value: AUTHENTICATOR_DEBUG_PORT
+      - fromGroup: microrealestate
     region: oregon
 
   # PDFGenerator
@@ -78,9 +94,10 @@ services:
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: PORT
-        value: ${PDFGENERATOR_PORT}
+        value: PDFGENERATOR_PORT
       - key: PDFGENERATOR_DEBUG_PORT
-        value: ${PDFGENERATOR_DEBUG_PORT}
+        value: PDFGENERATOR_DEBUG_PORT
+      - fromGroup: microrealestate
     region: oregon
 
   # Emailer
@@ -94,9 +111,10 @@ services:
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: PORT
-        value: ${EMAILER_PORT}
+        value: EMAILER_PORT
       - key: EMAILER_DEBUG_PORT
-        value: ${EMAILER_DEBUG_PORT}
+        value: EMAILER_DEBUG_PORT
+      - fromGroup: microrealestate
     region: oregon
 
   # API
@@ -110,9 +128,10 @@ services:
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: PORT
-        value: ${API_PORT}
+        value: API_PORT
       - key: API_DEBUG_PORT
-        value: ${API_DEBUG_PORT}
+        value: API_DEBUG_PORT
+      - fromGroup: microrealestate
     region: oregon
 
   # TenantAPI
@@ -126,9 +145,10 @@ services:
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: PORT
-        value: ${TENANTAPI_PORT}
+        value: TENANTAPI_PORT
       - key: TENANTAPI_DEBUG_PORT
-        value: ${TENANTAPI_DEBUG_PORT}
+        value: TENANTAPI_DEBUG_PORT
+      - fromGroup: microrealestate
     region: oregon
 
   # Landlord Frontend
@@ -140,7 +160,8 @@ services:
     plan: free
     envVars:
       - key: PORT
-        value: ${LANDLORD_FRONTEND_PORT}
+        value: LANDLORD_FRONTEND_PORT
+      - fromGroup: microrealestate
     region: oregon
 
   # Tenant Frontend
