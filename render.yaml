@@ -13,7 +13,7 @@ services:
     #   sizeGB: 10
     envVars:
       - key: PORT
-        value: MONGO_PORT
+        sync: 27017
       # - key: MONGO_URL
       #   value: MONGO_URL
       - fromGroup: microrealestate
@@ -30,25 +30,25 @@ services:
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: CORS_ENABLED
-        value: CORS_ENABLED
+        sync: false
       - key: DOMAIN_URL
-        value: DOMAIN_URL
+        sync: false
       - key: EXPOSE_FRONTENDS
         value: true
       - key: LOGGER_LEVEL
-        value: LOGGER_LEVEL
+        sync: false
       - key: MONGO_URL
-        value: MONGO_URL
+        sync: false
       - key: PRODUCTION
         value: true
       - key: REDIS_URL
-        value: REDIS_URL
+        sync: false
       # - key: RESETSERVICE_URL
       #   value: ${RESETSERVICE_URL}
       - key: PORT
-        value: GATEWAY_PORT
+        sync: 8080
       - key: GATEWAY_DEBUG_PORT
-        value: GATEWAY_DEBUG_PORT
+        sync: false
       - fromGroup: microrealestate
     region: oregon
 
@@ -63,23 +63,23 @@ services:
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: EMAILER_URL
-        value: EMAILER_URL
+        sync: false
       - key: LOGGER_LEVEL
-        value: LOGGER_LEVEL
+        sync: false
       - key: MONGO_URL
-        value: MONGO_URL
+        sync: false
       - key: PORT
-        value: AUTHENTICATOR_PORT
+        sync: 8000
       - key: PRODUCTION
         value: true
       - key: REDIS_URL
-        value: REDIS_URL
+        sync: false
       - key: SIGNUP
         value: false
       - key: TOKEN_COOKIE_ATTRIBUTES
-        value: TOKEN_COOKIE_ATTRIBUTES
+        sync: false
       - key: AUTHENTICATOR_DEBUG_PORT
-        value: AUTHENTICATOR_DEBUG_PORT
+        sync: false
       - fromGroup: microrealestate
     region: oregon
 
@@ -94,31 +94,31 @@ services:
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: CHROMIUM_BIN
-        value: CHROMIUM_BIN
+        sync: false
       - key: DATA_DIRECTORY
-        value: DATA_DIRECTORY
+        sync: false
       - key: LOGGER_LEVEL
-        value: LOGGER_LEVEL
+        sync: false
       - key: MONGO_URL
-        value: MONGO_URL
+        sync: false
       - key: PDF_DIRECTORY
-        value: PDF_DIRECTORY
+        sync: false
       - key: PORT
-        value: PDFGENERATOR_PORT
+        sync: 8300
       - key: PRODUCTION
         value: true
       - key: REDIS_URL
-        value: REDIS_URL
+        sync: false
       - key: TEMPLATES_DIRECTORY
-        value: TEMPLATES_DIRECTORY
+        sync: false
       - key: TEMPORARY_DIRECTORY
-        value: TEMPORARY_DIRECTORY
+        sync: false
       - key: UPLOAD_MAX_SIZE
-        value: UPLOAD_MAX_SIZE
+        sync: false
       - key: UPLOADS_DIRECTORY
-        value: UPLOADS_DIRECTORY
+        sync: false
       - key: PDFGENERATOR_DEBUG_PORT
-        value: PDFGENERATOR_DEBUG_PORT
+        sync: false
       - fromGroup: microrealestate
     region: oregon
 
@@ -132,10 +132,36 @@ services:
     envVars:
       - key: NODE_OPTIONS
         value: --trace-warnings
+      - key: ALLOW_SENDING_EMAILS
+        sync: false
+      - key: APP_NAME
+        sync: false
+      - key: CIPHER_IV_KEY
+        sync: false
+      - key: CIPHER_KEY
+        sync: false
+      - key: LANDLORD_APP_URL
+        sync: false
+      - key: LOGGER_LEVEL
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: PDFGENERATOR_URL
+        sync: false
       - key: PORT
-        value: EMAILER_PORT
+        sync: 8400
+      - key: PRODUCTION
+        value: true
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: TEMPORARY_DIRECTORY
+        sync: false
+      - key: TENANT_APP_URL
+        sync: false
       - key: EMAILER_DEBUG_PORT
-        value: EMAILER_DEBUG_PORT
+        sync: false
       - fromGroup: microrealestate
     region: oregon
 
