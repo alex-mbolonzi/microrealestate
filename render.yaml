@@ -17,7 +17,6 @@ services:
         value: 27017
       # - key: MONGO_URL
       #   value: MONGO_URL
-      - fromGroup: microrealestate
     region: oregon
 
   # Gateway
