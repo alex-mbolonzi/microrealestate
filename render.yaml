@@ -241,7 +241,23 @@ services:
     envVars:
       - fromGroup: microrealestate
       - key: PORT
-        value: LANDLORD_FRONTEND_PORT
+        value: 8180
+      - key: BASE_PATH
+        value: "/landlord"
+      - key: DOCKER_GATEWAY_URL
+        sync: false
+      - key: APP_NAME
+        sync: false
+      - key: CORS_ENABLED
+        sync: false
+      - key: DEMO_MODE
+        sync: false
+      - key: GATEWAY_URL
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: SIGNUP
+        sync: false
     region: oregon
 
   # Tenant Frontend
