@@ -50,6 +50,26 @@ services:
         value: 8080
       - key: GATEWAY_DEBUG_PORT
         sync: false
+      - key: AUTHENTICATOR_URL
+        sync: false
+      - key: API_URL
+        sync: false
+      - key: PDFGENERATOR_URL
+        sync: false
+      - key: EMAILER_URL
+        sync: false
+      - key: LANDLORD_FRONTEND_URL
+        sync: false
+      - key: LANDLORD_BASE_PATH
+        sync: false
+      - key: TENANT_FRONTEND_URL
+        sync: false
+      - key: TENANT_BASE_PATH
+        sync: false
+      - key: TENANTAPI_URL
+        sync: false
+      - key: NODE_ENV
+        sync: false
     region: oregon
 
   # Authenticator
@@ -75,11 +95,17 @@ services:
         value: true
       - key: REDIS_URL
         sync: false
+      - key: REDIS_PASSWORD
+        sync: false
       - key: SIGNUP
         value: false
       - key: TOKEN_COOKIE_ATTRIBUTES
         sync: false
       - key: AUTHENTICATOR_DEBUG_PORT
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: DOMAIN_URL
         sync: false
     region: oregon
 
@@ -110,6 +136,8 @@ services:
         value: true
       - key: REDIS_URL
         sync: false
+      - key: REDIS_PASSWORD
+        sync: false
       - key: TEMPLATES_DIRECTORY
         sync: false
       - key: TEMPORARY_DIRECTORY
@@ -119,6 +147,12 @@ services:
       - key: UPLOADS_DIRECTORY
         sync: false
       - key: PDFGENERATOR_DEBUG_PORT
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: CIPHER_IV_KEY
+        sync: false
+      - key: CIPHER_KEY
         sync: false
     region: oregon
 
@@ -163,6 +197,18 @@ services:
         sync: false
       - key: EMAILER_DEBUG_PORT
         sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: MAILGUN_API_KEY
+        sync: false
+      - key: MAILGUN_DOMAIN
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_REPLY_TO
+        sync: false
+      - key: EMAIL_BCC
+        sync: false
     region: oregon
 
   # API
@@ -202,6 +248,8 @@ services:
         sync: false
       - key: API_DEBUG_PORT
         sync: false
+      - key: NODE_ENV
+        sync: false
     region: oregon
 
   # TenantAPI
@@ -228,6 +276,8 @@ services:
       - key: PORT
         value: 8250
       - key: TENANTAPI_DEBUG_PORT
+        sync: false
+      - key: NODE_ENV
         sync: false
     region: oregon
 
