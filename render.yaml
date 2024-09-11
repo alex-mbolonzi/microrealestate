@@ -29,25 +29,25 @@ services:
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: CORS_ENABLED
-        value: { { CORS_ENABLED } }
+        value: {{CORS_ENABLED}}
       - key: DOMAIN_URL
-        value: { { DOMAIN_URL } }
+        value: {{DOMAIN_URL}}
       - key: EXPOSE_FRONTENDS
         value: true
       - key: LOGGER_LEVEL
-        value: { { LOGGER_LEVEL } }
+        value: {{LOGGER_LEVEL}}
       - key: MONGO_URL
-        value: { { MONGO_URL } }
+        value: {{MONGO_URL}}
       - key: PRODUCTION
         value: true
       - key: REDIS_URL
-        value: { { REDIS_URL } }
+        value: {{REDIS_URL}}
       # - key: RESETSERVICE_URL
       #   value: ${RESETSERVICE_URL}
       - key: PORT
-        value: { { GATEWAY_PORT } }
+        value: {{GATEWAY_PORT}}
       - key: GATEWAY_DEBUG_PORT
-        value: { { GATEWAY_DEBUG_PORT } }
+        value: {{GATEWAY_DEBUG_PORT}}
     region: oregon
 
   # Authenticator
