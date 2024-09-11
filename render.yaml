@@ -215,10 +215,26 @@ services:
       - fromGroup: microrealestate
       - key: NODE_OPTIONS
         value: --trace-warnings
+      - key: CIPHER_IV_KEY
+        sync: false
+      - key: CIPHER_KEY
+        value: false
+      - key: DEMO_MODE
+        sync: false
+      - key: LOGGER_LEVEL
+        sync: false
+      - key: MONGO_URL
+        sync: false
       - key: PORT
-        value: TENANTAPI_PORT
+        value: 8250
       - key: TENANTAPI_DEBUG_PORT
-        value: TENANTAPI_DEBUG_PORT
+        sync: false
+      - key: PRODUCTION
+        value: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_URL
+        sync: false
     region: oregon
 
   # Landlord Frontend
