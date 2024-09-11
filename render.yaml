@@ -46,7 +46,7 @@ services:
       # - key: RESETSERVICE_URL
       #   value: ${RESETSERVICE_URL}
       - key: PORT
-        sync: 8080
+        value: 8080
       - key: GATEWAY_DEBUG_PORT
         sync: false
       - fromGroup: microrealestate
@@ -69,7 +69,7 @@ services:
       - key: MONGO_URL
         sync: false
       - key: PORT
-        sync: 8000
+        value: 8000
       - key: PRODUCTION
         value: true
       - key: REDIS_URL
@@ -104,7 +104,7 @@ services:
       - key: PDF_DIRECTORY
         sync: false
       - key: PORT
-        sync: 8300
+        value: 8300
       - key: PRODUCTION
         value: true
       - key: REDIS_URL
@@ -149,7 +149,7 @@ services:
       - key: PDFGENERATOR_URL
         sync: false
       - key: PORT
-        sync: 8400
+        value: 8400
       - key: PRODUCTION
         value: true
       - key: REDIS_PASSWORD
