@@ -15,8 +15,6 @@ services:
       - fromGroup: microrealestate
       - key: PORT
         value: 27017
-      # - key: MONGO_URL
-      #   value: MONGO_URL
     region: oregon
 
   # Gateway
