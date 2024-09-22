@@ -162,6 +162,7 @@ async function showConfig(runMode) {
   });
 }
 
+// eslint-disable-next-line no-unused-vars
 async function checkHealth() {
   let healthcheckSuccess = true;
   const maxAttempt = 10;
