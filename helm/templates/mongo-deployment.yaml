@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c
+    kompose.version: 1.34.0 (HEAD)
+  labels:
+    app: mongo
+  name: mongo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c
+        kompose.version: 1.34.0 (HEAD)
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - args:
+            - "--quiet"
+          image: mongo:7
+          name: mongo
+          ports:
+            - containerPort: 27017
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /data/db
+              name: mongo-claim0
+            - mountPath: /backup
+              name: mongo-cm1
+      restartPolicy: Always
+      volumes:
+        - name: mongo-claim0
+          persistentVolumeClaim:
+            claimName: mongo-claim0
+        - configMap:
+            name: mongo-cm1
+          name: mongo-cm1
