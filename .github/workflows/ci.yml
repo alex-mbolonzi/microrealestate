@@ -9,7 +9,7 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     environment: 'bomatech'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
