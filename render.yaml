@@ -7,7 +7,7 @@ services:
     dockerfilePath: ./docker/Dockerfile.mongo
     rootDir: .
     plan: free
-    # disk:
+    disk:
     #   name: mongo-data
     #   mountPath: /data/db
     #   sizeGB: 10
