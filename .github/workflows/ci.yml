@@ -28,7 +28,7 @@ jobs:
         run: yarn
 
       - name: Lint
-        run: yarn lint
+        run: yarn lint && yarn build
 
   build-push-images:
     permissions:
