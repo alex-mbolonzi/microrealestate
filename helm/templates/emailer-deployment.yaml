@@ -66,7 +66,7 @@ spec:
               value: "mailgun@sandbox53348a1c56bc4fc2ab89a724c3c57747.mailgun.org"
             - name: EMAIL_BCC
               value: "almbolonzi@gmail.com"
-          image: ghcr.io/microrealestate/microrealestate/emailer:latest
+          image: almbolonzi/bomatech-emailer:latest
           name: emailer
           ports:
             - containerPort: 8400

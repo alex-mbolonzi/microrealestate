@@ -81,7 +81,9 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           push: true
-          tags: '${{ secrets.DOCKER_USERNAME }}/${{ matrix.appname }}:${{ github.sha }}'
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.appname }}:${{ github.sha }},
+            ${{ secrets.DOCKER_USERNAME }}/${{ matrix.appname }}:latest
           labels: ${{ steps.meta.outputs.labels }}
 
 

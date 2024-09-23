@@ -60,7 +60,7 @@ spec:
               value: "e62d3774d57565718912a2fda32c30b86d4320ab483e41f739951130ad48c482"
             - name: CIPHER_KEY
               value: "4f9078a9c90d6e30d24400373734db3988758f773ae4f0b9b0d773aefe8c3dc6"
-          image: ghcr.io/microrealestate/microrealestate/pdfgenerator:latest
+          image: almbolonzi/bomatech-pdfgenerator:latest
           name: pdfgenerator
           ports:
             - containerPort: 8300

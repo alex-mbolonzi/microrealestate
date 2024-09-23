@@ -40,7 +40,7 @@ spec:
               value: "production"
             - name: SIGNUP
               value: "true"
-          image: ghcr.io/microrealestate/microrealestate/landlord-frontend:latest
+          image: almbolonzi/bomatech-landlord-frontend:latest
           name: landlord-frontend
           ports:
             - containerPort: 8180

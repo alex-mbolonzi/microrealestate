@@ -56,7 +56,7 @@ spec:
               value: "production"
             - name: DOMAIN_URL
               value: "http://34.133.214.175:8080"
-          image: ghcr.io/microrealestate/microrealestate/authenticator:latest
+          image: almbolonzi/bomatech-authenticator:latest
           name: authenticator
           ports:
             - containerPort: 8000

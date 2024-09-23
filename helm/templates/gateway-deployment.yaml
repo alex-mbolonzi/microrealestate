@@ -64,7 +64,7 @@ spec:
               value: "production"
             # - key: RESETSERVICE_URL
             #   value: ${RESETSERVICE_URL}
-          image: ghcr.io/microrealestate/microrealestate/gateway:latest
+          image: almbolonzi/bomatech-gateway:latest
           name: gateway
           ports:
             - containerPort: 8080
