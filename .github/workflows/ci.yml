@@ -40,23 +40,23 @@ jobs:
     strategy:
       matrix:
         include:
-          - appname: gateway
+          - appname: bomatech-gateway
             dockerfile: services/gateway/Dockerfile
-          - appname: api
+          - appname: bomatech-api
             dockerfile: services/api/Dockerfile
-          - appname: tenantapi
+          - appname: bomatech-tenantapi
             dockerfile: services/tenantapi/Dockerfile
-          - appname: authenticator
+          - appname: bomatech-authenticator
             dockerfile: services/authenticator/Dockerfile
-          - appname: pdfgenerator
+          - appname: bomatech-pdfgenerator
             dockerfile: services/pdfgenerator/Dockerfile
-          - appname: emailer
+          - appname: bomatech-emailer
             dockerfile: services/emailer/Dockerfile
-          - appname: resetservice
+          - appname: bomatech-resetservice
             dockerfile: services/resetservice/Dockerfile
-          - appname: landlord-frontend
+          - appname: bomatech-landlord-frontend
             dockerfile: webapps/landlord/Dockerfile
-          - appname: tenant-frontend
+          - appname: bomatech-tenant-frontend
             dockerfile: webapps/tenant/Dockerfile
 
     steps:
