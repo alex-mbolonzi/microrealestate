@@ -41,13 +41,13 @@ spec:
             - name: LOGGER_LEVEL
               value: "debug"
             - name: MONGO_URL
-              value: "mongodb://mongo/demodb"
+              value: "mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster"
             - name: PDFGENERATOR_URL
               value: "http://pdfgenerator:8300/pdfgenerator"
             - name: PRODUCTION
               value: "true"
             - name: REDIS_PASSWORD
-              value: 12264d724d371d79054887f65175aa3758d89dbc7a05ab54cdb3d8c47df3aace47ee415904a7f3229e6714263ae35ab24caa7a6861eba09bbbf23c5871daf850
+              value: "12264d724d371d79054887f65175aa3758d89dbc7a05ab54cdb3d8c47df3aace47ee415904a7f3229e6714263ae35ab24caa7a6861eba09bbbf23c5871daf850"
             - name: REDIS_URL
               value: "redis://redis"
             - name: RESTORE_DB

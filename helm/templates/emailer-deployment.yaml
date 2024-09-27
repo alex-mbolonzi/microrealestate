@@ -37,11 +37,11 @@ spec:
             - name: CIPHER_KEY
               value: "4f9078a9c90d6e30d24400373734db3988758f773ae4f0b9b0d773aefe8c3dc6"
             - name: LANDLORD_APP_URL
-              value: "http://34.133.214.175:8080/landlord"
+              value: "http://landlord-frontend:8180/landlord"
             - name: LOGGER_LEVEL
               value: "debug"
             - name: MONGO_URL
-              value: "mongodb://mongo/demodb"
+              value: "mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster"
             - name: PDFGENERATOR_URL
               value: "http://pdfgenerator:8300/pdfgenerator"
             - name: REDIS_PASSWORD
@@ -51,13 +51,13 @@ spec:
             # - name: TEMPORARY_DIRECTORY
             #   value: "/usr/app/services/pdfgenerator/tmp"
             - name: TENANT_APP_URL
-              value: "http://34.133.214.175:8080/tenant"
+              value: "http://tenant-frontend:8190/tenant"
             - name: EMAILER_DEBUG_PORT
               value: "9228"
             - name: NODE_ENV
               value: "production"
             - name: MAILGUN_API_KEY
-              value: "key-f53e44ebb590c7d8f392ab8462a54d38"
+              value: "a1623c62f79df30be16028e4a52cd61f-1b5736a5-f61ddecb"
             - name: MAILGUN_DOMAIN
               value: "sandbox53348a1c56bc4fc2ab89a724c3c57747.mailgun.org"
             - name: EMAIL_FROM

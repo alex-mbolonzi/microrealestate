@@ -35,7 +35,7 @@ spec:
             - name: LOGGER_LEVEL
               value: "debug"
             - name: MONGO_URL
-              value: "mongodb://mongo/demodb"
+              value: "mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster"
             - name: PDF_DIRECTORY
               value: "/usr/app/services/pdfgenerator/pdf_documents"
             - name: PRODUCTION
