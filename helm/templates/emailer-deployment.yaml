@@ -56,14 +56,18 @@ spec:
               value: "9228"
             - name: NODE_ENV
               value: "production"
-            - name: MAILGUN_API_KEY
-              value: "a1623c62f79df30be16028e4a52cd61f-1b5736a5-f61ddecb"
-            - name: MAILGUN_DOMAIN
-              value: "sandbox53348a1c56bc4fc2ab89a724c3c57747.mailgun.org"
-            - name: EMAIL_FROM
-              value: "mailgun@sandbox53348a1c56bc4fc2ab89a724c3c57747.mailgun.org"
+            - name: SMTP_SERVER
+              value: "smtp-relay.brevo.com"
+            - name: SMTP_PORT
+              value: "587"
+            - name: SMTP_SECURE
+              value: "true"
+            - name: SMTP_USERNAME
+              value: "7cf0b7001@smtp-brevo.com"
+            - name: SMTP_PASSWORD
+              value: "d2O0fwHgItsj45rm"
             - name: EMAIL_REPLY_TO
-              value: "mailgun@sandbox53348a1c56bc4fc2ab89a724c3c57747.mailgun.org"
+              value: "7cf0b7001@smtp-brevo.com"
             - name: EMAIL_BCC
               value: "almbolonzi@gmail.com"
           image: almbolonzi/bomatech-emailer:latest
