@@ -99,6 +99,10 @@ services:
         sync: false
       - key: DOMAIN_URL
         sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
     region: oregon
 
   # PDFGenerator
@@ -148,6 +152,10 @@ services:
         sync: false
       - key: CIPHER_KEY
         sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
     region: oregon
 
   # Emailer
@@ -211,6 +219,10 @@ services:
         sync: false
       - key: EMAIL_BCC
         sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
     region: oregon
 
   # API
@@ -254,6 +266,10 @@ services:
         sync: false
       - key: NODE_ENV
         sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
     region: oregon
 
   # TenantAPI
@@ -285,6 +301,10 @@ services:
         sync: false
       - key: NODE_ENV
         sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
     region: oregon
 
   # Landlord Frontend
@@ -314,6 +334,10 @@ services:
         sync: false
       - key: SIGNUP
         sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
     region: oregon
 
   # Tenant Frontend
@@ -344,6 +368,10 @@ services:
         sync: false
       - key: SIGNUP
         sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
       # - key: DOMAIN_URL
       #   sync: false
     region: oregon
