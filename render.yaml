@@ -83,8 +83,8 @@ services:
         value: true
       - key: REDIS_URL
         sync: false
-      - key: REDIS_PASSWORD
-        sync: false
+      # - key: REDIS_PASSWORD
+      #   sync: false
       - key: SIGNUP
         value: false
       - key: TOKEN_COOKIE_ATTRIBUTES
@@ -184,7 +184,7 @@ services:
       - key: REDIS_URL
         sync: false
       - key: TEMPORARY_DIRECTORY
-        sync: false
+        value: "/usr/app/services/emailer/tmp"
       - key: TENANT_APP_URL
         sync: false
       - key: EMAILER_DEBUG_PORT
