@@ -343,3 +343,9 @@ services:
       # - key: DOMAIN_URL
       #   sync: false
     region: oregon
+
+env:
+  - name: PROJECT
+    value: "Bomatech"
+  - name: ENVIRONMENT
+    value: "Production"
