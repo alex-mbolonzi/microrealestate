@@ -2,7 +2,6 @@ services:
   # Gateway
   - type: web
     name: gateway
-    project: Bomatech
     env: Production
     dockerContext: .
     dockerfilePath: ./services/gateway/Dockerfile
@@ -56,7 +55,6 @@ services:
   # Authenticator
   - type: web
     name: authenticator
-    project: Bomatech
     env: Production
     dockerContext: .
     dockerfilePath: ./services/authenticator/Dockerfile
@@ -102,8 +100,6 @@ services:
   # PDFGenerator
   - type: web
     name: pdfgenerator
-    project: Bomatech
-    env: Production
     dockerContext: .
     dockerfilePath: ./services/pdfgenerator/Dockerfile
     plan: free
@@ -151,7 +147,7 @@ services:
 
   # Emailer
   - type: web
-    project: Bomatech
+    name: emailer
     env: Production
     dockerContext: .
     dockerfilePath: ./services/emailer/Dockerfile
@@ -215,7 +211,6 @@ services:
   # API
   - type: web
     name: api
-    project: Bomatech
     env: Production
     dockerContext: .
     dockerfilePath: ./services/api/Dockerfile
@@ -259,7 +254,6 @@ services:
   # TenantAPI
   - type: web
     name: tenantapi
-    project: Bomatech
     env: Production
     dockerContext: .
     dockerfilePath: ./services/tenantapi/Dockerfile
@@ -291,7 +285,6 @@ services:
   # Landlord Frontend
   - type: web
     name: landlord-frontend
-    project: Bomatech
     env: Production
     dockerContext: .
     dockerfilePath: ./webapps/landlord/Dockerfile
@@ -321,7 +314,6 @@ services:
   # Tenant Frontend
   - type: web
     name: tenant-frontend
-    project: Bomatech
     env: Production
     dockerContext: .
     dockerfilePath: ./webapps/tenant/Dockerfile
