@@ -50,6 +50,10 @@ services:
         sync: false
       - key: NODE_ENV
         sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
     region: oregon
 
   # Authenticator
@@ -343,9 +347,3 @@ services:
       # - key: DOMAIN_URL
       #   sync: false
     region: oregon
-
-env:
-  - name: PROJECT
-    value: "Bomatech"
-  - name: ENVIRONMENT
-    value: "Production"
