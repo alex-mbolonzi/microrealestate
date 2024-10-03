@@ -2,12 +2,9 @@ services:
   # Gateway
   - type: web
     name: gateway
-    runtime: docker
-    image:
-      url: docker.io/almbolonzi/bomatech-gateway:latest
-    # env: docker
-    # dockerContext: .
-    # dockerfilePath: ./services/gateway/Dockerfile
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/gateway/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
@@ -58,12 +55,9 @@ services:
   # Authenticator
   - type: web
     name: authenticator
-    runtime: docker
-    image:
-      url: docker.io/almbolonzi/bomatech-authenticator:latest
-    # env: docker
-    # dockerContext: .
-    # dockerfilePath: ./services/authenticator/Dockerfile
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/authenticator/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
@@ -106,12 +100,9 @@ services:
   # PDFGenerator
   - type: web
     name: pdfgenerator
-    runtime: docker
-    image:
-      url: docker.io/almbolonzi/bomatech-pdfgenerator:latest
-    # env: docker
-    # dockerContext: .
-    # dockerfilePath: ./services/pdfgenerator/Dockerfile
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/pdfgenerator/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
@@ -158,12 +149,9 @@ services:
   # Emailer
   - type: web
     name: emailer
-    runtime: docker
-    image:
-      url: docker.io/almbolonzi/bomatech-emailer:latest
-    # env: docker
-    # dockerContext: .
-    # dockerfilePath: ./services/emailer/Dockerfile
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/emailer/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
@@ -224,12 +212,9 @@ services:
   # API
   - type: web
     name: api
-    runtime: docker
-    image:
-      url: docker.io/almbolonzi/bomatech-api:latest
-    # env: docker
-    # dockerContext: .
-    # dockerfilePath: ./services/api/Dockerfile
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/api/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
@@ -270,12 +255,9 @@ services:
   # TenantAPI
   - type: web
     name: tenantapi
-    runtime: docker
-    image:
-      url: docker.io/almbolonzi/bomatech-tenantapi:latest
-    # env: docker
-    # dockerContext: .
-    # dockerfilePath: ./services/tenantapi/Dockerfile
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./services/tenantapi/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
@@ -304,12 +286,9 @@ services:
   # Landlord Frontend
   - type: web
     name: landlord-frontend
-    runtime: docker
-    image:
-      url: docker.io/almbolonzi/bomatech-landlord-frontend:latest
-    # env: docker
-    # dockerContext: .
-    # dockerfilePath: ./webapps/landlord/Dockerfile
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./webapps/landlord/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
@@ -336,12 +315,9 @@ services:
   # Tenant Frontend
   - type: web
     name: tenant-frontend
-    runtime: docker
-    image:
-      url: docker.io/almbolonzi/bomatech-tenant-frontend:latest
-    # env: docker
-    # dockerContext: .
-    # dockerfilePath: ./webapps/tenant/Dockerfile
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./webapps/tenant/Dockerfile
     # rootDir: .
     plan: free
     envVars:
