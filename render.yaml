@@ -1,4 +1,3 @@
-project: Bomatech
 services:
   # Gateway
   - type: web
