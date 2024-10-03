@@ -4,7 +4,7 @@ services:
     name: gateway
     image:
       url: docker.io/almbolonzi/bomatech-gateway:latest
-    # env: docker
+    env: docker
     # dockerContext: .
     # dockerfilePath: ./services/gateway/Dockerfile
     plan: free
@@ -59,7 +59,7 @@ services:
     name: authenticator
     image:
       url: docker.io/almbolonzi/bomatech-authenticator:latest
-    # env: docker
+    env: docker
     # dockerContext: .
     # dockerfilePath: ./services/authenticator/Dockerfile
     plan: free
@@ -106,7 +106,7 @@ services:
     name: pdfgenerator
     image:
       url: docker.io/almbolonzi/bomatech-pdfgenerator:latest
-    # env: docker
+    env: docker
     # dockerContext: .
     # dockerfilePath: ./services/pdfgenerator/Dockerfile
     plan: free
@@ -157,7 +157,7 @@ services:
     name: emailer
     image:
       url: docker.io/almbolonzi/bomatech-emailer:latest
-    # env: docker
+    env: docker
     # dockerContext: .
     # dockerfilePath: ./services/emailer/Dockerfile
     plan: free
@@ -222,7 +222,7 @@ services:
     name: api
     image:
       url: docker.io/almbolonzi/bomatech-api:latest
-    # env: docker
+    env: docker
     # dockerContext: .
     # dockerfilePath: ./services/api/Dockerfile
     plan: free
@@ -267,7 +267,7 @@ services:
     name: tenantapi
     image:
       url: docker.io/almbolonzi/bomatech-tenantapi:latest
-    # env: docker
+    env: docker
     # dockerContext: .
     # dockerfilePath: ./services/tenantapi/Dockerfile
     plan: free
@@ -300,7 +300,7 @@ services:
     name: landlord-frontend
     image:
       url: docker.io/almbolonzi/bomatech-landlord-frontend:latest
-    # env: docker
+    env: docker
     # dockerContext: .
     # dockerfilePath: ./webapps/landlord/Dockerfile
     plan: free
@@ -331,7 +331,7 @@ services:
     name: tenant-frontend
     image:
       url: docker.io/almbolonzi/bomatech-tenant-frontend:latest
-    # env: docker
+    env: docker
     # dockerContext: .
     # dockerfilePath: ./webapps/tenant/Dockerfile
     # rootDir: .
