@@ -1,3 +1,4 @@
+project: Bomatech
 services:
   # Gateway
   - type: web
@@ -20,7 +21,7 @@ services:
         sync: false
       - key: MONGO_URL
         sync: false
-      - key: docker
+      - key: PRODUCTION
         value: true
       - key: REDIS_URL
         sync: false
@@ -79,7 +80,7 @@ services:
         sync: false
       - key: PORT
         value: 8000
-      - key: docker
+      - key: PRODUCTION
         value: true
       - key: REDIS_URL
         sync: false
@@ -121,7 +122,7 @@ services:
         sync: false
       - key: PORT
         value: 8300
-      - key: docker
+      - key: PRODUCTION
         value: true
       - key: REDIS_URL
         sync: false
@@ -176,7 +177,7 @@ services:
         sync: false
       - key: PORT
         value: 8400
-      - key: docker
+      - key: PRODUCTION
         value: true
       - key: REDIS_PASSWORD
         sync: false
@@ -235,7 +236,7 @@ services:
         sync: false
       - key: PDFGENERATOR_URL
         sync: false
-      - key: docker
+      - key: PRODUCTION
         value: false
       - key: PORT
         value: 8200
