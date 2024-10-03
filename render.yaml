@@ -2,7 +2,7 @@ services:
   # Gateway
   - type: web
     name: gateway
-    env: Production
+    env: docker
     dockerContext: .
     dockerfilePath: ./services/gateway/Dockerfile
     plan: free
@@ -20,7 +20,7 @@ services:
         sync: false
       - key: MONGO_URL
         sync: false
-      - key: PRODUCTION
+      - key: docker
         value: true
       - key: REDIS_URL
         sync: false
@@ -55,7 +55,7 @@ services:
   # Authenticator
   - type: web
     name: authenticator
-    env: Production
+    env: docker
     dockerContext: .
     dockerfilePath: ./services/authenticator/Dockerfile
     plan: free
@@ -79,7 +79,7 @@ services:
         sync: false
       - key: PORT
         value: 8000
-      - key: PRODUCTION
+      - key: docker
         value: true
       - key: REDIS_URL
         sync: false
@@ -121,7 +121,7 @@ services:
         sync: false
       - key: PORT
         value: 8300
-      - key: PRODUCTION
+      - key: docker
         value: true
       - key: REDIS_URL
         sync: false
@@ -148,7 +148,7 @@ services:
   # Emailer
   - type: web
     name: emailer
-    env: Production
+    env: docker
     dockerContext: .
     dockerfilePath: ./services/emailer/Dockerfile
     plan: free
@@ -176,7 +176,7 @@ services:
         sync: false
       - key: PORT
         value: 8400
-      - key: PRODUCTION
+      - key: docker
         value: true
       - key: REDIS_PASSWORD
         sync: false
@@ -211,7 +211,7 @@ services:
   # API
   - type: web
     name: api
-    env: Production
+    env: docker
     dockerContext: .
     dockerfilePath: ./services/api/Dockerfile
     plan: free
@@ -235,7 +235,7 @@ services:
         sync: false
       - key: PDFGENERATOR_URL
         sync: false
-      - key: PRODUCTION
+      - key: docker
         value: false
       - key: PORT
         value: 8200
@@ -254,7 +254,7 @@ services:
   # TenantAPI
   - type: web
     name: tenantapi
-    env: Production
+    env: docker
     dockerContext: .
     dockerfilePath: ./services/tenantapi/Dockerfile
     plan: free
@@ -285,7 +285,7 @@ services:
   # Landlord Frontend
   - type: web
     name: landlord-frontend
-    env: Production
+    env: docker
     dockerContext: .
     dockerfilePath: ./webapps/landlord/Dockerfile
     plan: free
@@ -314,7 +314,7 @@ services:
   # Tenant Frontend
   - type: web
     name: tenant-frontend
-    env: Production
+    env: docker
     dockerContext: .
     dockerfilePath: ./webapps/tenant/Dockerfile
     # rootDir: .
