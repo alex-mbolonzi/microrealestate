@@ -55,7 +55,7 @@ spec:
             - name: NODE_ENV
               value: "production"
             - name: DOMAIN_URL
-              value: "http://34.69.195.156:8080"
+              value: "http://34.66.84.104:8080"
           image: almbolonzi/bomatech-authenticator:latest
           name: authenticator
           ports:

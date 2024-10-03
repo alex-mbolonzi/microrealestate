@@ -1,28 +1,12 @@
 services:
-  # Mongo
-  - type: web
-    name: mongo
-    env: docker
-    dockerContext: .
-    dockerfilePath: ./docker/Dockerfile.mongo
-    rootDir: .
-    plan: free
-    disk:
-    #   name: mongo-data
-    #   mountPath: /data/db
-    #   sizeGB: 10
-    envVars:
-      - fromGroup: microrealestate
-      - key: PORT
-        value: 27017
-    region: oregon
-
   # Gateway
   - type: web
     name: gateway
-    env: docker
-    dockerContext: .
-    dockerfilePath: ./services/gateway/Dockerfile
+    image:
+      url: docker.io/almbolonzi/bomatech-gateway:latest
+    # env: docker
+    # dockerContext: .
+    # dockerfilePath: ./services/gateway/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
@@ -73,14 +57,24 @@ services:
   # Authenticator
   - type: web
     name: authenticator
-    env: docker
-    dockerContext: .
-    dockerfilePath: ./services/authenticator/Dockerfile
+    image:
+      url: docker.io/almbolonzi/bomatech-authenticator:latest
+    # env: docker
+    # dockerContext: .
+    # dockerfilePath: ./services/authenticator/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
       - key: NODE_OPTIONS
         value: --trace-warnings
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
+      - key: APPCREDZ_TOKEN_SECRET
+        sync: false
+      - key: REFRESH_TOKEN_SECRET
+        sync: false
+      - key: RESET_TOKEN_SECRET
+        sync: false
       - key: EMAILER_URL
         sync: false
       - key: LOGGER_LEVEL
@@ -110,12 +104,16 @@ services:
   # PDFGenerator
   - type: web
     name: pdfgenerator
-    env: docker
-    dockerContext: .
-    dockerfilePath: ./services/pdfgenerator/Dockerfile
+    image:
+      url: docker.io/almbolonzi/bomatech-pdfgenerator:latest
+    # env: docker
+    # dockerContext: .
+    # dockerfilePath: ./services/pdfgenerator/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: CHROMIUM_BIN
@@ -157,12 +155,16 @@ services:
   # Emailer
   - type: web
     name: emailer
-    env: docker
-    dockerContext: .
-    dockerfilePath: ./services/emailer/Dockerfile
+    image:
+      url: docker.io/almbolonzi/bomatech-emailer:latest
+    # env: docker
+    # dockerContext: .
+    # dockerfilePath: ./services/emailer/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: ALLOW_SENDING_EMAILS
@@ -189,21 +191,27 @@ services:
         sync: false
       - key: REDIS_URL
         sync: false
-      - key: TEMPORARY_DIRECTORY
-        sync: false
+      # - key: TEMPORARY_DIRECTORY
+      #   sync: false
       - key: TENANT_APP_URL
         sync: false
       - key: EMAILER_DEBUG_PORT
         sync: false
       - key: NODE_ENV
         sync: false
-      - key: MAILGUN_API_KEY
+      - key: SMTP_SERVER
         sync: false
-      - key: MAILGUN_DOMAIN
+      - key: SMTP_PORT
         sync: false
-      - key: EMAIL_FROM
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
         sync: false
       - key: EMAIL_REPLY_TO
+        sync: false
+      - key: EMAIL_FROM
         sync: false
       - key: EMAIL_BCC
         sync: false
@@ -212,12 +220,16 @@ services:
   # API
   - type: web
     name: api
-    env: docker
-    dockerContext: .
-    dockerfilePath: ./services/api/Dockerfile
+    image:
+      url: docker.io/almbolonzi/bomatech-api:latest
+    # env: docker
+    # dockerContext: .
+    # dockerfilePath: ./services/api/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: CIPHER_IV_KEY
@@ -253,12 +265,16 @@ services:
   # TenantAPI
   - type: web
     name: tenantapi
-    env: docker
-    dockerContext: .
-    dockerfilePath: ./services/tenantapi/Dockerfile
+    image:
+      url: docker.io/almbolonzi/bomatech-tenantapi:latest
+    # env: docker
+    # dockerContext: .
+    # dockerfilePath: ./services/tenantapi/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
       - key: NODE_OPTIONS
         value: --trace-warnings
       - key: CIPHER_IV_KEY
@@ -282,9 +298,11 @@ services:
   # Landlord Frontend
   - type: web
     name: landlord-frontend
-    env: docker
-    dockerContext: .
-    dockerfilePath: ./webapps/landlord/Dockerfile
+    image:
+      url: docker.io/almbolonzi/bomatech-landlord-frontend:latest
+    # env: docker
+    # dockerContext: .
+    # dockerfilePath: ./webapps/landlord/Dockerfile
     plan: free
     envVars:
       - fromGroup: microrealestate
@@ -311,10 +329,12 @@ services:
   # Tenant Frontend
   - type: web
     name: tenant-frontend
-    env: docker
-    dockerContext: .
-    dockerfilePath: ./webapps/tenant/Dockerfile
-    rootDir: .
+    image:
+      url: docker.io/almbolonzi/bomatech-tenant-frontend:latest
+    # env: docker
+    # dockerContext: .
+    # dockerfilePath: ./webapps/tenant/Dockerfile
+    # rootDir: .
     plan: free
     envVars:
       - fromGroup: microrealestate
@@ -322,8 +342,8 @@ services:
         value: "/tenant"
       - key: PORT
         value: 8190
-      - key: DOCKER_GATEWAY_URL
-        sync: false
+      # - key: DOCKER_GATEWAY_URL
+      #   sync: false
       - key: APP_NAME
         sync: false
       - key: CORS_ENABLED
@@ -334,6 +354,8 @@ services:
         sync: false
       - key: NODE_ENV
         sync: false
-      - key: DOMAIN_URL
+      - key: SIGNUP
         sync: false
+      # - key: DOMAIN_URL
+      #   sync: false
     region: oregon
