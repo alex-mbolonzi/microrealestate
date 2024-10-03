@@ -83,8 +83,8 @@ services:
         value: true
       - key: REDIS_URL
         sync: false
-      # - key: REDIS_PASSWORD
-      #   sync: false
+      - key: REDIS_PASSWORD
+        value:
       - key: SIGNUP
         value: false
       - key: TOKEN_COOKIE_ATTRIBUTES
