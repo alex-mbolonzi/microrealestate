@@ -403,7 +403,7 @@ function LeaseContractForm({ readOnly, onSubmit }) {
                             arrayHelpers.push({
                               ...emptyProperty(),
                               entryDate: values.beginDate,
-                              endDate: values.endDate,
+                              exitDate: values.exitDate,
                             })
                           }
                           data-cy="addTenantProperty"
