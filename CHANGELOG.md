@@ -6,6 +6,37 @@ All notable changes to this project will be documented here.
 
 ### Added
 
+- ...
+
+### Changed
+
+- ...
+
+### Deprecated
+
+- ...
+
+### Removed
+
+- ...
+
+### Fixed
+
+- ...
+
+### Security
+
+- ...
+
+### Contributors
+
+- [@camelaissani](https://github.com/camelaissani)
+
+
+## 1.0.0-alpha.2
+
+### Added
+
 - Added new environment variable `MRE_VERSION` used by the `mre` command to run a specific version of the application.
 
 - Added the `ci` option to the `mre` command to run it in the github CI workflow.
@@ -30,9 +61,9 @@ All notable changes to this project will be documented here.
 
 - Updated the Docker images to run on Node.js version 20, now as the new minimum requirement for running the application.
 
-### Deprecated
+- Minimized size of the docker containers.
 
-- ...
+- Improved A4 page breaks in the rich text editor.
 
 ### Removed
 
@@ -40,19 +71,29 @@ All notable changes to this project will be documented here.
 
 ### Fixed
 
-- Fixed issue #162 - Cannot save Backblaze settings  
+- Fixed issue #162 - Cannot save Backblaze settings
+
+- Fixed issue #187 - SMTP Authentication
+
+- Fixed issue #190 - Terminate lease dialog error message
 
 ### Security
 
-- ...
+- Updated dependencies to avoid CVEs
 
-## Contributors
+- Minimized docker containers using distroless images
+
+- Fixed CWEs
+
+### Contributors
 
 - [@camelaissani](https://github.com/camelaissani)
 
 - [@zeronounours](https://github.com/zeronounours)
 
 - [@MrTob](https://github.com/MrTob)
+
+- [@gasp](https://github.com/gasp)
 
 
 ## 1.0.0-alpha.1
@@ -77,7 +118,7 @@ All notable changes to this project will be documented here.
 
 - Forgot password email is now sent using the email delivery service configured in the .env file and not the one from the landlord app settings.
 
-## Contributors
+### Contributors
 
 - [@zeronounours](https://github.com/zeronounours)
 

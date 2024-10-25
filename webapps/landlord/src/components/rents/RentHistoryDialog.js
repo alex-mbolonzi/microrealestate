@@ -3,13 +3,14 @@ import {
   AccordionDetails,
   AccordionSummary,
   Box,
+  CardContent,
   Grid,
   IconButton,
   Typography
 } from '@material-ui/core';
-import { Drawer, DrawerContent, DrawerHeader } from '../ui/drawer';
+import { Card, CardHeader } from '../ui/card';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '../ui/drawer';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
-import BoxWithHover from '../../components/BoxWithHover';
 import { Button } from '../ui/button';
 import EditIcon from '@material-ui/icons/Edit';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
@@ -34,26 +35,24 @@ function RentListItem({ rent, tenant, onClick }) {
   );
 
   return (
-    <BoxWithHover
-      p={2}
-      height="100%"
-      border={1}
-      borderColor="divider"
-      withCursor
+    <Card
+      className="p-2 cursor-pointer hover:bg-primary/10"
       onClick={handleClick}
     >
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Box fontSize="h5.fontSize">
+      <CardHeader className="flex flex-row justify-between items-center">
+        <div className="text-xl">
           {getPeriod(t, rent.term, tenant.occupant.frequency)}
-        </Box>
-        <IconButton onClick={handleClick}>
-          <EditIcon fontSize="small" />
-        </IconButton>
-      </Box>
-      <Box mt={1}>
+        </div>
+        <div>
+          <IconButton onClick={handleClick}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </div>
+      </CardHeader>
+      <CardContent>
         <RentDetails rent={rent} />
-      </Box>
-    </BoxWithHover>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -73,7 +72,7 @@ function YearRentList({ tenant, year, onClick }) {
     <Grid container spacing={2}>
       {rents?.map((rent) => {
         return (
-          <Grid item key={rent.term} xs={12} sm={12} md={6} lg={4} xl={2}>
+          <Grid item key={rent.term} xs={12} sm={12} md={6} lg={4} xl={3}>
             <RentListItem
               key={rent.term}
               rent={rent}
@@ -209,6 +208,7 @@ export default function RentHistoryDialog({ open, setOpen, data: tenant }) {
     <Drawer open={open} onOpenChange={setOpen} dismissible={false}>
       <DrawerContent className="w-full h-full p-4">
         <DrawerHeader className="flex justify-between p-0">
+          <DrawerTitle className="hidden">{t('Rent schedule')}</DrawerTitle>
           <span className="text-xl font-semibold">{t('Rent schedule')}</span>
           <Button variant="secondary" onClick={handleClose}>
             {t('Close')}
