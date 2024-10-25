@@ -2,7 +2,8 @@
 node_modules
 tmp
 /data
-#.env*
+.env*
+!.env.domain
 .vscode/ipch
 deploy-*.sh
 dist
