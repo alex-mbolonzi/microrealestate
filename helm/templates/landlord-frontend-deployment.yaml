@@ -40,7 +40,7 @@ spec:
               value: "production"
             - name: SIGNUP
               value: "true"
-          image: ghcr.io/alex-mbolonzi/microrealestate/landlord-frontend:345a0de623efba547be9a95e63596e5ce0e7eeb9
+          image: ghcr.io/alex-mbolonzi/microrealestate/landlord-frontend:latest
           name: landlord-frontend
           ports:
             - containerPort: 8180
