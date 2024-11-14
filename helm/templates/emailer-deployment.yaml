@@ -65,7 +65,7 @@ spec:
             - name: SMTP_USERNAME
               value: "apikey"
             - name: SMTP_PASSWORD
-              value: "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"
+              value: ""
             - name: EMAIL_REPLY_TO
               value: "bomatech.ke@gmail.com"
             - name: EMAIL_BCC
