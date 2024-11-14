@@ -42,7 +42,7 @@ spec:
               value: "9240"
             - name: NODE_ENV
               value: "production"
-          image: almbolonzi/bomatech-tenantapi:latest
+          image: ghcr.io/alex-mbolonzi/microrealestate/tenantapi:d88630553c216b9abbae70ec6ae4bd58fcf91341
           name: tenantapi
           ports:
             - containerPort: 8250

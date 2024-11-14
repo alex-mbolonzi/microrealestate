@@ -33,7 +33,7 @@ spec:
             - name: CORS_ENABLED
               value: "false"
             - name: DOMAIN_URL
-              value: "http://34.66.84.104:8080"
+              value: "http://79.72.67.125:80"
             - name: MONGO_URL
               value: "mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster"
             - name: PRODUCTION
@@ -64,7 +64,7 @@ spec:
               value: "production"
             # - key: RESETSERVICE_URL
             #   value: ${RESETSERVICE_URL}
-          image: almbolonzi/bomatech-gateway:latest
+          image: ghcr.io/alex-mbolonzi/microrealestate/gateway:d88630553c216b9abbae70ec6ae4bd58fcf91341
           name: gateway
           ports:
             - containerPort: 8080

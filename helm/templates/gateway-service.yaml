@@ -9,9 +9,10 @@ metadata:
   name: gateway
 spec:
   ports:
-    - name: "8080-8080"
-      port: 8080
+    - name: "80-8080"
+      port: 80
       targetPort: 8080
+      nodePort: 32573
   selector:
     app: gateway
-  type: LoadBalancer
+  type: NodePort

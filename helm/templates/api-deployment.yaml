@@ -56,7 +56,7 @@ spec:
               value: "9229"
             - name: NODE_ENV
               value: "production"
-          image: almbolonzi/bomatech-api:latest
+          image: ghcr.io/alex-mbolonzi/microrealestate/api:d88630553c216b9abbae70ec6ae4bd58fcf91341
           name: api
           ports:
             - containerPort: 8200

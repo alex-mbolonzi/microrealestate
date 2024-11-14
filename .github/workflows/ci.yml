@@ -88,5 +88,5 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           push: true
-          tags: '${{ matrix.image }}:${{ github.sha }}'
+          tags: '${{ matrix.image }}:${{ github.sha }}:latest'
           labels: ${{ steps.meta.outputs.labels }}

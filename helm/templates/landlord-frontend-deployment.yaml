@@ -35,12 +35,12 @@ spec:
             - name: DEMO_MODE
               value: "false"
             - name: GATEWAY_URL
-              value: "http://34.66.84.104:8080"
+              value: "http://79.72.67.125:80"
             - name: NODE_ENV
               value: "production"
             - name: SIGNUP
               value: "true"
-          image: almbolonzi/bomatech-landlord-frontend:latest
+          image: ghcr.io/alex-mbolonzi/microrealestate/landlord-frontend:345a0de623efba547be9a95e63596e5ce0e7eeb9
           name: landlord-frontend
           ports:
             - containerPort: 8180

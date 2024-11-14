@@ -57,20 +57,20 @@ spec:
             - name: NODE_ENV
               value: "production"
             - name: SMTP_SERVER
-              value: "smtp-relay.brevo.com"
+              value: "smtp.sendgrid.net"
             - name: SMTP_PORT
-              value: "587"
+              value: "465"
             - name: SMTP_SECURE
               value: "true"
             - name: SMTP_USERNAME
-              value: "7cf0b7001@smtp-brevo.com"
+              value: "apikey"
             - name: SMTP_PASSWORD
-              value: "d2O0fwHgItsj45rm"
+              value: "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"
             - name: EMAIL_REPLY_TO
-              value: "7cf0b7001@smtp-brevo.com"
+              value: "bomatech.ke@gmail.com"
             - name: EMAIL_BCC
-              value: "almbolonzi@gmail.com"
-          image: almbolonzi/bomatech-emailer:latest
+              value: "bomatech.ke@gmail.com"
+          image: ghcr.io/alex-mbolonzi/microrealestate/emailer:d88630553c216b9abbae70ec6ae4bd58fcf91341
           name: emailer
           ports:
             - containerPort: 8400

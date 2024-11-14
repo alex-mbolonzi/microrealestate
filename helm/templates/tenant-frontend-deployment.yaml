@@ -26,8 +26,8 @@ spec:
               value: "/tenant"
             - name: PORT
               value: "8190"
-            # - name: DOCKER_GATEWAY_URL
-            #   value: "http://localhost:8080"
+            - name: DOCKER_GATEWAY_URL
+              value: "http://gateway:8080"
             - name: APP_NAME
               value: "Bomatech"
             - name: CORS_ENABLED
@@ -35,14 +35,14 @@ spec:
             - name: DEMO_MODE
               value: "false"
             - name: GATEWAY_URL
-              value: "http://34.66.84.104:8080"
-            - name: NODE_ENV
-              value: "production"
-            - name: SIGNUP
-              value: "true"
+              value: "http://gateway:8080"
+            # - name: NODE_ENV
+            #   value: "production"
+            # - name: SIGNUP
+            #   value: "true"
             # - name: DOMAIN_URL
             #   value: "http://34.133.214.175:8080"
-          image: almbolonzi/bomatech-tenant-frontend:latest
+          image: ghcr.io/alex-mbolonzi/microrealestate/tenant-frontend:d88630553c216b9abbae70ec6ae4bd58fcf91341
           name: tenant-frontend
           ports:
             - containerPort: 8190
