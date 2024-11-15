@@ -1,26 +1,26 @@
-import { Alert } from '../../../../components/ui/alert';
-import { Button } from '../../../../components/ui/button';
-import BulkPaymentUpload from '../../../../components/rents/BulkPaymentUpload';
-import ConfirmDialog from '../../../../components/ConfirmDialog';
-import { fetchRents, QueryKeys } from '../../../../utils/restcalls';
-import { GrDocumentPdf } from 'react-icons/gr';
-import { List } from '../../../../components/ResourceList';
-import { LuAlertTriangle, LuChevronDown, LuRotateCw, LuSend, LuUpload } from 'react-icons/lu';
-import moment from 'moment';
-import Page from '../../../../components/Page';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '../../../../components/ui/popover';
-import { RentOverview } from '../../../../components/rents/RentOverview';
-import RentTable from '../../../../components/rents/RentTable';
-import { StoreContext } from '../../../../store';
-import { toast } from 'sonner';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import useTranslation from 'next-translate/useTranslation';
+import { LuAlertTriangle, LuChevronDown, LuRotateCw, LuSend, LuUpload } from 'react-icons/lu';
+import { GrDocumentPdf } from 'react-icons/gr';
+import moment from 'moment';
+import { toast } from 'sonner';
+import {
+  Alert,
+  Button,
+  List,
+  Page,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  RentOverview,
+  RentTable,
+  StoreContext
+} from '../../../../components';
+import BulkPaymentUpload from '../../../../components/rents/BulkPaymentUpload';
+import ConfirmDialog from '../../../../components/ConfirmDialog';
+import { fetchRents, QueryKeys } from '../../../../utils/restcalls';
 import { withAuthentication } from '../../../../components/Authentication';
 
 function _filterData(data, filters) {
