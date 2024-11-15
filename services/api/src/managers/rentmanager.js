@@ -8,6 +8,7 @@ import {
 } from '@microrealestate/common';
 import axios from 'axios';
 import moment from 'moment';
+const { Parser } = require('json2csv');
 
 async function _findOccupants(realm, tenantId, startTerm, endTerm) {
   const filter = {
@@ -380,4 +381,136 @@ export async function all(req, res) {
       'months'
     )
   );
+}
+
+async function _checkDuplicatePayment(tenant, paymentDate, amount) {
+  // Look for existing payments within the same day with same amount
+  const existingPayment = await Collections.Rent.findOne({
+    'occupant._id': tenant._id,
+    payments: {
+      $elemMatch: {
+        date: {
+          $gte: moment(paymentDate).startOf('day').toDate(),
+          $lte: moment(paymentDate).endOf('day').toDate()
+        },
+        amount: amount
+      }
+    }
+  });
+  return existingPayment !== null;
+}
+
+async function _processBulkPayments(authorizationHeader, locale, realm, payments) {
+  const results = {
+    successful: [],
+    failed: []
+  };
+
+  for (const payment of payments) {
+    try {
+      // Find tenant by reference
+      const tenant = await Collections.Tenant.findOne({
+        reference: payment.tenant_reference,
+        realmId: realm._id
+      }).lean();
+
+      if (!tenant) {
+        throw new Error(`Tenant with reference ${payment.tenant_reference} not found`);
+      }
+
+      // Check for duplicate payment
+      const isDuplicate = await _checkDuplicatePayment(
+        tenant,
+        payment.payment_date,
+        payment.amount
+      );
+
+      if (isDuplicate) {
+        throw new Error('Duplicate payment detected - similar payment exists for same day and amount');
+      }
+
+      // Construct payment data
+      const paymentData = {
+        _id: tenant._id,
+        payments: [{
+          date: payment.payment_date,
+          amount: Number(payment.amount),
+          type: payment.payment_type,
+          reference: payment.reference,
+          description: payment.description
+        }],
+        promo: Number(payment.promo_amount) || 0,
+        notepromo: payment.promo_note,
+        extracharge: Number(payment.extra_charge) || 0,
+        noteextracharge: payment.extra_charge_note
+      };
+
+      // Calculate term based on payment date
+      const term = moment(payment.payment_date).format('YYYYMM01');
+
+      // Process the payment
+      const result = await _updateByTerm(
+        authorizationHeader,
+        locale,
+        realm,
+        term,
+        paymentData
+      );
+
+      results.successful.push({
+        tenant_reference: payment.tenant_reference,
+        amount: payment.amount,
+        status: 'success',
+        payment_date: payment.payment_date
+      });
+    } catch (error) {
+      results.failed.push({
+        tenant_reference: payment.tenant_reference,
+        amount: payment.amount,
+        payment_date: payment.payment_date,
+        error: error.message,
+        status: 'failed'
+      });
+    }
+  }
+
+  // Generate CSV for failed records
+  if (results.failed.length > 0) {
+    const fields = [
+      'tenant_reference',
+      'payment_date',
+      'amount',
+      'error',
+      'status'
+    ];
+    
+    const json2csvParser = new Parser({ fields });
+    results.failedRecordsCsv = json2csvParser.parse(results.failed);
+  }
+
+  return results;
+}
+
+export async function uploadBulkPayments(req, res) {
+  try {
+    const results = await _processBulkPayments(
+      req.headers.authorization,
+      req.headers['accept-language'],
+      req.realm,
+      req.body.payments
+    );
+    
+    res.json({
+      successful: results.successful,
+      failed: results.failed,
+      failedRecordsCsv: results.failedRecordsCsv,
+      summary: {
+        total: req.body.payments.length,
+        successful: results.successful.length,
+        failed: results.failed.length
+      }
+    });
+  } catch (error) {
+    throw new ServiceError(error.message, error.status || 500);
+  }
 }

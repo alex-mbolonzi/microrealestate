@@ -59,6 +59,10 @@ export default function routes() {
     '/payment/:id/:term',
     Middlewares.asyncWrapper(rentManager.updateByTerm)
   );
+  rentsRouter.post(
+    '/bulk-payments',
+    Middlewares.asyncWrapper(rentManager.uploadBulkPayments)
+  );
   rentsRouter.get(
     '/tenant/:id',
     Middlewares.asyncWrapper(rentManager.rentsOfOccupant)

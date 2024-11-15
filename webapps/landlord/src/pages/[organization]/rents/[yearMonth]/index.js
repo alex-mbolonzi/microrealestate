@@ -1,5 +1,5 @@
 import { fetchRents, QueryKeys } from '../../../../utils/restcalls';
-import { LuAlertTriangle, LuChevronDown, LuSend } from 'react-icons/lu';
+import { LuAlertTriangle, LuChevronDown, LuSend, LuUpload } from 'react-icons/lu';
 import {
   Popover,
   PopoverContent,
@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/router';
 import useTranslation from 'next-translate/useTranslation';
 import { withAuthentication } from '../../../../components/Authentication';
+import BulkPaymentUpload from '../../../../components/rents/BulkPaymentUpload';
 
 function _filterData(data, filters) {
   let filteredItems =
@@ -90,7 +91,9 @@ function Actions({ values, onDone }) {
   const store = useContext(StoreContext);
   const [sending, setSending] = useState(false);
   const [showConfirmDlg, setShowConfirmDlg] = useState(false);
+  const [showUploadDlg, setShowUploadDlg] = useState(false);
   const [selectedDocumentName, setSelectedDocumentName] = useState(null);
+  const queryClient = useQueryClient();
   const disabled = !values?.length;
 
   const handleAction = useCallback(
@@ -126,80 +129,87 @@ function Actions({ values, onDone }) {
     }
   }, [onDone, selectedDocumentName, store.rent, t, values]);
 
+  const handleUploadSuccess = useCallback(() => {
+    queryClient.invalidateQueries([QueryKeys.RENTS]);
+    onDone?.();
+  }, [queryClient, onDone]);
+
   return (
     <>
-      {sending ? (
-        <div className="flex items-center gap-1 text-muted-foreground">
-          <LuRotateCw className="animate-spin size-4" />
-          {t('Sending...')}
-        </div>
-      ) : (
-        <div className="flex flex-col">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="secondary" disabled={disabled}>
-                <LuSend className="mr-2" />
-                {t('Send by email')}
-                <LuChevronDown className="ml-1" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="p-0.5 m-0 w-auto">
-              <div className="flex flex-col">
-                <Button
-                  variant="ghost"
-                  onClick={handleAction('invoice')}
-                  disabled={disabled}
-                  className="justify-start w-full rounded-none"
-                >
-                  <GrDocumentPdf className="mr-2" /> {t('Invoice')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={handleAction('rentcall')}
-                  disabled={disabled}
-                  className="justify-start w-full rounded-none"
-                >
-                  <GrDocumentPdf className="mr-2" /> {t('First payment notice')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={handleAction('rentcall_reminder')}
-                  className="justify-start w-full rounded-none text-warning"
-                >
-                  <GrDocumentPdf className="mr-2 " />{' '}
-                  {t('Second payment notice')}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={handleAction('rentcall_last_reminder')}
-                  className="justify-start w-full rounded-none text-destructive"
-                >
-                  <GrDocumentPdf className="mr-2" /> {t('Last payment notice')}
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      )}
-
-      {selectedDocumentName ? (
-        <ConfirmDialog
-          title={t('Are you sure to send "{{docName}}"?', {
-            docName: t(selectedDocumentName)
-          })}
-          open={showConfirmDlg}
-          setOpen={setShowConfirmDlg}
-          data={selectedDocumentName}
-          onConfirm={handleConfirm}
-        >
-          <div className="mb-2">{t('Tenants selected')}</div>
-          <div className="flex flex-col gap-1 pl-4 text-sm max-h-48 overflow-auto">
-            {values.map((tenant) => (
-              <div key={tenant._id}>{tenant.occupant.name}</div>
-            ))}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="w-[280px] justify-between">
+            <span>{t('Actions')}</span>
+            <LuChevronDown className="ml-2 h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[280px] p-2">
+          <div className="grid gap-2">
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => setShowUploadDlg(true)}
+            >
+              <LuUpload className="mr-2 h-4 w-4" />
+              {t('Upload Bulk Payments')}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={handleAction('invoice')}
+              disabled={disabled}
+              className="justify-start w-full rounded-none"
+            >
+              <GrDocumentPdf className="mr-2" /> {t('Invoice')}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={handleAction('rentcall')}
+              disabled={disabled}
+              className="justify-start w-full rounded-none"
+            >
+              <GrDocumentPdf className="mr-2" /> {t('First payment notice')}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={handleAction('rentcall_reminder')}
+              className="justify-start w-full rounded-none text-warning"
+            >
+              <GrDocumentPdf className="mr-2 " />{' '}
+              {t('Second payment notice')}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={handleAction('rentcall_last_reminder')}
+              className="justify-start w-full rounded-none text-destructive"
+            >
+              <GrDocumentPdf className="mr-2" /> {t('Last payment notice')}
+            </Button>
           </div>
-        </ConfirmDialog>
-      ) : null}
+        </PopoverContent>
+      </Popover>
+
+      <BulkPaymentUpload
+        isOpen={showUploadDlg}
+        onClose={() => setShowUploadDlg(false)}
+        onSuccess={handleUploadSuccess}
+      />
+
+      <ConfirmDialog
+        title={t('Are you sure to send "{{docName}}"?', {
+          docName: t(selectedDocumentName)
+        })}
+        open={showConfirmDlg}
+        setOpen={setShowConfirmDlg}
+        data={selectedDocumentName}
+        onConfirm={handleConfirm}
+      >
+        <div className="mb-2">{t('Tenants selected')}</div>
+        <div className="flex flex-col gap-1 pl-4 text-sm max-h-48 overflow-auto">
+          {values.map((tenant) => (
+            <div key={tenant._id}>{tenant.occupant.name}</div>
+          ))}
+        </div>
+      </ConfirmDialog>
     </>
   );
 }
