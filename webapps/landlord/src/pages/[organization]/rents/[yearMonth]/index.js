@@ -1,7 +1,7 @@
 import 'moment/locale/fr';
 import * as React from 'react';
-import { Alert, BulkPaymentUpload, Button, ConfirmDialog, List, Page, Popover, PopoverContent, PopoverTrigger, RentOverview, RentTable, StoreContext, withAuthentication } from '../../../../components';
-import { fetchRents, QueryKeys } from '../../../../utils/restcalls';
+import { Alert, BulkPaymentUpload, Button, ConfirmDialog, List, Page, Popover, PopoverContent, PopoverTrigger, RentOverview, RentTable, StoreContext, withAuthentication } from '../../../../../components';
+import { fetchRents, QueryKeys } from '../../../../../utils/restcalls';
 import { GrDocumentPdf } from 'react-icons/gr';
 import { LuAlertTriangle, LuChevronDown, LuRotateCw, LuSend, LuUpload } from 'react-icons/lu';
 import { toast } from 'sonner';
