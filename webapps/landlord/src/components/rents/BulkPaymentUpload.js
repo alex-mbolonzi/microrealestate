@@ -1,10 +1,8 @@
-import { useRef, useState } from 'react';
+import * as React from 'react';
+import { Alert, Button, Dialog, DialogContent, DialogHeader, DialogTitle, useRef, useState } from '../ui';
 import { LuAlertTriangle, LuDownload, LuUpload } from 'react-icons/lu';
-import { Alert } from '../ui/alert';
-import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import Papa from 'papaparse';
 import { toast } from 'sonner';
+import Papa from 'papaparse';
 import useTranslation from 'next-translate/useTranslation';
 
 export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {

@@ -1,27 +1,15 @@
+import 'moment/locale/fr';
+import * as React from 'react';
+import { Alert, BulkPaymentUpload, Button, ConfirmDialog, List, Page, Popover, PopoverContent, PopoverTrigger, RentOverview, RentTable, StoreContext, withAuthentication } from '../../../../components';
+import { fetchRents, QueryKeys } from '../../../../utils/restcalls';
+import { GrDocumentPdf } from 'react-icons/gr';
+import { LuAlertTriangle, LuChevronDown, LuRotateCw, LuSend, LuUpload } from 'react-icons/lu';
+import { toast } from 'sonner';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
-import useTranslation from 'next-translate/useTranslation';
-import { LuAlertTriangle, LuChevronDown, LuRotateCw, LuSend, LuUpload } from 'react-icons/lu';
-import { GrDocumentPdf } from 'react-icons/gr';
 import moment from 'moment';
-import { toast } from 'sonner';
-import {
-  Alert,
-  Button,
-  List,
-  Page,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  RentOverview,
-  RentTable,
-  StoreContext
-} from '../../../../components';
-import BulkPaymentUpload from '../../../../components/rents/BulkPaymentUpload';
-import ConfirmDialog from '../../../../components/ConfirmDialog';
-import { fetchRents, QueryKeys } from '../../../../utils/restcalls';
-import { withAuthentication } from '../../../../components/Authentication';
+import useTranslation from 'next-translate/useTranslation';
 
 function _filterData(data, filters) {
   let filteredItems =

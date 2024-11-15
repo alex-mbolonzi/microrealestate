@@ -408,11 +408,9 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
 
   for (const payment of payments) {
     try {
-      // Find tenant by reference
       const tenant = await Collections.Tenant.findOne({
-        reference: payment.tenant_reference,
-        realmId: realm._id
-      }).lean();
+        reference: payment.tenant_reference
+      });
 
       if (!tenant) {
         throw new Error(`Tenant with reference ${payment.tenant_reference} not found`);
@@ -429,32 +427,25 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
         throw new Error('Duplicate payment detected - similar payment exists for same day and amount');
       }
 
-      // Construct payment data
-      const paymentData = {
-        _id: tenant._id,
-        payments: [{
-          date: payment.payment_date,
-          amount: Number(payment.amount),
-          type: payment.payment_type,
-          reference: payment.reference,
-          description: payment.description
-        }],
-        promo: Number(payment.promo_amount) || 0,
-        notepromo: payment.promo_note,
-        extracharge: Number(payment.extra_charge) || 0,
-        noteextracharge: payment.extra_charge_note
-      };
-
-      // Calculate term based on payment date
-      const term = moment(payment.payment_date).format('YYYYMM01');
-
-      // Process the payment
-      const result = await _updateByTerm(
+      // Process the payment using existing logic
+      await _updateByTerm(
         authorizationHeader,
         locale,
         realm,
-        term,
-        paymentData
+        tenant._id,
+        {
+          payments: [{
+            date: payment.payment_date,
+            amount: payment.amount,
+            type: payment.payment_type,
+            reference: payment.reference,
+            description: payment.description,
+            promo_amount: payment.promo_amount,
+            promo_note: payment.promo_note,
+            extra_charge: payment.extra_charge,
+            extra_charge_note: payment.extra_charge_note
+          }]
+        }
       );
 
       results.successful.push({
