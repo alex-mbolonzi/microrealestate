@@ -8,7 +8,7 @@ import {
 } from '@microrealestate/common';
 import axios from 'axios';
 import moment from 'moment';
-const { Parser } = require('json2csv');
+import { Parser } from 'json2csv';
 
 async function _findOccupants(realm, tenantId, startTerm, endTerm) {
   const filter = {
