@@ -1,5 +1,5 @@
 import { fetchRents, QueryKeys } from '../../../../utils/restcalls';
-import { LuAlertTriangle, LuChevronDown, LuSend } from 'react-icons/lu';
+import { LuAlertTriangle, LuChevronDown, LuSend, LuUpload } from 'react-icons/lu';
 import {
   Popover,
   PopoverContent,
@@ -9,6 +9,7 @@ import { useCallback, useContext, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from '../../../../components/ui/alert';
 import { Button } from '../../../../components/ui/button';
+import BulkPaymentUpload from '../../../../components/rents/BulkPaymentUpload';
 import ConfirmDialog from '../../../../components/ConfirmDialog';
 import { GrDocumentPdf } from 'react-icons/gr';
 import { List } from '../../../../components/ResourceList';
@@ -90,7 +91,9 @@ function Actions({ values, onDone }) {
   const store = useContext(StoreContext);
   const [sending, setSending] = useState(false);
   const [showConfirmDlg, setShowConfirmDlg] = useState(false);
+  const [showUploadDlg, setShowUploadDlg] = useState(false);
   const [selectedDocumentName, setSelectedDocumentName] = useState(null);
+  const queryClient = useQueryClient();
   const disabled = !values?.length;
 
   const handleAction = useCallback(
@@ -98,33 +101,35 @@ function Actions({ values, onDone }) {
       setSelectedDocumentName(docName);
       setShowConfirmDlg(true);
     },
-    [setSelectedDocumentName, setShowConfirmDlg]
+    []
   );
 
   const handleConfirm = useCallback(async () => {
     try {
       setSending(true);
-
-      const sendStatus = await store.rent.sendEmail({
-        document: selectedDocumentName,
-        tenantIds: values.map((r) => r._id),
-        terms: values.map((r) => r.term)
-      });
-
-      if (sendStatus !== 200) {
-        return toast.error(t('Email delivery service cannot send emails'));
-      }
-
-      const response = await store.rent.fetch();
+      const response = await store.rent.sendEmail(
+        values.map(({ _id }) => _id),
+        selectedDocumentName
+      );
       if (response.status !== 200) {
-        return toast.error(t('Cannot fetch rents from server'));
+        throw new Error(t('Something went wrong'));
       }
 
+      toast.success(t('Documents sent successfully'));
+      setShowConfirmDlg(false);
       onDone?.();
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message);
     } finally {
       setSending(false);
     }
   }, [onDone, selectedDocumentName, store.rent, t, values]);
+
+  const handleUploadSuccess = useCallback(() => {
+    queryClient.invalidateQueries([QueryKeys.RENTS]);
+    onDone?.();
+  }, [queryClient, onDone]);
 
   return (
     <>
@@ -134,7 +139,15 @@ function Actions({ values, onDone }) {
           {t('Sending...')}
         </div>
       ) : (
-        <div className="flex flex-col">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowUploadDlg(true)}
+          >
+            <LuUpload className="mr-2" />
+            {t('Upload Bulk Payments')}
+          </Button>
+
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="secondary" disabled={disabled}>
@@ -166,7 +179,7 @@ function Actions({ values, onDone }) {
                   onClick={handleAction('rentcall_reminder')}
                   className="justify-start w-full rounded-none text-warning"
                 >
-                  <GrDocumentPdf className="mr-2 " />{' '}
+                  <GrDocumentPdf className="mr-2" />{' '}
                   {t('Second payment notice')}
                 </Button>
                 <Button
@@ -181,6 +194,12 @@ function Actions({ values, onDone }) {
           </Popover>
         </div>
       )}
+
+      <BulkPaymentUpload
+        isOpen={showUploadDlg}
+        onClose={() => setShowUploadDlg(false)}
+        onSuccess={handleUploadSuccess}
+      />
 
       {selectedDocumentName ? (
         <ConfirmDialog
