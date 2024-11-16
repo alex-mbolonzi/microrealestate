@@ -57,7 +57,6 @@ export default function routes() {
   );
   router.use('/tenants', occupantsRouter);
 
-  const apiRouter = express.Router();
   const rentsRouter = express.Router();
   rentsRouter.post('/upload', upload.single('file'), Middlewares.asyncWrapper(async (req, res) => {
     if (!req.file) {
@@ -85,24 +84,10 @@ export default function routes() {
     req.body.payments = records;
     await rentManager.uploadBulkPayments(req, res);
   }));
-  rentsRouter.patch(
-    '/payment/:id/:term',
-    Middlewares.asyncWrapper(rentManager.updateByTerm)
-  );
-  rentsRouter.post(
-    '/bulk-payments',
-    Middlewares.asyncWrapper(rentManager.uploadBulkPayments)
-  );
-  rentsRouter.get(
-    '/tenant/:id',
-    Middlewares.asyncWrapper(rentManager.rentsOfOccupant)
-  );
-  rentsRouter.get(
-    '/tenant/:id/:term',
-    Middlewares.asyncWrapper(rentManager.rentOfOccupantByTerm)
-  );
+  rentsRouter.patch('/payment/:id/:term', Middlewares.asyncWrapper(rentManager.updateByTerm));
+  rentsRouter.get('/tenant/:id/:term', Middlewares.asyncWrapper(rentManager.rentOfOccupantByTerm));
   rentsRouter.get('/:year/:month', Middlewares.asyncWrapper(rentManager.all));
-  apiRouter.use('/api/v2/rents', rentsRouter);
+  router.use('/rents', rentsRouter);
 
   const propertiesRouter = express.Router();
   propertiesRouter.get('/', Middlewares.asyncWrapper(propertyManager.all));
@@ -139,6 +124,7 @@ export default function routes() {
   emailRouter.post('/', Middlewares.asyncWrapper(emailManager.send));
   router.use('/emails', emailRouter);
 
+  const apiRouter = express.Router();
   apiRouter.use('/api/v2', router);
 
   return apiRouter;
