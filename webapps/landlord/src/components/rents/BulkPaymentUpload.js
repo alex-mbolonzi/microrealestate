@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useRef, useState } from 'react';
+import { useRef, useState, useContext } from 'react';
 import { Alert } from '../ui/alert';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -7,12 +7,15 @@ import { LuAlertTriangle, LuDownload, LuUpload } from 'react-icons/lu';
 import { toast } from 'sonner';
 import useTranslation from 'next-translate/useTranslation';
 import { apiFetcher } from '../../utils/fetch';
+import { StoreContext } from '../../store';
+import config from '../../config';
 
 export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
   const { t } = useTranslation('common');
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
+  const store = useContext(StoreContext);
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
@@ -35,9 +38,20 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const { data } = await apiFetcher().post('/rents/upload', formData, {
+      // Ensure we have a valid token
+      const accessToken = store.user?.accessToken;
+      if (!accessToken) {
+        console.log('No access token found, attempting to refresh...');
+        await store.user.refreshTokens();
+      }
+
+      // Get fresh instance of apiFetcher with current token
+      const api = apiFetcher();
+      
+      const { data } = await api.post('/rents/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${store.user?.accessToken}`,
         },
         timeout: 300000, // 5 minutes timeout
         maxContentLength: Infinity,
@@ -74,17 +88,17 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       onClose();
     } catch (error) {
       console.error('Upload error:', error);
+      
       if (error.response?.status === 401) {
-        toast.error(t('Session expired. Please log in again.'));
-        // Trigger refresh token flow
+        console.log('Received 401, attempting token refresh...');
         try {
-          const store = getStoreInstance();
           await store.user.refreshTokens();
           toast.info(t('Session renewed. Please try uploading again.'));
         } catch (refreshError) {
           console.error('Token refresh failed:', refreshError);
-          toast.error(t('Please log in again to continue.'));
+          toast.error(t('Session expired. Please log in again.'));
           window.location.assign(`${config.BASE_PATH}`);
+          return;
         }
       } else {
         toast.error(error.response?.data?.message || error.message || t('Failed to upload file'));
@@ -134,7 +148,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
               onClick={handleDownloadTemplate}
               className="w-full"
             >
-              <LuDownload className="mr-2" />
+              <LuDownload className="mr-2 h-4 w-4" />
               {t('Download Template')}
             </Button>
 
@@ -142,25 +156,29 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
               type="file"
               accept=".csv"
               onChange={handleFileChange}
-              className="hidden"
               ref={fileInputRef}
+              className="hidden"
             />
-
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
               className="w-full"
             >
-              <LuUpload className="mr-2" />
-              {file ? file.name : t('Choose CSV File')}
+              <LuUpload className="mr-2 h-4 w-4" />
+              {t('Select CSV File')}
             </Button>
+            {file && (
+              <p className="text-sm text-gray-500">
+                {t('Selected file')}: {file.name}
+              </p>
+            )}
 
             <Button
               onClick={handleUpload}
               disabled={!file || loading}
               className="w-full"
             >
-              {loading ? t('Uploading...') : t('Upload')}
+              {loading ? t('Uploading...') : t('Upload Payments')}
             </Button>
           </div>
         </div>
