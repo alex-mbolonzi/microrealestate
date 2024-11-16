@@ -52,15 +52,13 @@ export const apiFetcher = () => {
     apiFetch.interceptors.request.use(
       async (config) => {
         const store = getStoreInstance();
-        const accessToken = store?.user?.accessToken;
+        const accessToken = store?.user?.token;
         if (accessToken) {
           config.headers.Authorization = `Bearer ${accessToken}`;
         }
         return config;
       },
-      (error) => {
-        return Promise.reject(error);
-      }
+      (error) => Promise.reject(error)
     );
 
     apiFetch.interceptors.response.use(
@@ -69,21 +67,19 @@ export const apiFetcher = () => {
         const originalRequest = error.config;
 
         if (!error.response) {
-          return Promise.reject(new Error('Network error. Please check your connection.'));
+          return Promise.reject(new Error('Network error'));
         }
 
-        // Don't retry if it's not 401 or it's already been retried
-        if (error.response?.status !== 401 || originalRequest._retry) {
+        if (error.response.status !== 401 || originalRequest._retry) {
           return Promise.reject(error);
         }
 
-        // Don't retry if it's a refresh token request
         if (originalRequest.url.includes('/refreshtoken')) {
           const store = getStoreInstance();
           if (store?.user) {
-            store.user.signOut();
+            await store.user.signOut();
           }
-          if (!isServer() && window) {
+          if (isClient() && window) {
             window.location.assign('/');
           }
           return Promise.reject(error);
@@ -101,43 +97,33 @@ export const apiFetcher = () => {
           }
         }
 
-        originalRequest._retry = true;
         isRefreshing = true;
+        originalRequest._retry = true;
 
         try {
           const store = getStoreInstance();
-          const refreshResult = await store.user.refreshTokens();
-          
-          if (refreshResult.status !== 200 || !refreshResult.accessToken) {
-            throw new Error('Token refresh failed');
-          }
+          const result = await store.user.refreshTokens();
 
-          processQueue(null, refreshResult.accessToken);
-          originalRequest.headers.Authorization = `Bearer ${refreshResult.accessToken}`;
-          
-          return apiFetch(originalRequest);
-        } catch (refreshError) {
-          processQueue(refreshError, null);
-          
-          // Handle 403 specifically
-          if (refreshError?.response?.status === 403) {
-            const store = getStoreInstance();
-            if (store?.user) {
-              store.user.signOut();
-            }
-            if (!isServer() && window) {
-              window.location.assign('/');
-            }
+          if (result.status === 200 && result.accessToken) {
+            processQueue(null, result.accessToken);
+            originalRequest.headers.Authorization = `Bearer ${result.accessToken}`;
+            return apiFetch(originalRequest);
           }
           
-          return Promise.reject(refreshError);
+          processQueue(new Error('Failed to refresh token'));
+          if (isClient() && window) {
+            window.location.assign('/');
+          }
+          return Promise.reject(error);
+        } catch (err) {
+          processQueue(err);
+          return Promise.reject(err);
         } finally {
           isRefreshing = false;
         }
       }
     );
   }
-
   return apiFetch;
 };
 

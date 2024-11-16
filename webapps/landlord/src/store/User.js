@@ -215,79 +215,57 @@ export default class User {
   }
 
   *refreshTokens(context) {
-    // Prevent multiple simultaneous refresh attempts
     if (this.refreshing) {
       return { status: 409, error: 'Token refresh already in progress' };
     }
 
     try {
       this.refreshing = true;
-      let response;
+      const api = isServer() ? createAuthApi(context?.req?.headers?.cookie) : apiFetcher();
+      
+      if (!api) {
+        throw new Error('API client not initialized');
+      }
 
-      if (isServer()) {
-        const authApi = createAuthApi(context?.req?.headers?.cookie);
-        if (!authApi) {
-          throw new Error('Auth API client not initialized');
-        }
-
-        response = yield authApi.post(
-          '/authenticator/landlord/refreshtoken',
-          {},
-          {
-            withCredentials: true,
-            headers: {
-              Cookie: context?.req?.headers?.cookie
-            }
+      const response = yield api.post(
+        '/authenticator/landlord/refreshtoken',
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            ...(isServer() && context?.req?.headers?.cookie ? { Cookie: context.req.headers.cookie } : {}),
+            'Content-Type': 'application/json'
           }
-        );
-
-        // Set cookies in response if available
-        const cookies = response.headers['set-cookie'];
-        if (cookies && context?.res) {
-          context.res.setHeader('Set-Cookie', cookies);
         }
-      } else {
-        const api = apiFetcher();
-        if (!api) {
-          throw new Error('API client not initialized');
-        }
+      );
 
-        response = yield api.post(
-          '/authenticator/landlord/refreshtoken',
-          {},
-          {
-            withCredentials: true
-          }
-        );
+      if (isServer() && response.headers['set-cookie'] && context?.res && !context.res.headersSent) {
+        context.res.setHeader('Set-Cookie', response.headers['set-cookie']);
       }
 
       if (!response?.data?.accessToken) {
-        throw new Error('No access token received from refresh');
+        throw new Error('No access token received');
       }
 
       this.setUserFromToken(response.data.accessToken);
-      return { 
-        status: 200,
-        accessToken: response.data.accessToken
-      };
+      return { status: 200, accessToken: response.data.accessToken };
     } catch (error) {
       console.error('Token refresh error:', error);
+      
+      if (!error.response) {
+        return { status: 500, error: 'Network error' };
+      }
 
-      // Handle specific error cases
-      if (error?.response?.status === 403) {
+      if (error.response.status === 403) {
         yield this.signOut();
         if (!isServer() && window) {
           window.location.assign('/');
         }
-        return {
-          status: 403,
-          error: 'Session expired. Please sign in again.'
-        };
       }
 
       return {
-        status: error.response?.status || 500,
-        error: error.response?.data?.message || 'Failed to refresh token'
+        status: error.response.status || 500,
+        error: error.response.data?.message || 'Failed to refresh token'
       };
     } finally {
       this.refreshing = false;
