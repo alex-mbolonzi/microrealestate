@@ -72,7 +72,7 @@ export default function routes() {
         
         await new Promise((resolve, reject) => {
           csv({ 
-            headers: true,
+            headers: ['tenant_id', 'payment_date', 'payment_type', 'payment_reference', 'amount'],
             skipLines: 1,
             skipEmptyLines: true,
             trim: true
@@ -84,30 +84,38 @@ export default function routes() {
                   req.setTimeout(300000);
                 }
 
+                console.log('Processing row:', processedRows, 'Data:', data);
+
                 // Skip empty rows
                 if (Object.values(data).every(val => !val)) {
+                  console.log('Skipping empty row:', processedRows);
                   return;
                 }
 
                 // Validate required fields
                 if (!data.tenant_id || !data.payment_date || !data.amount) {
-                  throw new ServiceError(`Row ${processedRows + 1}: Missing required fields (tenant_id, payment_date, amount)`, 400);
+                  console.log('Missing required fields:', {
+                    tenant_id: data.tenant_id,
+                    payment_date: data.payment_date,
+                    amount: data.amount
+                  });
+                  throw new ServiceError(`Row ${processedRows + 1}: Missing required fields (tenant_id: ${data.tenant_id}, payment_date: ${data.payment_date}, amount: ${data.amount})`, 400);
                 }
 
                 // Parse and validate date format (MM/DD/YYYY)
                 const paymentDate = new Date(data.payment_date);
                 if (isNaN(paymentDate.getTime())) {
-                  throw new ServiceError(`Row ${processedRows + 1}: Invalid payment_date format. Expected MM/DD/YYYY`, 400);
+                  throw new ServiceError(`Row ${processedRows + 1}: Invalid payment_date format. Expected MM/DD/YYYY, got ${data.payment_date}`, 400);
                 }
 
                 // Safely parse amount, handling undefined or invalid values
                 const amountStr = (data.amount || '').toString();
                 const amount = parseFloat(amountStr.replace(/[^0-9.-]+/g, ''));
                 if (isNaN(amount)) {
-                  throw new ServiceError(`Row ${processedRows + 1}: Invalid amount format`, 400);
+                  throw new ServiceError(`Row ${processedRows + 1}: Invalid amount format, got ${data.amount}`, 400);
                 }
 
-                records.push({
+                const record = {
                   tenant_reference: data.tenant_id.trim(),
                   payment_date: paymentDate.toISOString().split('T')[0],
                   payment_type: (data.payment_type || 'cash').trim().toLowerCase(),
@@ -118,9 +126,10 @@ export default function routes() {
                   promo_note: '',
                   extra_charge: 0,
                   extra_charge_note: ''
-                });
+                };
 
-                console.log(`Processed payment for tenant ${data.tenant_id}: ${amount} on ${paymentDate.toISOString().split('T')[0]}`);
+                records.push(record);
+                console.log(`Successfully processed payment:`, record);
               } catch (error) {
                 console.error('Error processing CSV row:', error);
                 reject(error);
