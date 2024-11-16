@@ -31,6 +31,7 @@ export default class User {
     this.lastName = undefined;
     this.email = undefined;
     this.role = undefined;
+    this.refreshing = false;
 
     makeObservable(this, {
       token: observable,
@@ -39,6 +40,7 @@ export default class User {
       lastName: observable,
       email: observable,
       role: observable,
+      refreshing: observable,
       signedIn: computed,
       isAdministrator: computed,
       setRole: action,
@@ -198,19 +200,28 @@ export default class User {
         throw new Error('API client not initialized');
       }
 
-      yield api.delete('/authenticator/landlord/signout');
+      yield api.delete('/authenticator/landlord/signout', {
+        withCredentials: true
+      });
     } finally {
       this.firstName = null;
       this.lastName = null;
       this.email = null;
       this.token = null;
       this.tokenExpiry = null;
+      this.role = null;
       setAccessToken(null);
     }
   }
 
   *refreshTokens(context) {
+    // Prevent multiple simultaneous refresh attempts
+    if (this.refreshing) {
+      return { status: 409, error: 'Token refresh already in progress' };
+    }
+
     try {
+      this.refreshing = true;
       let response;
 
       if (isServer()) {
@@ -223,7 +234,10 @@ export default class User {
           '/authenticator/landlord/refreshtoken',
           {},
           {
-            withCredentials: true
+            withCredentials: true,
+            headers: {
+              Cookie: context?.req?.headers?.cookie
+            }
           }
         );
 
@@ -258,10 +272,25 @@ export default class User {
       };
     } catch (error) {
       console.error('Token refresh error:', error);
+
+      // Handle specific error cases
+      if (error?.response?.status === 403) {
+        yield this.signOut();
+        if (!isServer() && window) {
+          window.location.assign('/');
+        }
+        return {
+          status: 403,
+          error: 'Session expired. Please sign in again.'
+        };
+      }
+
       return {
         status: error.response?.status || 500,
         error: error.response?.data?.message || 'Failed to refresh token'
       };
+    } finally {
+      this.refreshing = false;
     }
   }
 
