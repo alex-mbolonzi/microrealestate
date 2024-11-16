@@ -406,14 +406,27 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
     failed: []
   };
 
+  if (!Array.isArray(payments)) {
+    throw new ServiceError('Invalid payments data format', 400);
+  }
+
+  if (payments.length === 0) {
+    throw new ServiceError('No payments provided', 400);
+  }
+
+  console.log(`Processing ${payments.length} payments`);
+
   for (const payment of payments) {
     try {
+      console.log(`Processing payment for tenant ${payment.tenant_reference}`);
+      
       const tenant = await Collections.Tenant.findOne({
+        realm,
         reference: payment.tenant_reference
       });
 
       if (!tenant) {
-        throw new Error(`Tenant with reference ${payment.tenant_reference} not found`);
+        throw new ServiceError(`Tenant with reference ${payment.tenant_reference} not found`, 404);
       }
 
       // Check for duplicate payment
@@ -424,7 +437,7 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
       );
 
       if (isDuplicate) {
-        throw new Error('Duplicate payment detected - similar payment exists for same day and amount');
+        throw new ServiceError('Duplicate payment detected - similar payment exists for same day and amount', 409);
       }
 
       // Process the payment using existing logic
@@ -454,7 +467,11 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
         status: 'success',
         payment_date: payment.payment_date
       });
+
+      console.log(`Successfully processed payment for tenant ${payment.tenant_reference}`);
     } catch (error) {
+      console.error(`Failed to process payment for tenant ${payment.tenant_reference}:`, error);
+      
       results.failed.push({
         tenant_reference: payment.tenant_reference,
         amount: payment.amount,
@@ -467,23 +484,34 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
 
   // Generate CSV for failed records
   if (results.failed.length > 0) {
-    const fields = [
-      'tenant_reference',
-      'payment_date',
-      'amount',
-      'error',
-      'status'
-    ];
-    
-    const json2csvParser = new Parser({ fields });
-    results.failedRecordsCsv = json2csvParser.parse(results.failed);
+    try {
+      const fields = [
+        'tenant_reference',
+        'payment_date',
+        'amount',
+        'error',
+        'status'
+      ];
+      
+      const json2csvParser = new Parser({ fields });
+      results.failedRecordsCsv = json2csvParser.parse(results.failed);
+    } catch (error) {
+      console.error('Failed to generate CSV for failed records:', error);
+      // Don't throw, just log the error as this is not critical
+    }
   }
 
+  console.log(`Bulk payment processing complete. Success: ${results.successful.length}, Failed: ${results.failed.length}`);
   return results;
 }
 
 export async function uploadBulkPayments(req, res) {
   try {
+    if (!req.body || !req.body.payments) {
+      throw new ServiceError('No payment data provided', 400);
+    }
+
+    console.log('Starting bulk payment upload process');
     const results = await _processBulkPayments(
       req.headers.authorization,
       req.headers['accept-language'],
@@ -491,7 +519,7 @@ export async function uploadBulkPayments(req, res) {
       req.body.payments
     );
     
-    res.json({
+    const response = {
       successful: results.successful,
       failed: results.failed,
       failedRecordsCsv: results.failedRecordsCsv,
@@ -500,8 +528,15 @@ export async function uploadBulkPayments(req, res) {
         successful: results.successful.length,
         failed: results.failed.length
       }
-    });
+    };
+
+    console.log('Bulk payment upload complete', response.summary);
+    res.json(response);
   } catch (error) {
-    throw new ServiceError(error.message, error.status || 500);
+    console.error('Bulk payment upload error:', error);
+    if (error instanceof ServiceError) {
+      throw error;
+    }
+    throw new ServiceError(error.message || 'Failed to process bulk payments', error.status || 500);
   }
 }

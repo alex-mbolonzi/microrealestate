@@ -10,6 +10,7 @@ import { Middlewares, Service } from '@microrealestate/common';
 import express from 'express';
 import multer from 'multer';
 import csv from 'csv-parser';
+import { ServiceError } from './utils/errors.js';
 
 export default function routes() {
   const { ACCESS_TOKEN_SECRET } = Service.getInstance().envConfig.getValues();
@@ -71,42 +72,77 @@ export default function routes() {
         let processedRows = 0;
         
         await new Promise((resolve, reject) => {
-          csv({ headers: true })
+          csv({ 
+            headers: true,
+            skipEmptyLines: true,
+            trim: true
+          })
             .on('data', (data) => {
-              processedRows++;
-              if (processedRows % 100 === 0) {
-                // Reset the timeout every 100 rows
-                req.setTimeout(300000); // 5 minutes
-              }
+              try {
+                processedRows++;
+                if (processedRows % 100 === 0) {
+                  req.setTimeout(300000);
+                }
 
-              records.push({
-                tenant_reference: data.tenant_id,
-                payment_date: data.payment_date,
-                payment_type: data.payment_type || 'cash',
-                reference: data.payment_reference,
-                amount: parseFloat(data.amount.replace(/[^0-9.-]+/g, '')),
-                description: data.description || '',
-                promo_amount: data.promo_amount ? parseFloat(data.promo_amount) : 0,
-                promo_note: data.promo_note || '',
-                extra_charge: data.extra_charge ? parseFloat(data.extra_charge) : 0,
-                extra_charge_note: data.extra_charge_note || ''
-              });
+                // Validate required fields
+                if (!data.tenant_id || !data.payment_date || !data.amount) {
+                  throw new Error(`Row ${processedRows}: Missing required fields (tenant_id, payment_date, amount)`);
+                }
+
+                // Validate date format
+                const paymentDate = new Date(data.payment_date);
+                if (isNaN(paymentDate.getTime())) {
+                  throw new Error(`Row ${processedRows}: Invalid payment_date format`);
+                }
+
+                // Safely parse amount, handling undefined or invalid values
+                const amountStr = (data.amount || '').toString();
+                const amount = parseFloat(amountStr.replace(/[^0-9.-]+/g, ''));
+                if (isNaN(amount)) {
+                  throw new Error(`Row ${processedRows}: Invalid amount format`);
+                }
+
+                records.push({
+                  tenant_reference: data.tenant_id.trim(),
+                  payment_date: paymentDate.toISOString().split('T')[0],
+                  payment_type: (data.payment_type || 'cash').trim().toLowerCase(),
+                  reference: (data.payment_reference || '').trim(),
+                  amount: amount,
+                  description: (data.description || '').trim(),
+                  promo_amount: data.promo_amount ? parseFloat(data.promo_amount.toString().replace(/[^0-9.-]+/g, '')) : 0,
+                  promo_note: (data.promo_note || '').trim(),
+                  extra_charge: data.extra_charge ? parseFloat(data.extra_charge.toString().replace(/[^0-9.-]+/g, '')) : 0,
+                  extra_charge_note: (data.extra_charge_note || '').trim()
+                });
+              } catch (error) {
+                console.error('Error processing CSV row:', error);
+                reject(new ServiceError(`${error.message}`, 400));
+              }
             })
             .on('end', () => {
               if (records.length === 0) {
-                reject(new Error('No valid records found in CSV'));
+                reject(new ServiceError('No valid records found in CSV', 400));
               }
+              console.log(`Successfully processed ${records.length} records`);
               resolve();
             })
-            .on('error', reject)
+            .on('error', (error) => {
+              console.error('CSV parsing error:', error);
+              reject(new ServiceError(`CSV parsing error: ${error.message}`, 400));
+            })
             .write(csvData);
         });
 
-        req.body = { payments: records };
+        if (!req.body) req.body = {};
+        req.body.payments = records;
+
+        console.log(`Starting bulk payment upload for ${records.length} records`);
         await rentManager.uploadBulkPayments(req, res);
       } catch (error) {
         console.error('CSV Processing Error:', error);
-        throw new ServiceError(error.message || 'Failed to process CSV file', 400);
+        const errorMessage = error.message || 'Failed to process CSV file';
+        const errorStatus = error.status || 400;
+        throw new ServiceError(errorMessage, errorStatus);
       }
     })
   );
