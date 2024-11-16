@@ -83,13 +83,53 @@ export default class User {
         {
           email,
           password
+        },
+        {
+          withCredentials: true
         }
       );
+      
+      if (!response?.data?.accessToken) {
+        throw new Error('No access token received');
+      }
+
       const { accessToken } = response.data;
       this.setUserFromToken(accessToken);
-      return 200;
+      return { status: 200 };
     } catch (error) {
-      return error.response.status;
+      console.error('Sign in error:', error);
+      
+      // Handle network errors
+      if (!error.response) {
+        return { 
+          status: 500, 
+          error: 'Network error. Please check your connection.' 
+        };
+      }
+
+      // Handle specific error cases
+      switch (error.response.status) {
+        case 401:
+          return { 
+            status: 401, 
+            error: 'Invalid email or password.' 
+          };
+        case 403:
+          return { 
+            status: 403, 
+            error: 'Account is locked. Please contact support.' 
+          };
+        case 404:
+          return { 
+            status: 404, 
+            error: 'Account not found.' 
+          };
+        default:
+          return { 
+            status: error.response.status || 500,
+            error: error.response.data?.message || 'Failed to sign in. Please try again.'
+          };
+      }
     }
   }
 
