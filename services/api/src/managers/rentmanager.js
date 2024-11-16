@@ -413,25 +413,27 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
     throw new ServiceError('No payments provided', 400);
   }
 
-  console.log(`Processing ${payments.length} payments`);
+  console.log(`CSV contains ${payments.length} total rows`);
 
-  // Process payments in batches of 5
-  const batchSize = 5;
+  // Process payments in smaller batches to avoid timeouts
+  const batchSize = 3;
   for (let i = 0; i < payments.length; i += batchSize) {
     const batch = payments.slice(i, i + batchSize);
     console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(payments.length/batchSize)}`);
 
-    await Promise.all(batch.map(async (payment) => {
+    // Process each payment in the batch sequentially to avoid DB conflicts
+    for (const payment of batch) {
       try {
-        console.log(`Processing payment for tenant ${payment.tenant_reference}`);
+        console.log(`Processing row ${i + batch.indexOf(payment) + 1} of ${payments.length}: `, payment);
         
+        // Find tenant and validate
         const tenant = await Collections.Tenant.findOne({
-          realm,
-          reference: payment.tenant_reference
-        });
+          realmId: realm._id,
+          reference: payment.tenant_id
+        }).lean();
 
         if (!tenant) {
-          throw new ServiceError(`Tenant with reference ${payment.tenant_reference} not found`, 404);
+          throw new ServiceError(`Tenant with ID ${payment.tenant_id} not found`, 404);
         }
 
         // Check for duplicate payment
@@ -445,51 +447,51 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
           throw new ServiceError('Duplicate payment detected - similar payment exists for same day and amount', 409);
         }
 
-        // Process the payment using existing logic
+        // Determine the term from payment date
+        const paymentMoment = moment(payment.payment_date, 'MM/DD/YYYY');
+        const term = Number(paymentMoment.format('YYYYMM'));
+
+        // Process the payment
         await _updateByTerm(
           authorizationHeader,
           locale,
           realm,
-          tenant._id,
+          term,
           {
+            _id: tenant._id,
             payments: [{
-              date: payment.payment_date,
-              amount: payment.amount,
-              type: payment.payment_type,
-              reference: payment.reference,
-              description: payment.description,
-              promo_amount: payment.promo_amount,
-              promo_note: payment.promo_note,
-              extra_charge: payment.extra_charge,
-              extra_charge_note: payment.extra_charge_note
+              date: paymentMoment.format('YYYY-MM-DD'),
+              amount: Number(payment.amount),
+              type: payment.payment_type || 'cash',
+              reference: payment.payment_reference || '',
+              description: `Payment recorded via bulk upload`
             }]
           }
         );
 
         results.successful.push({
-          tenant_reference: payment.tenant_reference,
+          tenant_id: payment.tenant_id,
           amount: payment.amount,
           status: 'success',
-          payment_date: payment.payment_date
+          payment_date: payment.payment_date,
+          term: term
         });
 
-        console.log(`Successfully processed payment for tenant ${payment.tenant_reference}`);
+        console.log(`Successfully processed payment for tenant ${payment.tenant_id}: ${payment.amount}`);
       } catch (error) {
-        console.error(`Failed to process payment for tenant ${payment.tenant_reference}:`, error);
+        console.error(`Failed to process payment for tenant ${payment.tenant_id}:`, error);
         
         results.failed.push({
-          tenant_reference: payment.tenant_reference,
+          tenant_id: payment.tenant_id,
           amount: payment.amount,
           payment_date: payment.payment_date,
           error: error.message,
           status: 'failed'
         });
       }
-    }));
 
-    // Add a small delay between batches to prevent overload
-    if (i + batchSize < payments.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add a small delay between payments to prevent overload
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
@@ -497,7 +499,7 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
   if (results.failed.length > 0) {
     try {
       const fields = [
-        'tenant_reference',
+        'tenant_id',
         'payment_date',
         'amount',
         'error',
@@ -521,7 +523,19 @@ export async function uploadBulkPayments(req, res) {
       throw new ServiceError('No payment data provided', 400);
     }
 
+    // Set a longer timeout for the request
+    req.setTimeout(300000); // 5 minutes
+    res.setTimeout(300000); // 5 minutes
+
     console.log('Starting bulk payment upload process');
+    
+    // Send initial response to prevent timeout
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Transfer-Encoding': 'chunked'
+    });
+
+    // Process the payments
     const results = await _processBulkPayments(
       req.headers.authorization,
       req.headers['accept-language'],
@@ -541,12 +555,22 @@ export async function uploadBulkPayments(req, res) {
     };
 
     console.log('Bulk payment upload complete', response.summary);
-    res.json(response);
+    
+    // Send the final response
+    res.write(JSON.stringify(response));
+    res.end();
   } catch (error) {
     console.error('Bulk payment upload error:', error);
-    if (error instanceof ServiceError) {
-      throw error;
+    if (!res.headersSent) {
+      if (error instanceof ServiceError) {
+        res.status(error.status).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: error.message || 'Failed to process bulk payments' });
+      }
+    } else {
+      // If headers were already sent, end the response with error
+      res.write(JSON.stringify({ error: error.message || 'Failed to process bulk payments' }));
+      res.end();
     }
-    throw new ServiceError(error.message || 'Failed to process bulk payments', error.status || 500);
   }
 }
