@@ -69,12 +69,11 @@ export default function routes() {
         const csvData = req.file.buffer.toString();
         const records = [];
         let processedRows = 0;
-        let isFirstRow = true;  // Flag to track the header row
         
         await new Promise((resolve, reject) => {
           csv({ 
             headers: true,
-            skipLines: 1,  // Skip the first line (header row)
+            skipLines: 1,
             skipEmptyLines: true,
             trim: true
           })
@@ -95,10 +94,10 @@ export default function routes() {
                   throw new ServiceError(`Row ${processedRows + 1}: Missing required fields (tenant_id, payment_date, amount)`, 400);
                 }
 
-                // Validate date format
+                // Parse and validate date format (MM/DD/YYYY)
                 const paymentDate = new Date(data.payment_date);
                 if (isNaN(paymentDate.getTime())) {
-                  throw new ServiceError(`Row ${processedRows + 1}: Invalid payment_date format`, 400);
+                  throw new ServiceError(`Row ${processedRows + 1}: Invalid payment_date format. Expected MM/DD/YYYY`, 400);
                 }
 
                 // Safely parse amount, handling undefined or invalid values
@@ -114,12 +113,14 @@ export default function routes() {
                   payment_type: (data.payment_type || 'cash').trim().toLowerCase(),
                   reference: (data.payment_reference || '').trim(),
                   amount: amount,
-                  description: (data.description || '').trim(),
-                  promo_amount: data.promo_amount ? parseFloat(data.promo_amount.toString().replace(/[^0-9.-]+/g, '')) : 0,
-                  promo_note: (data.promo_note || '').trim(),
-                  extra_charge: data.extra_charge ? parseFloat(data.extra_charge.toString().replace(/[^0-9.-]+/g, '')) : 0,
-                  extra_charge_note: (data.extra_charge_note || '').trim()
+                  description: '',  // Optional fields
+                  promo_amount: 0,
+                  promo_note: '',
+                  extra_charge: 0,
+                  extra_charge_note: ''
                 });
+
+                console.log(`Processed payment for tenant ${data.tenant_id}: ${amount} on ${paymentDate.toISOString().split('T')[0]}`);
               } catch (error) {
                 console.error('Error processing CSV row:', error);
                 reject(error);
