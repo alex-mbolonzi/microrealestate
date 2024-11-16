@@ -35,7 +35,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await apiFetcher().post('/rents/upload', formData, {
+      const { data } = await apiFetcher().post('/rents/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -44,16 +44,51 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         maxBodyLength: Infinity,
       });
 
-      if (!response.ok) {
-        throw new Error(t('Failed to upload file'));
+      if (data.failed && data.failed.length > 0) {
+        toast.error(t('Some payments failed to process. Check the error report.'));
+        // Download failed records CSV if available
+        if (data.failedRecordsCsv) {
+          const blob = new Blob([data.failedRecordsCsv], { type: 'text/csv' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'failed_payments.csv';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }
+      } else {
+        toast.success(t('All payments processed successfully'));
       }
 
-      toast.success(t('File uploaded successfully'));
+      // Show summary toast
+      toast.info(
+        t('Upload Summary: {{successful}} successful, {{failed}} failed', {
+          successful: data.summary?.successful || 0,
+          failed: data.summary?.failed || 0
+        })
+      );
+
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error(error.response?.data?.message || error.message || t('Failed to upload file'));
+      if (error.response?.status === 401) {
+        toast.error(t('Session expired. Please log in again.'));
+        // Trigger refresh token flow
+        try {
+          const store = getStoreInstance();
+          await store.user.refreshTokens();
+          toast.info(t('Session renewed. Please try uploading again.'));
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError);
+          toast.error(t('Please log in again to continue.'));
+          window.location.assign(`${config.BASE_PATH}`);
+        }
+      } else {
+        toast.error(error.response?.data?.message || error.message || t('Failed to upload file'));
+      }
     } finally {
       setLoading(false);
       setFile(null);
