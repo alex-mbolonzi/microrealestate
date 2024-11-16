@@ -2,10 +2,26 @@ import * as jose from 'jose';
 import { action, computed, flow, makeObservable, observable } from 'mobx';
 import { apiFetcher, setAccessToken } from '../utils/fetch';
 import { isServer } from '@microrealestate/commonui/utils';
+import axios from 'axios';
+import config from '../config';
 
 export const ADMIN_ROLE = 'administrator';
 export const RENTER_ROLE = 'renter';
 export const ROLES = [ADMIN_ROLE, RENTER_ROLE];
+
+const createAuthApi = (cookie) => {
+  if (!isServer()) {
+    return null;
+  }
+
+  const baseURL = config.DOCKER_GATEWAY_URL || config.GATEWAY_URL;
+  return axios.create({
+    baseURL: `${baseURL}/api/v2`,
+    headers: {
+      Cookie: cookie,
+    },
+  });
+};
 
 export default class User {
   constructor() {
@@ -98,7 +114,6 @@ export default class User {
     } catch (error) {
       console.error('Sign in error:', error);
       
-      // Handle network errors
       if (!error.response) {
         return { 
           status: 500, 
@@ -106,7 +121,6 @@ export default class User {
         };
       }
 
-      // Handle specific error cases
       switch (error.response.status) {
         case 401:
           return { 
@@ -132,25 +146,6 @@ export default class User {
     }
   }
 
-  *signUp(firstname, lastname, email, password) {
-    try {
-      const api = apiFetcher();
-      if (!api) {
-        throw new Error('API client not initialized');
-      }
-
-      yield api.post('/authenticator/landlord/signup', {
-        firstname,
-        lastname,
-        email,
-        password
-      });
-      return 200;
-    } catch (error) {
-      return error.response.status;
-    }
-  }
-
   *signOut() {
     try {
       const api = apiFetcher();
@@ -164,7 +159,7 @@ export default class User {
       this.lastName = null;
       this.email = null;
       this.token = null;
-      this.tokenExpiry = undefined;
+      this.tokenExpiry = null;
       setAccessToken(null);
     }
   }
@@ -172,15 +167,14 @@ export default class User {
   *refreshTokens(context) {
     try {
       let response;
-      const api = apiFetcher();
-      if (!api) {
-        throw new Error('API client not initialized');
-      }
 
-      // request to get the new tokens
       if (isServer()) {
-        const authFetchApi = authApiFetcher(context.req.headers.cookie);
-        response = yield authFetchApi.post(
+        const authApi = createAuthApi(context?.req?.headers?.cookie);
+        if (!authApi) {
+          throw new Error('Auth API client not initialized');
+        }
+
+        response = yield authApi.post(
           '/authenticator/landlord/refreshtoken',
           {},
           {
@@ -188,11 +182,17 @@ export default class User {
           }
         );
 
+        // Set cookies in response if available
         const cookies = response.headers['set-cookie'];
-        if (cookies) {
+        if (cookies && context?.res) {
           context.res.setHeader('Set-Cookie', cookies);
         }
       } else {
+        const api = apiFetcher();
+        if (!api) {
+          throw new Error('API client not initialized');
+        }
+
         response = yield api.post(
           '/authenticator/landlord/refreshtoken',
           {},
@@ -202,57 +202,20 @@ export default class User {
         );
       }
 
-      // set access token in store
-      if (response?.data?.accessToken) {
-        const { accessToken } = response.data;
-        this.setUserFromToken(accessToken);
-        return { status: 200, accessToken };
+      if (!response?.data?.accessToken) {
+        throw new Error('No access token received from refresh');
       }
 
-      // If no token but response is OK, try to sign in again
-      if (response?.status === 200) {
-        return { status: 401, error: new Error('Session expired. Please sign in again.') };
-      }
-      
-      // Clear user data if no token
-      this.firstName = undefined;
-      this.lastName = undefined;
-      this.email = undefined;
-      this.token = undefined;
-      this.tokenExpiry = undefined;
-      setAccessToken(null);
-      return { status: 401, error: new Error('Authentication failed') };
+      this.setUserFromToken(response.data.accessToken);
+      return { 
+        status: 200,
+        accessToken: response.data.accessToken
+      };
     } catch (error) {
       console.error('Token refresh error:', error);
-      
-      // Handle specific error cases
-      if (error?.response?.status === 403) {
-        // Clear user data and redirect to login
-        this.firstName = undefined;
-        this.lastName = undefined;
-        this.email = undefined;
-        this.token = undefined;
-        this.tokenExpiry = undefined;
-        setAccessToken(null);
-        
-        if (!isServer()) {
-          window.location.assign('/');
-        }
-        
-        return { status: 403, error: new Error('Session expired. Please sign in again.') };
-      }
-      
-      // Clear user data on error
-      this.firstName = undefined;
-      this.lastName = undefined;
-      this.email = undefined;
-      this.token = undefined;
-      this.tokenExpiry = undefined;
-      setAccessToken(null);
-      
-      return { 
-        status: error?.response?.status || 500, 
-        error: new Error(error?.response?.data?.message || 'Failed to refresh session')
+      return {
+        status: error.response?.status || 500,
+        error: error.response?.data?.message || 'Failed to refresh token'
       };
     }
   }
@@ -269,7 +232,7 @@ export default class User {
       });
       return 200;
     } catch (error) {
-      return error.response.status;
+      return error.response?.status || 500;
     }
   }
 
@@ -286,7 +249,7 @@ export default class User {
       });
       return 200;
     } catch (error) {
-      return error.response.status;
+      return error.response?.status || 500;
     }
   }
 }
