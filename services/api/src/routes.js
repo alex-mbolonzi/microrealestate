@@ -6,11 +6,10 @@ import * as occupantManager from './managers/occupantmanager.js';
 import * as propertyManager from './managers/propertymanager.js';
 import * as realmManager from './managers/realmmanager.js';
 import * as rentManager from './managers/rentmanager.js';
-import { Middlewares, Service } from '@microrealestate/common';
 import express from 'express';
+import { Middlewares, Service, ServiceError } from '@microrealestate/common';
 import multer from 'multer';
 import csv from 'csv-parser';
-import { ServiceError } from './utils/errors.js';
 
 export default function routes() {
   const { ACCESS_TOKEN_SECRET } = Service.getInstance().envConfig.getValues();

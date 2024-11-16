@@ -3,8 +3,8 @@ import * as FD from './frontdata.js';
 import {
   Collections,
   logger,
-  Service,
-  ServiceError
+  ServiceError,
+  Model
 } from '@microrealestate/common';
 import axios from 'axios';
 import moment from 'moment';
