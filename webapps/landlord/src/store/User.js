@@ -208,8 +208,10 @@ export default class User {
       yield api.delete('/authenticator/landlord/signout', {
         withCredentials: true
       });
+    } catch (error) {
+      console.error('Sign out error:', error);
     } finally {
-      // Clear user state
+      // Always clear user state
       this.firstName = null;
       this.lastName = null;
       this.email = null;
@@ -244,7 +246,8 @@ export default class User {
           headers: {
             ...(isServer() && context?.req?.headers?.cookie 
               ? { Cookie: context.req.headers.cookie } 
-              : {})
+              : {}),
+            'Content-Type': 'application/json'
           }
         }
       );
@@ -268,7 +271,7 @@ export default class User {
       if (!error.response) {
         return { 
           status: 500, 
-          error: 'Network error. Please check your connection.' 
+          error: 'Network error during token refresh' 
         };
       }
 

@@ -111,9 +111,9 @@ let requestQueue = [];
 
 export const setAccessToken = (accessToken) => {
   if (apiFetch && accessToken) {
-    apiFetch.defaults.headers.Authorization = `Bearer ${accessToken}`;
+    apiFetch.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
   } else if (apiFetch) {
-    delete apiFetch.defaults.headers.Authorization;
+    delete apiFetch.defaults.headers.common['Authorization'];
   }
 };
 
@@ -127,61 +127,60 @@ export const setOrganizationId = (organizationId) => {
 
 export const apiFetcher = () => {
   if (!apiFetch) {
-    const baseURL = `${
-      isServer()
-        ? config.DOCKER_GATEWAY_URL || config.GATEWAY_URL
-        : config.GATEWAY_URL
-    }/api/v2`;
-
-    if (isClient()) {
-      const webAppUrl = new URL(window.location.href);
-      const gatewayUrl = new URL(baseURL);
-
-      if (webAppUrl.origin !== gatewayUrl.origin) {
-        console.error(
-          `-----------------------------------------------------------------------------------------------------
-| 🚨 Important! 🚨                                                                                   |
------------------------------------------------------------------------------------------------------
-Origin mismatch between webapp and api endpoint: ${webAppUrl.origin} vs ${gatewayUrl.origin}
-Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${webAppUrl.port}.
------------------------------------------------------------------------------------------------------`
-        );
-      }
-    }
+    const baseURL = isServer() 
+      ? config.DOCKER_GATEWAY_URL || config.GATEWAY_URL
+      : config.BASE_PATH || '';
 
     apiFetch = axios.create({
-      baseURL,
+      baseURL: `${baseURL}/api/v2`,
+      timeout: 30000,
       withCredentials: true,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     });
+
+    // Add request interceptor for auth token
+    apiFetch.interceptors.request.use(
+      async (config) => {
+        const store = getStoreInstance();
+        const accessToken = store?.user?.token;
+        if (accessToken) {
+          config.headers.Authorization = `Bearer ${accessToken}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
 
     apiFetch.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
 
-        const isLoginRequest =
-          originalRequest?.url === '/authenticator/landlord/signin' &&
-          originalRequest?.method === 'post';
+        // Handle network errors
+        if (!error.response) {
+          console.error('Network error:', error);
+          return Promise.reject(new Error('Network error. Please check your connection.'));
+        }
 
-        // Try to refresh token on 401 or 403 (except for login requests)
+        const isAuthRequest = [
+          '/authenticator/landlord/signin',
+          '/authenticator/landlord/refreshtoken',
+          '/authenticator/landlord/signout'
+        ].includes(originalRequest?.url);
+
+        // Try to refresh token on 401 or 403 (except for auth requests)
         if (
           (error.response?.status === 401 || error.response?.status === 403) &&
-          !isLoginRequest &&
+          !isAuthRequest &&
           !originalRequest._retry
         ) {
           if (isRefreshingToken) {
             try {
-              // Queue the request while token refresh is in progress
               await new Promise((resolve, reject) => {
                 requestQueue.push({ resolve, reject });
               });
-              
-              // Use latest authorization token after refresh
-              originalRequest.headers['Authorization'] =
-                apiFetch.defaults.headers.common['Authorization'];
               return apiFetch(originalRequest);
             } catch (err) {
               return Promise.reject(err);
@@ -197,35 +196,36 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
 
             if (refreshResult.status === 200 && refreshResult.accessToken) {
               // Update auth headers with new token
-              const newAuthHeader = `Bearer ${refreshResult.accessToken}`;
-              apiFetch.defaults.headers.common['Authorization'] = newAuthHeader;
-              originalRequest.headers['Authorization'] = newAuthHeader;
+              setAccessToken(refreshResult.accessToken);
 
               // Process queued requests
               requestQueue.forEach(request => request.resolve());
               requestQueue = [];
 
+              // Retry original request with new token
+              originalRequest.headers.Authorization = `Bearer ${refreshResult.accessToken}`;
               return apiFetch(originalRequest);
             }
 
             // Handle refresh failure
-            requestQueue.forEach(request => request.reject(new Error('Token refresh failed')));
+            requestQueue.forEach(request => 
+              request.reject(new Error('Token refresh failed'))
+            );
             requestQueue = [];
 
             if (isClient()) {
               await store.user.signOut();
-              window.location.assign(`${config.BASE_PATH}`);
+              window.location.assign('/signin');
             }
             throw new Error('Token refresh failed');
           } catch (refreshError) {
-            // Handle refresh error
             requestQueue.forEach(request => request.reject(refreshError));
             requestQueue = [];
 
             if (isClient()) {
               const store = getStoreInstance();
               await store.user.signOut();
-              window.location.assign(`${config.BASE_PATH}`);
+              window.location.assign('/signin');
             }
             throw refreshError;
           } finally {
@@ -233,9 +233,13 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
           }
         }
 
-        // Handle 404 errors
-        if (error.response?.status === 404) {
-          console.warn(`Resource not found: ${originalRequest.url}`);
+        // Handle 403 on auth requests
+        if (error.response?.status === 403 && isAuthRequest) {
+          if (isClient()) {
+            const store = getStoreInstance();
+            await store.user.signOut();
+            window.location.assign('/signin');
+          }
           return Promise.reject(error);
         }
 

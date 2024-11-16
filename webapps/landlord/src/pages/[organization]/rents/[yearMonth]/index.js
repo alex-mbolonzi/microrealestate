@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger
 } from '../../../../components/ui/popover';
-import { useCallback, useContext, useMemo, useState } from 'react';
+import { useCallback, useContext, useMemo, useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from '../../../../components/ui/alert';
 import { Button } from '../../../../components/ui/button';
@@ -229,14 +229,31 @@ function Rents() {
   const store = useContext(StoreContext);
   const router = useRouter();
   const { yearMonth } = router.query;
-  const { data, isError, isLoading } = useQuery({
-    queryKey: [QueryKeys.RENTS, yearMonth],
-    queryFn: () => fetchRents(store, yearMonth)
-  });
+  const [rents, setRents] = useState([]);
+  const { data: rentsData, isLoading, error } = useQuery(
+    ['rents', yearMonth],
+    () => fetchRents(store, yearMonth),
+    {
+      retry: false,
+      onError: (error) => {
+        console.error('Error fetching rents:', error);
+        if (error?.response?.status === 404) {
+          setRents([]);
+        }
+      }
+    }
+  );
+
+  useEffect(() => {
+    if (!isLoading && rentsData) {
+      setRents(rentsData);
+    }
+  }, [isLoading, rentsData]);
+
   const [rentSelected, setRentSelected] = useState([]);
 
   const handleActionDone = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: [QueryKeys.RENTS, yearMonth] });
+    queryClient.invalidateQueries({ queryKey: ['rents', yearMonth] });
     setRentSelected([]);
   }, [queryClient, yearMonth]);
 
@@ -246,14 +263,18 @@ function Rents() {
     [router.query.yearMonth]
   );
 
-  if (isError) {
-    toast.error(t('Error fetching rents'));
+  if (error) {
+    console.error('Rents page error:', error);
+    if (error?.response?.status === 401) {
+      router.push('/signin');
+      return null;
+    }
   }
 
   return (
     <Page loading={isLoading} dataCy="rentsPage">
       <div className="my-4">
-        <RentOverview data={{ period, ...data?.overview }} />
+        <RentOverview data={{ period, ...rents?.overview }} />
       </div>
 
       {!store.organization.canSendEmails ? (
@@ -269,7 +290,7 @@ function Rents() {
         </Alert>
       ) : null}
       <List
-        data={data}
+        data={rents}
         filters={[
           { id: 'notpaid', label: t('Not paid') },
           { id: 'partiallypaid', label: t('Partially paid') },
