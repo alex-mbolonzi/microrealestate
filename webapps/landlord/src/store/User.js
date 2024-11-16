@@ -219,10 +219,13 @@ export default class User {
       return { status: 409, error: 'Token refresh already in progress' };
     }
 
+    this.refreshing = true;
+
     try {
-      this.refreshing = true;
-      const api = isServer() ? createAuthApi(context?.req?.headers?.cookie) : apiFetcher();
-      
+      const api = isServer() 
+        ? createAuthApi(context?.req?.headers?.cookie) 
+        : apiFetcher();
+
       if (!api) {
         throw new Error('API client not initialized');
       }
@@ -233,30 +236,32 @@ export default class User {
         {
           withCredentials: true,
           headers: {
-            ...(isServer() && context?.req?.headers?.cookie ? { Cookie: context.req.headers.cookie } : {}),
-            'Content-Type': 'application/json'
+            ...(isServer() && context?.req?.headers?.cookie 
+              ? { Cookie: context.req.headers.cookie } 
+              : {}),
           }
         }
       );
 
+      const { accessToken } = response.data;
+      
+      if (!accessToken) {
+        throw new Error('No access token received');
+      }
+
+      // Handle server-side cookie forwarding
       if (isServer() && response.headers['set-cookie'] && context?.res && !context.res.headersSent) {
         context.res.setHeader('Set-Cookie', response.headers['set-cookie']);
       }
 
-      if (!response?.data?.accessToken) {
-        throw new Error('No access token received');
-      }
+      this.setUserFromToken(accessToken);
+      return { status: 200, accessToken };
 
-      this.setUserFromToken(response.data.accessToken);
-      return { status: 200, accessToken: response.data.accessToken };
     } catch (error) {
       console.error('Token refresh error:', error);
       
-      if (!error.response) {
-        return { status: 500, error: 'Network error' };
-      }
-
-      if (error.response.status === 403) {
+      // Handle 403 by signing out and redirecting
+      if (error.response?.status === 403) {
         yield this.signOut();
         if (!isServer() && window) {
           window.location.assign('/');
@@ -264,9 +269,10 @@ export default class User {
       }
 
       return {
-        status: error.response.status || 500,
-        error: error.response.data?.message || 'Failed to refresh token'
+        status: error.response?.status || 500,
+        error: error.message || 'Failed to refresh token'
       };
+
     } finally {
       this.refreshing = false;
     }
