@@ -148,7 +148,10 @@ export default class User {
           password
         },
         {
-          withCredentials: true
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
         }
       );
       
@@ -161,6 +164,7 @@ export default class User {
     } catch (error) {
       console.error('Sign in error:', error);
       
+      // Handle network errors
       if (!error.response) {
         return { 
           status: 500, 
@@ -168,6 +172,7 @@ export default class User {
         };
       }
 
+      // Handle specific error cases
       switch (error.response.status) {
         case 401:
           return { 

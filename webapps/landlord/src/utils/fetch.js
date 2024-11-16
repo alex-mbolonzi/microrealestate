@@ -1,7 +1,13 @@
-import axios from 'axios';
+import axios, { Cancel } from 'axios';
 import config from '../config';
 import { getStoreInstance } from '../store';
 import { isClient, isServer } from '@microrealestate/commonui/utils';
+
+// Basic response logging
+const axiosResponseHandlers = [
+  response => response,
+  error => Promise.reject(error)
+];
 
 const createAuthApi = (cookie = '') => {
   const api = axios.create({
@@ -227,12 +233,17 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
           }
         }
 
-        // Handle other errors
+        // Handle 404 errors
+        if (error.response?.status === 404) {
+          console.warn(`Resource not found: ${originalRequest.url}`);
+          return Promise.reject(error);
+        }
+
         return Promise.reject(error);
       }
     );
 
-    // For logging purposes
+    // Add basic response logging
     apiFetch.interceptors.response.use(...axiosResponseHandlers);
   }
   return apiFetch;
