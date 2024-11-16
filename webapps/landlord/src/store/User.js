@@ -87,6 +87,51 @@ export default class User {
     }
   }
 
+  *signUp(firstname, lastname, email, password) {
+    try {
+      const api = apiFetcher();
+      if (!api) {
+        throw new Error('API client not initialized');
+      }
+
+      const response = yield api.post('/authenticator/landlord/signup', {
+        firstname,
+        lastname,
+        email,
+        password
+      });
+
+      return { status: response.status };
+    } catch (error) {
+      console.error('Sign up error:', error);
+      
+      if (!error.response) {
+        return { 
+          status: 500, 
+          error: 'Network error. Please check your connection.' 
+        };
+      }
+
+      switch (error.response.status) {
+        case 409:
+          return { 
+            status: 409, 
+            error: 'Email already exists.' 
+          };
+        case 400:
+          return { 
+            status: 400, 
+            error: 'Invalid input. Please check your information.' 
+          };
+        default:
+          return { 
+            status: error.response.status || 500,
+            error: error.response.data?.message || 'Failed to sign up. Please try again.'
+          };
+      }
+    }
+  }
+
   *signIn(email, password) {
     try {
       const api = apiFetcher();
@@ -227,12 +272,16 @@ export default class User {
         throw new Error('API client not initialized');
       }
 
-      yield api.post('/authenticator/landlord/forgotpassword', {
+      const response = yield api.post('/authenticator/landlord/forgotpassword', {
         email
       });
-      return 200;
+      return { status: response.status };
     } catch (error) {
-      return error.response?.status || 500;
+      console.error('Forgot password error:', error);
+      return {
+        status: error.response?.status || 500,
+        error: error.response?.data?.message || 'Failed to process forgot password request'
+      };
     }
   }
 
@@ -243,13 +292,17 @@ export default class User {
         throw new Error('API client not initialized');
       }
 
-      yield api.patch('/authenticator/landlord/resetpassword', {
+      const response = yield api.patch('/authenticator/landlord/resetpassword', {
         resetToken,
         password
       });
-      return 200;
+      return { status: response.status };
     } catch (error) {
-      return error.response?.status || 500;
+      console.error('Reset password error:', error);
+      return {
+        status: error.response?.status || 500,
+        error: error.response?.data?.message || 'Failed to reset password'
+      };
     }
   }
 }
