@@ -1,13 +1,12 @@
 import * as jose from 'jose';
-
 import { action, computed, flow, makeObservable, observable } from 'mobx';
-import { apiFetcher, authApiFetcher, setAccessToken } from '../utils/fetch';
-
+import { apiFetcher, setAccessToken } from '../utils/fetch';
 import { isServer } from '@microrealestate/commonui/utils';
 
 export const ADMIN_ROLE = 'administrator';
 export const RENTER_ROLE = 'renter';
 export const ROLES = [ADMIN_ROLE, RENTER_ROLE];
+
 export default class User {
   constructor() {
     this.token = undefined;
@@ -50,35 +49,36 @@ export default class User {
   }
 
   setUserFromToken(accessToken) {
-    const {
-      account: { firstname, lastname, email },
-      exp
-    } = jose.decodeJwt(accessToken);
-    this.firstName = firstname;
-    this.lastName = lastname;
-    this.email = email;
-    this.token = accessToken;
-    this.tokenExpiry = exp;
-    setAccessToken(accessToken);
-  }
+    if (!accessToken) {
+      throw new Error('No access token provided');
+    }
 
-  *signUp(firstname, lastname, email, password) {
     try {
-      yield apiFetcher().post('/authenticator/landlord/signup', {
-        firstname,
-        lastname,
-        email,
-        password
-      });
-      return 200;
+      const {
+        account: { firstname, lastname, email },
+        exp
+      } = jose.decodeJwt(accessToken);
+      
+      this.firstName = firstname;
+      this.lastName = lastname;
+      this.email = email;
+      this.token = accessToken;
+      this.tokenExpiry = exp;
+      setAccessToken(accessToken);
     } catch (error) {
-      return error.response.status;
+      console.error('Error decoding token:', error);
+      throw new Error('Invalid token format');
     }
   }
 
   *signIn(email, password) {
     try {
-      const response = yield apiFetcher().post(
+      const api = apiFetcher();
+      if (!api) {
+        throw new Error('API client not initialized');
+      }
+
+      const response = yield api.post(
         '/authenticator/landlord/signin',
         {
           email,
@@ -93,8 +93,7 @@ export default class User {
         throw new Error('No access token received');
       }
 
-      const { accessToken } = response.data;
-      this.setUserFromToken(accessToken);
+      this.setUserFromToken(response.data.accessToken);
       return { status: 200 };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -133,9 +132,33 @@ export default class User {
     }
   }
 
+  *signUp(firstname, lastname, email, password) {
+    try {
+      const api = apiFetcher();
+      if (!api) {
+        throw new Error('API client not initialized');
+      }
+
+      yield api.post('/authenticator/landlord/signup', {
+        firstname,
+        lastname,
+        email,
+        password
+      });
+      return 200;
+    } catch (error) {
+      return error.response.status;
+    }
+  }
+
   *signOut() {
     try {
-      yield apiFetcher().delete('/authenticator/landlord/signout');
+      const api = apiFetcher();
+      if (!api) {
+        throw new Error('API client not initialized');
+      }
+
+      yield api.delete('/authenticator/landlord/signout');
     } finally {
       this.firstName = null;
       this.lastName = null;
@@ -149,6 +172,11 @@ export default class User {
   *refreshTokens(context) {
     try {
       let response;
+      const api = apiFetcher();
+      if (!api) {
+        throw new Error('API client not initialized');
+      }
+
       // request to get the new tokens
       if (isServer()) {
         const authFetchApi = authApiFetcher(context.req.headers.cookie);
@@ -165,7 +193,7 @@ export default class User {
           context.res.setHeader('Set-Cookie', cookies);
         }
       } else {
-        response = yield apiFetcher().post(
+        response = yield api.post(
           '/authenticator/landlord/refreshtoken',
           {},
           {
@@ -231,7 +259,12 @@ export default class User {
 
   *forgotPassword(email) {
     try {
-      yield apiFetcher().post('/authenticator/landlord/forgotpassword', {
+      const api = apiFetcher();
+      if (!api) {
+        throw new Error('API client not initialized');
+      }
+
+      yield api.post('/authenticator/landlord/forgotpassword', {
         email
       });
       return 200;
@@ -242,7 +275,12 @@ export default class User {
 
   *resetPassword(resetToken, password) {
     try {
-      yield apiFetcher().patch('/authenticator/landlord/resetpassword', {
+      const api = apiFetcher();
+      if (!api) {
+        throw new Error('API client not initialized');
+      }
+
+      yield api.patch('/authenticator/landlord/resetpassword', {
         resetToken,
         password
       });

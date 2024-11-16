@@ -5,7 +5,7 @@ import config from '../config';
 import FileDownload from 'js-file-download';
 import { getStoreInstance } from '../store';
 
-let apiFetch;
+let apiFetch = null;
 let authApiFetch;
 const withCredentials = config.CORS_ENABLED;
 
@@ -51,25 +51,25 @@ const axiosResponseHandlers = [
 
 export const setAccessToken = (accessToken) => {
   apiFetcher();
-  if (accessToken) {
+  if (apiFetch && accessToken) {
     apiFetch.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-  } else if (accessToken === null) {
+  } else if (apiFetch) {
     delete apiFetch.defaults.headers.common['Authorization'];
   }
 };
 
 export const setOrganizationId = (organizationId) => {
   apiFetcher();
-  if (organizationId) {
+  if (apiFetch && organizationId) {
     apiFetch.defaults.headers.organizationId = organizationId;
-  } else if (organizationId === null) {
+  } else if (apiFetch) {
     delete apiFetch.defaults.headers.organizationId;
   }
 };
 
 export const setAcceptLanguage = (acceptLanguage) => {
   apiFetcher();
-  if (acceptLanguage) {
+  if (apiFetch && acceptLanguage) {
     apiFetch.defaults.headers['Accept-Language'] = acceptLanguage;
   }
 };
@@ -88,10 +88,12 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-const apiFetcher = () => {
+export const apiFetcher = () => {
   if (!apiFetch) {
-    const instance = axios.create({
-      baseURL: `${config.BASE_PATH}/api/v2`,
+    const baseURL = `${config.BASE_PATH}/api/v2`;
+
+    apiFetch = axios.create({
+      baseURL,
       timeout: 30000,
       withCredentials: true,
       headers: {
@@ -99,7 +101,7 @@ const apiFetcher = () => {
       },
     });
 
-    instance.interceptors.request.use(
+    apiFetch.interceptors.request.use(
       async (config) => {
         const store = getStoreInstance();
         const accessToken = store?.user?.accessToken;
@@ -113,24 +115,23 @@ const apiFetcher = () => {
       }
     );
 
-    instance.interceptors.response.use(
+    apiFetch.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
 
-        // Don't retry if it's not a 401 or it's already been retried
+        // Don't retry if it's not 401 or it's already been retried
         if (error.response?.status !== 401 || originalRequest._retry) {
           return Promise.reject(error);
         }
 
         // Don't retry if it's a refresh token request
         if (originalRequest.url.includes('/refreshtoken')) {
-          // Clear user data and redirect to login
           const store = getStoreInstance();
           if (store?.user) {
             store.user.signOut();
           }
-          if (!isServer()) {
+          if (!isServer() && window) {
             window.location.assign('/');
           }
           return Promise.reject(error);
@@ -142,7 +143,7 @@ const apiFetcher = () => {
               failedQueue.push({ resolve, reject });
             });
             originalRequest.headers.Authorization = `Bearer ${token}`;
-            return instance(originalRequest);
+            return apiFetch(originalRequest);
           } catch (err) {
             return Promise.reject(err);
           }
@@ -162,7 +163,7 @@ const apiFetcher = () => {
           processQueue(null, refreshResult.accessToken);
           originalRequest.headers.Authorization = `Bearer ${refreshResult.accessToken}`;
           
-          return instance(originalRequest);
+          return apiFetch(originalRequest);
         } catch (refreshError) {
           processQueue(refreshError, null);
           
@@ -172,7 +173,7 @@ const apiFetcher = () => {
             if (store?.user) {
               store.user.signOut();
             }
-            if (!isServer()) {
+            if (!isServer() && window) {
               window.location.assign('/');
             }
           }
@@ -185,10 +186,9 @@ const apiFetcher = () => {
     );
 
     // For logging purposes
-    instance.interceptors.response.use(...axiosResponseHandlers);
-
-    apiFetch = instance;
+    apiFetch.interceptors.response.use(...axiosResponseHandlers);
   }
+
   return apiFetch;
 };
 
