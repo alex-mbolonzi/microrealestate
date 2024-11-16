@@ -1,0 +1,8 @@
+# Use the official MongoDB image as a base
+FROM mongo:latest
+
+# Set the command to run MongoDB with specific options
+CMD ["mongod", "--bind_ip_all", "--quiet", "--logpath", "/dev/null"]
+
+# Expose the default MongoDB port
+EXPOSE 27017

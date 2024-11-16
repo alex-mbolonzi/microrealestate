@@ -1,0 +1,377 @@
+services:
+  # Gateway
+  - type: web
+    name: gateway
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./services/gateway/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: microrealestate
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+      - key: CORS_ENABLED
+        sync: false
+      - key: DOMAIN_URL
+        sync: false
+      - key: EXPOSE_FRONTENDS
+        value: true
+      - key: LOGGER_LEVEL
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: PRODUCTION
+        value: true
+      - key: REDIS_URL
+        sync: false
+      # - key: RESETSERVICE_URL
+      #   value: ${RESETSERVICE_URL}
+      - key: PORT
+        value: 8080
+      - key: GATEWAY_DEBUG_PORT
+        sync: false
+      - key: AUTHENTICATOR_URL
+        sync: false
+      - key: API_URL
+        sync: false
+      - key: PDFGENERATOR_URL
+        sync: false
+      - key: EMAILER_URL
+        sync: false
+      - key: LANDLORD_FRONTEND_URL
+        sync: false
+      - key: LANDLORD_BASE_PATH
+        sync: false
+      - key: TENANT_FRONTEND_URL
+        sync: false
+      - key: TENANT_BASE_PATH
+        sync: false
+      - key: TENANTAPI_URL
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
+    region: oregon
+
+  # Authenticator
+  - type: web
+    name: authenticator
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./services/authenticator/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: microrealestate
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
+      - key: APPCREDZ_TOKEN_SECRET
+        sync: false
+      - key: REFRESH_TOKEN_SECRET
+        sync: false
+      - key: RESET_TOKEN_SECRET
+        sync: false
+      - key: EMAILER_URL
+        sync: false
+      - key: LOGGER_LEVEL
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: PORT
+        value: 8000
+      - key: PRODUCTION
+        value: true
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_PASSWORD
+        value:
+      - key: SIGNUP
+        value: false
+      - key: TOKEN_COOKIE_ATTRIBUTES
+        sync: false
+      - key: AUTHENTICATOR_DEBUG_PORT
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: DOMAIN_URL
+        sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
+    region: oregon
+
+  # PDFGenerator
+  - type: web
+    name: pdfgenerator
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./services/pdfgenerator/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: microrealestate
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+      - key: CHROMIUM_BIN
+        sync: false
+      - key: DATA_DIRECTORY
+        sync: false
+      - key: LOGGER_LEVEL
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: PDF_DIRECTORY
+        sync: false
+      - key: PORT
+        value: 8300
+      - key: PRODUCTION
+        value: true
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: TEMPLATES_DIRECTORY
+        sync: false
+      - key: TEMPORARY_DIRECTORY
+        sync: false
+      - key: UPLOAD_MAX_SIZE
+        sync: false
+      - key: UPLOADS_DIRECTORY
+        sync: false
+      - key: PDFGENERATOR_DEBUG_PORT
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: CIPHER_IV_KEY
+        sync: false
+      - key: CIPHER_KEY
+        sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
+    region: oregon
+
+  # Emailer
+  - type: web
+    name: emailer
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./services/emailer/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: microrealestate
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+      - key: ALLOW_SENDING_EMAILS
+        sync: false
+      - key: APP_NAME
+        sync: false
+      - key: CIPHER_IV_KEY
+        sync: false
+      - key: CIPHER_KEY
+        sync: false
+      - key: LANDLORD_APP_URL
+        sync: false
+      - key: LOGGER_LEVEL
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: PDFGENERATOR_URL
+        sync: false
+      - key: PORT
+        value: 8400
+      - key: PRODUCTION
+        value: true
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: TEMPORARY_DIRECTORY
+        value: "/usr/app/services/emailer/tmp"
+      - key: TENANT_APP_URL
+        sync: false
+      - key: EMAILER_DEBUG_PORT
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: SMTP_SERVER
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_SECURE
+        value: "true"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_REPLY_TO
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_BCC
+        sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
+    region: oregon
+
+  # API
+  - type: web
+    name: api
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./services/api/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: microrealestate
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+      - key: CIPHER_IV_KEY
+        sync: false
+      - key: CIPHER_KEY
+        sync: false
+      - key: DEMO_MODE
+        sync: false
+      - key: EMAILER_URL
+        sync: false
+      - key: LOGGER_LEVEL
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: PDFGENERATOR_URL
+        sync: false
+      - key: PRODUCTION
+        value: false
+      - key: PORT
+        value: 8200
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: RESTORE_DB
+        sync: false
+      - key: API_DEBUG_PORT
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
+    region: oregon
+
+  # TenantAPI
+  - type: web
+    name: tenantapi
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./services/tenantapi/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: microrealestate
+      - key: ACCESS_TOKEN_SECRET
+        sync: false
+      - key: NODE_OPTIONS
+        value: --trace-warnings
+      - key: CIPHER_IV_KEY
+        sync: false
+      - key: CIPHER_KEY
+        value: false
+      - key: DEMO_MODE
+        sync: false
+      - key: LOGGER_LEVEL
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: PORT
+        value: 8250
+      - key: TENANTAPI_DEBUG_PORT
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
+    region: oregon
+
+  # Landlord Frontend
+  - type: web
+    name: landlord-frontend
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./webapps/landlord/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: microrealestate
+      - key: PORT
+        value: 8180
+      - key: BASE_PATH
+        value: "/landlord"
+      - key: DOCKER_GATEWAY_URL
+        sync: false
+      - key: APP_NAME
+        sync: false
+      - key: CORS_ENABLED
+        sync: false
+      - key: DEMO_MODE
+        sync: false
+      - key: GATEWAY_URL
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: SIGNUP
+        sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
+    region: oregon
+
+  # Tenant Frontend
+  - type: web
+    name: tenant-frontend
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./webapps/tenant/Dockerfile
+    # rootDir: .
+    plan: free
+    envVars:
+      - fromGroup: microrealestate
+      - key: BASE_PATH
+        value: "/tenant"
+      - key: PORT
+        value: 8190
+      # - key: DOCKER_GATEWAY_URL
+      #   sync: false
+      - key: APP_NAME
+        sync: false
+      - key: CORS_ENABLED
+        sync: false
+      - key: DEMO_MODE
+        sync: false
+      - key: GATEWAY_URL
+        sync: false
+      - key: NODE_ENV
+        sync: false
+      - key: SIGNUP
+        sync: false
+      - key: PROJECT
+        value: "Bomatech"
+      - key: ENVIRONMENT
+        value: "Production"
+      # - key: DOMAIN_URL
+      #   sync: false
+    region: oregon

@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c
+    kompose.version: 1.34.0 (HEAD)
+  labels:
+    app: landlord-frontend
+  name: landlord-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: landlord-frontend
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c
+        kompose.version: 1.34.0 (HEAD)
+      labels:
+        app: landlord-frontend
+    spec:
+      containers:
+        - env:
+            - name: BASE_PATH
+              value: "/landlord"
+            - name: PORT
+              value: "8180"
+            # - name: DOCKER_GATEWAY_URL
+            #   value: "http://localhost:8080"
+            - name: APP_NAME
+              value: "Bomatech"
+            - name: CORS_ENABLED
+              value: "false"
+            - name: DEMO_MODE
+              value: "false"
+            - name: GATEWAY_URL
+              value: "http://79.72.67.125:80"
+            - name: NODE_ENV
+              value: "production"
+            - name: SIGNUP
+              value: "true"
+          image: ghcr.io/alex-mbolonzi/microrealestate/landlord-frontend:latest
+          name: landlord-frontend
+          ports:
+            - containerPort: 8180
+              protocol: TCP
+      restartPolicy: Always

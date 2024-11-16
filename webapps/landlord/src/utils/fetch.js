@@ -1,139 +1,190 @@
 import axios, { Cancel } from 'axios';
+import config from '../config';
+import { getStoreInstance } from '../store';
 import { isClient, isServer } from '@microrealestate/commonui/utils';
 
-import config from '../config';
-import FileDownload from 'js-file-download';
-import { getStoreInstance } from '../store';
-
-let apiFetch;
-let authApiFetch;
-const withCredentials = config.CORS_ENABLED;
-
+// Basic response logging
 const axiosResponseHandlers = [
-  (response) => {
-    if (response?.config?.method && response?.config?.url && response?.status) {
-      console.log(
-        `${response.config.method.toUpperCase()} ${response.config.url} ${
-          response.status
-        }`
-      );
-    }
-    return response;
-  },
-  (error) => {
-    if (
-      error?.config?.method &&
-      error?.response?.url &&
-      error?.response?.status
-    ) {
-      console.error(
-        `${error.config.method.toUpperCase()} ${error.config.url} ${
-          error.response.status
-        }`
-      );
-    } else if (
-      error?.response?.config?.method &&
-      error?.response?.config?.url &&
-      error?.response?.status &&
-      error?.response?.statusText
-    ) {
-      console.error(
-        `${error.response.config.method.toUpperCase()} ${
-          error.response.config.url
-        } ${error.response.status} ${error.response.statusText}`
-      );
-    } else {
-      console.error(error.message || error);
-    }
-    return Promise.reject(error);
-  }
+  response => response,
+  error => Promise.reject(error)
 ];
 
+const createAuthApi = (cookie = '') => {
+  const api = axios.create({
+    baseURL: config.BASE_PATH,
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(cookie ? { Cookie: cookie } : {})
+    }
+  });
+
+  let isRefreshing = false;
+  let failedQueue = [];
+
+  const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+      if (error) {
+        prom.reject(error);
+      } else {
+        prom.resolve(token);
+      }
+    });
+    failedQueue = [];
+  };
+
+  api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const originalRequest = error.config;
+
+      // Only retry for 403 errors that haven't been retried yet
+      if (error.response?.status === 403 && !originalRequest._retry) {
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          }).then((token) => {
+            originalRequest.headers['Authorization'] = `Bearer ${token}`;
+            return api(originalRequest);
+          }).catch((err) => {
+            return Promise.reject(err);
+          });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          // Ensure cookies are sent with the refresh request
+          const response = await api.post('/authenticator/landlord/refreshtoken', {}, {
+            withCredentials: true,
+            headers: {
+              ...(cookie ? { Cookie: cookie } : {}),
+              'Content-Type': 'application/json'
+            },
+            _retry: true
+          });
+
+          const { accessToken } = response.data;
+          if (!accessToken) {
+            throw new Error('No access token received');
+          }
+
+          // Update authorization header for future requests
+          api.defaults.headers['Authorization'] = `Bearer ${accessToken}`;
+          originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+
+          // Process any queued requests
+          processQueue(null, accessToken);
+
+          return api(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          
+          // Clear auth state and redirect to login on refresh failure
+          if (typeof window !== 'undefined') {
+            const store = getStoreInstance();
+            if (store?.user) {
+              store.user.signOut().then(() => {
+                window.location.assign('/');
+              });
+            } else {
+              window.location.assign('/');
+            }
+          }
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+
+  return api;
+};
+
+let apiFetch = null;
+let isRefreshingToken = false;
+let requestQueue = [];
+
 export const setAccessToken = (accessToken) => {
-  apiFetcher();
-  if (accessToken) {
+  if (apiFetch && accessToken) {
     apiFetch.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-  } else if (accessToken === null) {
+  } else if (apiFetch) {
     delete apiFetch.defaults.headers.common['Authorization'];
   }
 };
 
 export const setOrganizationId = (organizationId) => {
-  apiFetcher();
-  if (organizationId) {
-    apiFetch.defaults.headers.organizationId = organizationId;
-  } else if (organizationId === null) {
-    delete apiFetch.defaults.headers.organizationId;
-  }
-};
-
-export const setAcceptLanguage = (acceptLanguage) => {
-  apiFetcher();
-  if (acceptLanguage) {
-    apiFetch.defaults.headers['Accept-Language'] = acceptLanguage;
+  if (apiFetch && organizationId) {
+    apiFetch.defaults.headers['organization-id'] = organizationId;
+  } else if (apiFetch) {
+    delete apiFetch.defaults.headers['organization-id'];
   }
 };
 
 export const apiFetcher = () => {
   if (!apiFetch) {
-    // create an axios instance
-    const baseURL = `${
-      isServer()
-        ? config.DOCKER_GATEWAY_URL || config.GATEWAY_URL
-        : config.GATEWAY_URL
-    }/api/v2`;
+    const baseURL = isServer() 
+      ? config.DOCKER_GATEWAY_URL || config.GATEWAY_URL
+      : config.BASE_PATH || '';
 
-    if (isClient()) {
-      const webAppUrl = new URL(window.location.href);
-      const gatewayUrl = new URL(baseURL);
-
-      if (webAppUrl.origin !== gatewayUrl.origin) {
-        console.error(
-          `-----------------------------------------------------------------------------------------------------
-| 🚨 Important! 🚨                                                                                   |
------------------------------------------------------------------------------------------------------
-Origin mismatch between webapp and api endpoint: ${webAppUrl.origin} vs ${gatewayUrl.origin}
-Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${webAppUrl.port}.
------------------------------------------------------------------------------------------------------`
-        );
-      }
-    }
     apiFetch = axios.create({
-      baseURL,
-      withCredentials
+      baseURL: `${baseURL}/api/v2`,
+      timeout: 30000,
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
-    // manage refresh token on 401
-    let isRefreshingToken = false;
-    let requestQueue = []; // used when parallel requests
+    // Add request interceptor for auth token
+    apiFetch.interceptors.request.use(
+      async (config) => {
+        const store = getStoreInstance();
+        const accessToken = store?.user?.token;
+        if (accessToken) {
+          config.headers.Authorization = `Bearer ${accessToken}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
     apiFetch.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
 
-        const isLoginRequest =
-          originalRequest?.url === '/authenticator/landlord/signin' &&
-          originalRequest?.method === 'post';
+        // Handle network errors
+        if (!error.response) {
+          console.error('Network error:', error);
+          return Promise.reject(new Error('Network error. Please check your connection.'));
+        }
 
-        // Try to to refresh token once get 401
+        const isAuthRequest = [
+          '/authenticator/landlord/signin',
+          '/authenticator/landlord/refreshtoken',
+          '/authenticator/landlord/signout'
+        ].includes(originalRequest?.url);
+
+        // Try to refresh token on 401 or 403 (except for auth requests)
         if (
-          error.response?.status === 401 &&
-          !isLoginRequest &&
+          (error.response?.status === 401 || error.response?.status === 403) &&
+          !isAuthRequest &&
           !originalRequest._retry
         ) {
           if (isRefreshingToken) {
-            // queued incomming request while refresh token is running
-            return new Promise(function (resolve, reject) {
-              requestQueue.push({ resolve, reject });
-            })
-              .then(async () => {
-                // use latest authorization token
-                originalRequest.headers['Authorization'] =
-                  apiFetch.defaults.headers.common['Authorization'];
-
-                return apiFetch(originalRequest);
-              })
-              .catch((err) => Promise.reject(err));
+            try {
+              await new Promise((resolve, reject) => {
+                requestQueue.push({ resolve, reject });
+              });
+              return apiFetch(originalRequest);
+            } catch (err) {
+              return Promise.reject(err);
+            }
           }
 
           originalRequest._retry = true;
@@ -141,43 +192,62 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
 
           try {
             const store = getStoreInstance();
-            await store.user.refreshTokens();
+            const refreshResult = await store.user.refreshTokens();
 
-            // run all requests queued
-            requestQueue.forEach((request) => {
-              request.resolve();
-            });
+            if (refreshResult.status === 200 && refreshResult.accessToken) {
+              // Update auth headers with new token
+              setAccessToken(refreshResult.accessToken);
 
-            // use latest authorization token
-            originalRequest.headers['Authorization'] =
-              apiFetch.defaults.headers.common['Authorization'];
+              // Process queued requests
+              requestQueue.forEach(request => request.resolve());
+              requestQueue = [];
 
-            return apiFetch(originalRequest);
+              // Retry original request with new token
+              originalRequest.headers.Authorization = `Bearer ${refreshResult.accessToken}`;
+              return apiFetch(originalRequest);
+            }
+
+            // Handle refresh failure
+            requestQueue.forEach(request => 
+              request.reject(new Error('Token refresh failed'))
+            );
+            requestQueue = [];
+
+            if (isClient()) {
+              await store.user.signOut();
+              window.location.assign('/signin');
+            }
+            throw new Error('Token refresh failed');
+          } catch (refreshError) {
+            requestQueue.forEach(request => request.reject(refreshError));
+            requestQueue = [];
+
+            if (isClient()) {
+              const store = getStoreInstance();
+              await store.user.signOut();
+              window.location.assign('/signin');
+            }
+            throw refreshError;
           } finally {
             isRefreshingToken = false;
-            requestQueue = [];
           }
         }
-        return Promise.reject(error);
-      }
-    );
 
-    // force signin on 403
-    apiFetch.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        // Force signin if an api responded 403
-        if (error.response?.status === 403) {
+        // Handle 403 on auth requests
+        if (error.response?.status === 403 && isAuthRequest) {
           if (isClient()) {
-            window.location.assign(`${config.BASE_PATH}`);
+            const store = getStoreInstance();
+            await store.user.signOut();
+            window.location.assign('/signin');
           }
-          throw new Cancel('Operation canceled force login');
+          return Promise.reject(error);
         }
+
         return Promise.reject(error);
       }
     );
 
-    // For logging purposes
+    // Add basic response logging
     apiFetch.interceptors.response.use(...axiosResponseHandlers);
   }
   return apiFetch;
@@ -188,61 +258,12 @@ export const authApiFetcher = (cookie) => {
     return;
   }
 
-  const axiosConfig = {
-    baseURL: `${config.DOCKER_GATEWAY_URL || config.GATEWAY_URL}/api/v2`,
-    withCredentials
-  };
-  if (cookie) {
-    axiosConfig.headers = { cookie };
-  }
-  authApiFetch = axios.create(axiosConfig);
-
-  // For logging purposes
-  authApiFetch.interceptors.response.use(...axiosResponseHandlers);
-
-  return authApiFetch;
-};
-
-export const buildFetchError = (error) => {
-  return {
-    error: {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      headers: error.response?.headers,
-      request: {
-        url: error.response?.config?.url,
-        method: error.response?.config?.method,
-        headers: error.response?.config?.headers,
-        baseURL: error.response?.config?.baseURL,
-        withCredentials: error.response?.config?.withCredentials
-      }
-    }
-  };
-};
-
-export const downloadDocument = async ({ endpoint, documentName }) => {
-  const response = await apiFetcher().get(endpoint, {
-    responseType: 'blob'
-  });
-  FileDownload(response.data, documentName);
-};
-
-export const uploadDocument = async ({
-  endpoint,
-  documentName,
-  file,
-  folder
-}) => {
-  const formData = new FormData();
-  if (folder) {
-    formData.append('folder', folder);
-  }
-  formData.append('fileName', documentName);
-  formData.append('file', file);
-  return await apiFetcher().post(endpoint, formData, {
+  const baseURL = config.DOCKER_GATEWAY_URL || config.GATEWAY_URL;
+  
+  return axios.create({
+    baseURL: `${baseURL}/api/v2`,
     headers: {
-      timeout: 30000,
-      'Content-Type': 'multipart/form-data'
-    }
+      Cookie: cookie,
+    },
   });
 };

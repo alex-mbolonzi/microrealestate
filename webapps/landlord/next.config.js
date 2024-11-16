@@ -18,6 +18,9 @@ module.exports = nextTranslate({
       '../../node_modules/pdfjs-dist/legacy/build/pdf'
     );
 
+    // Add @ alias for src directory
+    config.resolve.alias['@'] = path.join(__dirname, 'src');
+
     return config;
   },
   // base path cannot be set at runtime: https://github.com/vercel/next.js/discussions/41769
