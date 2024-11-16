@@ -34,7 +34,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/rents/upload', {
+      const response = await fetch('/api/v2/rents/upload', {
         method: 'POST',
         body: formData,
       });
