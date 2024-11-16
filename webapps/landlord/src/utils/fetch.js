@@ -90,41 +90,21 @@ const processQueue = (error, token = null) => {
 
 const apiFetcher = () => {
   if (!apiFetch) {
-    // create an axios instance
-    const baseURL = `${
-      isServer()
-        ? config.DOCKER_GATEWAY_URL || config.GATEWAY_URL
-        : config.GATEWAY_URL
-    }/api/v2`;
-
-    if (isClient()) {
-      const webAppUrl = new URL(window.location.href);
-      const gatewayUrl = new URL(baseURL);
-
-      if (webAppUrl.origin !== gatewayUrl.origin) {
-        console.error(
-          `-----------------------------------------------------------------------------------------------------
-| 🚨 Important! 🚨                                                                                   |
------------------------------------------------------------------------------------------------------
-Origin mismatch between webapp and api endpoint: ${webAppUrl.origin} vs ${gatewayUrl.origin}
-Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${webAppUrl.port}.
------------------------------------------------------------------------------------------------------`
-        );
-      }
-    }
-
-    apiFetch = axios.create({
-      baseURL,
-      withCredentials
+    const instance = axios.create({
+      baseURL: `${config.BASE_PATH}/api/v2`,
+      timeout: 30000,
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
-    // Add request interceptor to ensure token is set
-    apiFetch.interceptors.request.use(
+    instance.interceptors.request.use(
       async (config) => {
         const store = getStoreInstance();
         const accessToken = store?.user?.accessToken;
         if (accessToken) {
-          config.headers['Authorization'] = `Bearer ${accessToken}`;
+          config.headers.Authorization = `Bearer ${accessToken}`;
         }
         return config;
       },
@@ -133,14 +113,26 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
       }
     );
 
-    // manage refresh token on 401
-    apiFetch.interceptors.response.use(
+    instance.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
 
-        // If error is not 401 or request already retried, reject
+        // Don't retry if it's not a 401 or it's already been retried
         if (error.response?.status !== 401 || originalRequest._retry) {
+          return Promise.reject(error);
+        }
+
+        // Don't retry if it's a refresh token request
+        if (originalRequest.url.includes('/refreshtoken')) {
+          // Clear user data and redirect to login
+          const store = getStoreInstance();
+          if (store?.user) {
+            store.user.signOut();
+          }
+          if (!isServer()) {
+            window.location.assign('/');
+          }
           return Promise.reject(error);
         }
 
@@ -150,7 +142,7 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
               failedQueue.push({ resolve, reject });
             });
             originalRequest.headers.Authorization = `Bearer ${token}`;
-            return apiFetch(originalRequest);
+            return instance(originalRequest);
           } catch (err) {
             return Promise.reject(err);
           }
@@ -170,11 +162,21 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
           processQueue(null, refreshResult.accessToken);
           originalRequest.headers.Authorization = `Bearer ${refreshResult.accessToken}`;
           
-          return apiFetch(originalRequest);
+          return instance(originalRequest);
         } catch (refreshError) {
           processQueue(refreshError, null);
-          // If refresh fails, redirect to login
-          window.location.assign(`${config.BASE_PATH}`);
+          
+          // Handle 403 specifically
+          if (refreshError?.response?.status === 403) {
+            const store = getStoreInstance();
+            if (store?.user) {
+              store.user.signOut();
+            }
+            if (!isServer()) {
+              window.location.assign('/');
+            }
+          }
+          
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
@@ -183,7 +185,9 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
     );
 
     // For logging purposes
-    apiFetch.interceptors.response.use(...axiosResponseHandlers);
+    instance.interceptors.response.use(...axiosResponseHandlers);
+
+    apiFetch = instance;
   }
   return apiFetch;
 };

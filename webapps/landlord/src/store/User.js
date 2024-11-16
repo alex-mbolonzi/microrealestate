@@ -113,7 +113,11 @@ export default class User {
       if (isServer()) {
         const authFetchApi = authApiFetcher(context.req.headers.cookie);
         response = yield authFetchApi.post(
-          '/authenticator/landlord/refreshtoken'
+          '/authenticator/landlord/refreshtoken',
+          {},
+          {
+            withCredentials: true
+          }
         );
 
         const cookies = response.headers['set-cookie'];
@@ -122,7 +126,11 @@ export default class User {
         }
       } else {
         response = yield apiFetcher().post(
-          '/authenticator/landlord/refreshtoken'
+          '/authenticator/landlord/refreshtoken',
+          {},
+          {
+            withCredentials: true
+          }
         );
       }
 
@@ -132,6 +140,11 @@ export default class User {
         this.setUserFromToken(accessToken);
         return { status: 200, accessToken };
       }
+
+      // If no token but response is OK, try to sign in again
+      if (response?.status === 200) {
+        return { status: 401, error: new Error('Session expired. Please sign in again.') };
+      }
       
       // Clear user data if no token
       this.firstName = undefined;
@@ -140,8 +153,27 @@ export default class User {
       this.token = undefined;
       this.tokenExpiry = undefined;
       setAccessToken(null);
-      return { status: 401, error: new Error('No access token in response') };
+      return { status: 401, error: new Error('Authentication failed') };
     } catch (error) {
+      console.error('Token refresh error:', error);
+      
+      // Handle specific error cases
+      if (error?.response?.status === 403) {
+        // Clear user data and redirect to login
+        this.firstName = undefined;
+        this.lastName = undefined;
+        this.email = undefined;
+        this.token = undefined;
+        this.tokenExpiry = undefined;
+        setAccessToken(null);
+        
+        if (!isServer()) {
+          window.location.assign('/');
+        }
+        
+        return { status: 403, error: new Error('Session expired. Please sign in again.') };
+      }
+      
       // Clear user data on error
       this.firstName = undefined;
       this.lastName = undefined;
@@ -149,7 +181,11 @@ export default class User {
       this.token = undefined;
       this.tokenExpiry = undefined;
       setAccessToken(null);
-      return { status: error?.response?.status || 500, error };
+      
+      return { 
+        status: error?.response?.status || 500, 
+        error: new Error(error?.response?.data?.message || 'Failed to refresh session')
+      };
     }
   }
 
