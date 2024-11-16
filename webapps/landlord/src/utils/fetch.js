@@ -98,10 +98,26 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
         );
       }
     }
+
     apiFetch = axios.create({
       baseURL,
       withCredentials
     });
+
+    // Add request interceptor to ensure token is set
+    apiFetch.interceptors.request.use(
+      (config) => {
+        const store = getStoreInstance();
+        const token = store?.user?.accessToken;
+        if (token) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
 
     // manage refresh token on 401
     let isRefreshingToken = false;
@@ -127,10 +143,11 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
               requestQueue.push({ resolve, reject });
             })
               .then(async () => {
-                // use latest authorization token
-                originalRequest.headers['Authorization'] =
-                  apiFetch.defaults.headers.common['Authorization'];
-
+                const store = getStoreInstance();
+                const token = store?.user?.accessToken;
+                if (token) {
+                  originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                }
                 return apiFetch(originalRequest);
               })
               .catch((err) => Promise.reject(err));
@@ -148,9 +165,10 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
               request.resolve();
             });
 
-            // use latest authorization token
-            originalRequest.headers['Authorization'] =
-              apiFetch.defaults.headers.common['Authorization'];
+            const token = store?.user?.accessToken;
+            if (token) {
+              originalRequest.headers['Authorization'] = `Bearer ${token}`;
+            }
 
             return apiFetch(originalRequest);
           } finally {

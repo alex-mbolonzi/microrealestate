@@ -35,23 +35,35 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
 
     setLoading(true);
     try {
+      // First ensure we have valid tokens
+      try {
+        await store.user.refreshTokens();
+        console.log('Tokens refreshed successfully');
+      } catch (refreshError) {
+        console.error('Initial token refresh failed:', refreshError);
+        toast.error(t('Authentication error. Please log in again.'));
+        window.location.assign(`${config.BASE_PATH}`);
+        return;
+      }
+
       const formData = new FormData();
       formData.append('file', file);
 
-      // Ensure we have a valid token
+      // Get the latest token after refresh
       const accessToken = store.user?.accessToken;
       if (!accessToken) {
-        console.log('No access token found, attempting to refresh...');
-        await store.user.refreshTokens();
+        throw new Error('No access token available after refresh');
       }
 
-      // Get fresh instance of apiFetcher with current token
+      console.log('Using access token:', accessToken);
+
+      // Get fresh instance of apiFetcher
       const api = apiFetcher();
       
       const { data } = await api.post('/rents/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${store.user?.accessToken}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         timeout: 300000, // 5 minutes timeout
         maxContentLength: Infinity,
@@ -101,7 +113,9 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
           return;
         }
       } else {
-        toast.error(error.response?.data?.message || error.message || t('Failed to upload file'));
+        const errorMessage = error.response?.data?.message || error.message;
+        console.error('Upload error details:', errorMessage);
+        toast.error(errorMessage || t('Failed to upload file'));
       }
     } finally {
       setLoading(false);
