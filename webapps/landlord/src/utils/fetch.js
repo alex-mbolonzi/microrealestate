@@ -74,7 +74,21 @@ export const setAcceptLanguage = (acceptLanguage) => {
   }
 };
 
-export const apiFetcher = () => {
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+const apiFetcher = () => {
   if (!apiFetch) {
     // create an axios instance
     const baseURL = `${
@@ -106,11 +120,11 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
 
     // Add request interceptor to ensure token is set
     apiFetch.interceptors.request.use(
-      (config) => {
+      async (config) => {
         const store = getStoreInstance();
-        const token = store?.user?.accessToken;
-        if (token) {
-          config.headers['Authorization'] = `Bearer ${token}`;
+        const accessToken = store?.user?.accessToken;
+        if (accessToken) {
+          config.headers['Authorization'] = `Bearer ${accessToken}`;
         }
         return config;
       },
@@ -120,78 +134,51 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
     );
 
     // manage refresh token on 401
-    let isRefreshingToken = false;
-    let requestQueue = []; // used when parallel requests
     apiFetch.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
 
-        const isLoginRequest =
-          originalRequest?.url === '/authenticator/landlord/signin' &&
-          originalRequest?.method === 'post';
+        // If error is not 401 or request already retried, reject
+        if (error.response?.status !== 401 || originalRequest._retry) {
+          return Promise.reject(error);
+        }
 
-        // Try to to refresh token once get 401
-        if (
-          error.response?.status === 401 &&
-          !isLoginRequest &&
-          !originalRequest._retry
-        ) {
-          if (isRefreshingToken) {
-            // queued incomming request while refresh token is running
-            return new Promise(function (resolve, reject) {
-              requestQueue.push({ resolve, reject });
-            })
-              .then(async () => {
-                const store = getStoreInstance();
-                const token = store?.user?.accessToken;
-                if (token) {
-                  originalRequest.headers['Authorization'] = `Bearer ${token}`;
-                }
-                return apiFetch(originalRequest);
-              })
-              .catch((err) => Promise.reject(err));
-          }
-
-          originalRequest._retry = true;
-          isRefreshingToken = true;
-
+        if (isRefreshing) {
           try {
-            const store = getStoreInstance();
-            await store.user.refreshTokens();
-
-            // run all requests queued
-            requestQueue.forEach((request) => {
-              request.resolve();
+            const token = await new Promise((resolve, reject) => {
+              failedQueue.push({ resolve, reject });
             });
-
-            const token = store?.user?.accessToken;
-            if (token) {
-              originalRequest.headers['Authorization'] = `Bearer ${token}`;
-            }
-
+            originalRequest.headers.Authorization = `Bearer ${token}`;
             return apiFetch(originalRequest);
-          } finally {
-            isRefreshingToken = false;
-            requestQueue = [];
+          } catch (err) {
+            return Promise.reject(err);
           }
         }
-        return Promise.reject(error);
-      }
-    );
 
-    // force signin on 403
-    apiFetch.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        // Force signin if an api responded 403
-        if (error.response?.status === 403) {
-          if (isClient()) {
-            window.location.assign(`${config.BASE_PATH}`);
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          const store = getStoreInstance();
+          const refreshResult = await store.user.refreshTokens();
+          
+          if (refreshResult.status !== 200 || !refreshResult.accessToken) {
+            throw new Error('Token refresh failed');
           }
-          throw new Cancel('Operation canceled force login');
+
+          processQueue(null, refreshResult.accessToken);
+          originalRequest.headers.Authorization = `Bearer ${refreshResult.accessToken}`;
+          
+          return apiFetch(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          // If refresh fails, redirect to login
+          window.location.assign(`${config.BASE_PATH}`);
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
         }
-        return Promise.reject(error);
       }
     );
 
@@ -199,6 +186,43 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${w
     apiFetch.interceptors.response.use(...axiosResponseHandlers);
   }
   return apiFetch;
+};
+
+export const isTokenValid = (token) => {
+  if (!token) return false;
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+
+    const { exp } = JSON.parse(jsonPayload);
+    const currentTime = Math.floor(Date.now() / 1000);
+    
+    // Consider token expired if less than 30 seconds remaining
+    return exp > (currentTime + 30);
+  } catch (e) {
+    return false;
+  }
+};
+
+export const ensureValidToken = async () => {
+  const store = getStoreInstance();
+  const currentToken = store.user?.accessToken;
+  if (!isTokenValid(currentToken)) {
+    try {
+      const refreshResult = await store.user.refreshTokens();
+      if (refreshResult.status !== 200 || !refreshResult.accessToken) {
+        throw new Error('Token refresh failed');
+      }
+      return refreshResult.accessToken;
+    } catch (error) {
+      window.location.assign(`${config.BASE_PATH}`);
+      throw error;
+    }
+  }
+  return currentToken;
 };
 
 export const authApiFetcher = (cookie) => {

@@ -93,6 +93,23 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     return results;
   };
 
+  const ensureValidToken = async () => {
+    let refreshResult;
+    try {
+      refreshResult = await store.user.refreshTokens();
+      if (refreshResult.status !== 200 || !refreshResult.accessToken) {
+        throw new Error('Token refresh failed: ' + (refreshResult.error?.message || 'Unknown error'));
+      }
+      console.log('Tokens refreshed successfully');
+      return refreshResult.accessToken;
+    } catch (refreshError) {
+      console.error('Initial token refresh failed:', refreshError);
+      toast.error(t('Authentication error. Please log in again.'));
+      window.location.assign(`${config.BASE_PATH}`);
+      return null;
+    }
+  };
+
   const handleUpload = async () => {
     if (!file) {
       toast.error(t('Please select a CSV file first'));
@@ -103,19 +120,10 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     setProgress(0);
 
     try {
-      // First ensure we have valid tokens
-      let refreshResult;
-      try {
-        refreshResult = await store.user.refreshTokens();
-        if (refreshResult.status !== 200 || !refreshResult.accessToken) {
-          throw new Error('Token refresh failed: ' + (refreshResult.error?.message || 'Unknown error'));
-        }
-        console.log('Tokens refreshed successfully');
-      } catch (refreshError) {
-        console.error('Initial token refresh failed:', refreshError);
-        toast.error(t('Authentication error. Please log in again.'));
-        window.location.assign(`${config.BASE_PATH}`);
-        return;
+      // Ensure we have a valid token before starting the upload
+      const token = await ensureValidToken();
+      if (!token) {
+        throw new Error('Failed to get valid token');
       }
 
       // Read and parse CSV file
@@ -130,15 +138,20 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
           obj[header.trim()] = values[index]?.trim() || '';
           return obj;
         }, {});
-      });
+      }).filter(payment => payment.tenant_id && payment.payment_date && payment.amount);
 
+      if (payments.length === 0) {
+        throw new Error('No valid payments found in CSV');
+      }
+
+      console.log(`Processing ${payments.length} payments in chunks of ${CHUNK_SIZE}`);
+      
       // Process payments in chunks
-      const results = await processPaymentsInChunks(payments, refreshResult.accessToken);
+      const results = await processPaymentsInChunks(payments, token);
 
       // Handle results
       if (results.failed && results.failed.length > 0) {
         toast.error(t('Some payments failed to process. Check the error report.'));
-        // Download failed records CSV if available
         if (results.failedRecordsCsv) {
           const blob = new Blob([results.failedRecordsCsv], { type: 'text/csv' });
           const url = window.URL.createObjectURL(blob);
