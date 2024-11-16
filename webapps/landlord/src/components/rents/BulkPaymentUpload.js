@@ -10,10 +10,13 @@ import { apiFetcher } from '../../utils/fetch';
 import { StoreContext } from '../../store';
 import config from '../../config';
 
+const CHUNK_SIZE = 5; // Process 5 payments at a time
+
 export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
   const { t } = useTranslation('common');
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const fileInputRef = useRef(null);
   const store = useContext(StoreContext);
 
@@ -27,6 +30,69 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     }
   };
 
+  const processPaymentsInChunks = async (payments, accessToken) => {
+    const results = {
+      successful: [],
+      failed: [],
+      failedRecordsCsv: null
+    };
+
+    // Process in chunks
+    for (let i = 0; i < payments.length; i += CHUNK_SIZE) {
+      const chunk = payments.slice(i, i + CHUNK_SIZE);
+      try {
+        const api = apiFetcher();
+        const response = await api.post('/rents/upload', 
+          { payments: chunk },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
+            },
+            timeout: 60000, // 1 minute timeout per chunk
+          }
+        );
+
+        // Merge results
+        results.successful = [...results.successful, ...(response.data.successful || [])];
+        results.failed = [...results.failed, ...(response.data.failed || [])];
+        if (response.data.failedRecordsCsv) {
+          results.failedRecordsCsv = results.failedRecordsCsv || '';
+          results.failedRecordsCsv += response.data.failedRecordsCsv;
+        }
+
+        // Update progress
+        const newProgress = Math.min(((i + chunk.length) / payments.length) * 100, 100);
+        setProgress(newProgress);
+        
+        // Show progress toast
+        toast.info(
+          t('Processing payments: {{processed}} of {{total}}', {
+            processed: i + chunk.length,
+            total: payments.length
+          })
+        );
+
+      } catch (error) {
+        console.error('Chunk processing error:', error);
+        // Mark all payments in failed chunk as failed
+        results.failed = [
+          ...results.failed,
+          ...chunk.map(payment => ({
+            ...payment,
+            error: error.message || 'Failed to process payment',
+            status: 'failed'
+          }))
+        ];
+      }
+
+      // Small delay between chunks
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    return results;
+  };
+
   const handleUpload = async () => {
     if (!file) {
       toast.error(t('Please select a CSV file first'));
@@ -34,6 +100,8 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     }
 
     setLoading(true);
+    setProgress(0);
+
     try {
       // First ensure we have valid tokens
       let refreshResult;
@@ -50,27 +118,29 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         return;
       }
 
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // Get fresh instance of apiFetcher
-      const api = apiFetcher();
+      // Read and parse CSV file
+      const text = await file.text();
+      const lines = text.split('\\n').filter(line => line.trim());
+      const headers = lines[0].split(',');
       
-      const { data } = await api.post('/rents/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${refreshResult.accessToken}`,
-        },
-        timeout: 300000, // 5 minutes timeout
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
+      // Parse CSV into array of objects
+      const payments = lines.slice(1).map(line => {
+        const values = line.split(',');
+        return headers.reduce((obj, header, index) => {
+          obj[header.trim()] = values[index]?.trim() || '';
+          return obj;
+        }, {});
       });
 
-      if (data.failed && data.failed.length > 0) {
+      // Process payments in chunks
+      const results = await processPaymentsInChunks(payments, refreshResult.accessToken);
+
+      // Handle results
+      if (results.failed && results.failed.length > 0) {
         toast.error(t('Some payments failed to process. Check the error report.'));
         // Download failed records CSV if available
-        if (data.failedRecordsCsv) {
-          const blob = new Blob([data.failedRecordsCsv], { type: 'text/csv' });
+        if (results.failedRecordsCsv) {
+          const blob = new Blob([results.failedRecordsCsv], { type: 'text/csv' });
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
@@ -84,11 +154,11 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         toast.success(t('All payments processed successfully'));
       }
 
-      // Show summary toast
+      // Show final summary
       toast.info(
         t('Upload Summary: {{successful}} successful, {{failed}} failed', {
-          successful: data.summary?.successful || 0,
-          failed: data.summary?.failed || 0
+          successful: results.successful.length,
+          failed: results.failed.length
         })
       );
 
@@ -96,29 +166,10 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       onClose();
     } catch (error) {
       console.error('Upload error:', error);
-      
-      if (error.response?.status === 401) {
-        console.log('Received 401 during upload, attempting token refresh...');
-        try {
-          const refreshResult = await store.user.refreshTokens();
-          if (refreshResult.status === 200 && refreshResult.accessToken) {
-            toast.info(t('Session renewed. Please try uploading again.'));
-          } else {
-            throw new Error('Token refresh failed');
-          }
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          toast.error(t('Session expired. Please log in again.'));
-          window.location.assign(`${config.BASE_PATH}`);
-          return;
-        }
-      } else {
-        const errorMessage = error.response?.data?.message || error.message;
-        console.error('Upload error details:', errorMessage);
-        toast.error(errorMessage || t('Failed to upload file'));
-      }
+      toast.error(error.message || t('Failed to upload file'));
     } finally {
       setLoading(false);
+      setProgress(0);
       setFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = null;
@@ -187,12 +238,21 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
               </p>
             )}
 
+            {loading && progress > 0 && (
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className="bg-blue-600 h-2.5 rounded-full"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            )}
+
             <Button
               onClick={handleUpload}
               disabled={!file || loading}
               className="w-full"
             >
-              {loading ? t('Uploading...') : t('Upload Payments')}
+              {loading ? t('Uploading... {{progress}}%', { progress: Math.round(progress) }) : t('Upload Payments')}
             </Button>
           </div>
         </div>

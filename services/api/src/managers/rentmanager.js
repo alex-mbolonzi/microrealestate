@@ -523,54 +523,106 @@ export async function uploadBulkPayments(req, res) {
       throw new ServiceError('No payment data provided', 400);
     }
 
-    // Set a longer timeout for the request
-    req.setTimeout(300000); // 5 minutes
-    res.setTimeout(300000); // 5 minutes
+    const payments = req.body.payments;
+    console.log(`Processing ${payments.length} payments`);
 
-    console.log('Starting bulk payment upload process');
-    
-    // Send initial response to prevent timeout
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Transfer-Encoding': 'chunked'
-    });
-
-    // Process the payments
-    const results = await _processBulkPayments(
-      req.headers.authorization,
-      req.headers['accept-language'],
-      req.realm,
-      req.body.payments
-    );
-    
-    const response = {
-      successful: results.successful,
-      failed: results.failed,
-      failedRecordsCsv: results.failedRecordsCsv,
-      summary: {
-        total: req.body.payments.length,
-        successful: results.successful.length,
-        failed: results.failed.length
-      }
+    const results = {
+      successful: [],
+      failed: [],
+      failedRecordsCsv: ''
     };
 
-    console.log('Bulk payment upload complete', response.summary);
-    
-    // Send the final response
-    res.write(JSON.stringify(response));
-    res.end();
+    // Process each payment sequentially
+    for (const payment of payments) {
+      try {
+        // Validate required fields
+        if (!payment.tenant_id || !payment.payment_date || !payment.amount) {
+          throw new Error('Missing required fields');
+        }
+
+        // Parse and validate payment date
+        const paymentDate = moment(payment.payment_date, 'MM/DD/YYYY');
+        if (!paymentDate.isValid()) {
+          throw new Error('Invalid payment date format');
+        }
+
+        // Validate amount
+        const amount = parseFloat(payment.amount);
+        if (isNaN(amount) || amount <= 0) {
+          throw new Error('Invalid payment amount');
+        }
+
+        // Validate tenant exists
+        const tenant = await Collections.Tenant.findOne({
+          _id: payment.tenant_id,
+          realm: req.realm
+        });
+
+        if (!tenant) {
+          throw new Error('Tenant not found');
+        }
+
+        // Create payment record
+        const paymentRecord = {
+          tenant: tenant._id,
+          payment_date: paymentDate.toDate(),
+          amount: amount,
+          type: payment.payment_type || 'cash',
+          reference: payment.payment_reference || '',
+          description: `Bulk upload payment for ${tenant.name}`,
+          status: 'completed',
+          realm: req.realm
+        };
+
+        // Save payment
+        const savedPayment = await Collections.Payment.create(paymentRecord);
+        console.log(`Payment saved for tenant ${tenant._id}: ${savedPayment._id}`);
+
+        results.successful.push({
+          ...payment,
+          status: 'success',
+          payment_id: savedPayment._id
+        });
+
+      } catch (error) {
+        console.error('Payment processing error:', error);
+        results.failed.push({
+          ...payment,
+          error: error.message,
+          status: 'failed'
+        });
+      }
+
+      // Small delay between payments to prevent overwhelming the database
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // Generate CSV for failed records if any
+    if (results.failed.length > 0) {
+      const failedCsvRows = results.failed.map(record => {
+        return [
+          record.tenant_id,
+          record.payment_date,
+          record.payment_type,
+          record.payment_reference,
+          record.amount,
+          record.error
+        ].join(',');
+      });
+
+      results.failedRecordsCsv = [
+        'tenant_id,payment_date,payment_type,payment_reference,amount,error',
+        ...failedCsvRows
+      ].join('\\n');
+    }
+
+    res.json(results);
   } catch (error) {
     console.error('Bulk payment upload error:', error);
-    if (!res.headersSent) {
-      if (error instanceof ServiceError) {
-        res.status(error.status).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: error.message || 'Failed to process bulk payments' });
-      }
+    if (error instanceof ServiceError) {
+      res.status(error.status).json({ error: error.message });
     } else {
-      // If headers were already sent, end the response with error
-      res.write(JSON.stringify({ error: error.message || 'Failed to process bulk payments' }));
-      res.end();
+      res.status(500).json({ error: error.message || 'Failed to process bulk payments' });
     }
   }
 }
