@@ -204,6 +204,7 @@ export default class User {
         withCredentials: true
       });
     } finally {
+      // Clear user state
       this.firstName = null;
       this.lastName = null;
       this.email = null;
@@ -238,14 +239,12 @@ export default class User {
           headers: {
             ...(isServer() && context?.req?.headers?.cookie 
               ? { Cookie: context.req.headers.cookie } 
-              : {}),
+              : {})
           }
         }
       );
 
-      const { accessToken } = response.data;
-      
-      if (!accessToken) {
+      if (!response?.data?.accessToken) {
         throw new Error('No access token received');
       }
 
@@ -254,25 +253,39 @@ export default class User {
         context.res.setHeader('Set-Cookie', response.headers['set-cookie']);
       }
 
-      this.setUserFromToken(accessToken);
-      return { status: 200, accessToken };
+      this.setUserFromToken(response.data.accessToken);
+      return { status: 200, accessToken: response.data.accessToken };
 
     } catch (error) {
       console.error('Token refresh error:', error);
-      
-      // Handle 403 by signing out and redirecting
-      if (error.response?.status === 403) {
-        yield this.signOut();
-        if (!isServer() && window) {
-          window.location.assign('/');
-        }
+
+      // Handle network errors
+      if (!error.response) {
+        return { 
+          status: 500, 
+          error: 'Network error. Please check your connection.' 
+        };
       }
 
-      return {
-        status: error.response?.status || 500,
-        error: error.message || 'Failed to refresh token'
-      };
-
+      // Handle specific error cases
+      switch (error.response.status) {
+        case 401:
+          return { 
+            status: 401, 
+            error: 'Session expired. Please sign in again.' 
+          };
+        case 403:
+          yield this.signOut();
+          return { 
+            status: 403, 
+            error: 'Invalid refresh token. Please sign in again.' 
+          };
+        default:
+          return { 
+            status: error.response.status || 500,
+            error: error.response.data?.message || 'Failed to refresh token' 
+          };
+      }
     } finally {
       this.refreshing = false;
     }

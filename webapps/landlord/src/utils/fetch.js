@@ -100,6 +100,8 @@ const createAuthApi = (cookie = '') => {
 };
 
 let apiFetch = null;
+let isRefreshingToken = false;
+let requestQueue = [];
 
 export const setAccessToken = (accessToken) => {
   if (apiFetch && accessToken) {
@@ -119,33 +121,36 @@ export const setOrganizationId = (organizationId) => {
 
 export const apiFetcher = () => {
   if (!apiFetch) {
-    const baseURL = isServer() 
-      ? config.DOCKER_GATEWAY_URL || config.GATEWAY_URL 
-      : config.BASE_PATH || '';
+    const baseURL = `${
+      isServer()
+        ? config.DOCKER_GATEWAY_URL || config.GATEWAY_URL
+        : config.GATEWAY_URL
+    }/api/v2`;
+
+    if (isClient()) {
+      const webAppUrl = new URL(window.location.href);
+      const gatewayUrl = new URL(baseURL);
+
+      if (webAppUrl.origin !== gatewayUrl.origin) {
+        console.error(
+          `-----------------------------------------------------------------------------------------------------
+| 🚨 Important! 🚨                                                                                   |
+-----------------------------------------------------------------------------------------------------
+Origin mismatch between webapp and api endpoint: ${webAppUrl.origin} vs ${gatewayUrl.origin}
+Please restart the server with APP_DOMAIN=${webAppUrl.hostname} and APP_PORT=${webAppUrl.port}.
+-----------------------------------------------------------------------------------------------------`
+        );
+      }
+    }
 
     apiFetch = axios.create({
-      baseURL: `${baseURL}/api/v2`,
-      timeout: 30000,
+      baseURL,
       withCredentials: true,
       headers: {
-        'Content-Type': 'application/json',
-      },
+        'Content-Type': 'application/json'
+      }
     });
 
-    apiFetch.interceptors.request.use(
-      async (config) => {
-        const store = getStoreInstance();
-        const accessToken = store?.user?.token;
-        if (accessToken) {
-          config.headers.Authorization = `Bearer ${accessToken}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-
-    let isRefreshingToken = false;
-    let requestQueue = []; // used when parallel requests
     apiFetch.interceptors.response.use(
       (response) => response,
       async (error) => {
@@ -162,17 +167,19 @@ export const apiFetcher = () => {
           !originalRequest._retry
         ) {
           if (isRefreshingToken) {
-            // queued incoming request while refresh token is running
-            return new Promise(function (resolve, reject) {
-              requestQueue.push({ resolve, reject });
-            })
-              .then(async () => {
-                // use latest authorization token
-                originalRequest.headers['Authorization'] =
-                  apiFetch.defaults.headers.common['Authorization'];
-                return apiFetch(originalRequest);
-              })
-              .catch((err) => Promise.reject(err));
+            try {
+              // Queue the request while token refresh is in progress
+              await new Promise((resolve, reject) => {
+                requestQueue.push({ resolve, reject });
+              });
+              
+              // Use latest authorization token after refresh
+              originalRequest.headers['Authorization'] =
+                apiFetch.defaults.headers.common['Authorization'];
+              return apiFetch(originalRequest);
+            } catch (err) {
+              return Promise.reject(err);
+            }
           }
 
           originalRequest._retry = true;
@@ -183,40 +190,50 @@ export const apiFetcher = () => {
             const refreshResult = await store.user.refreshTokens();
 
             if (refreshResult.status === 200 && refreshResult.accessToken) {
-              // run all requests queued
-              requestQueue.forEach((request) => {
-                request.resolve();
-              });
+              // Update auth headers with new token
+              const newAuthHeader = `Bearer ${refreshResult.accessToken}`;
+              apiFetch.defaults.headers.common['Authorization'] = newAuthHeader;
+              originalRequest.headers['Authorization'] = newAuthHeader;
 
-              // use latest authorization token
-              originalRequest.headers['Authorization'] =
-                apiFetch.defaults.headers.common['Authorization'];
+              // Process queued requests
+              requestQueue.forEach(request => request.resolve());
+              requestQueue = [];
 
               return apiFetch(originalRequest);
-            } else {
-              // If refresh failed, redirect to login
-              if (isClient()) {
-                await store.user.signOut();
-                window.location.assign(`${config.BASE_PATH}`);
-              }
-              throw new Cancel('Operation canceled - refresh token failed');
             }
+
+            // Handle refresh failure
+            requestQueue.forEach(request => request.reject(new Error('Token refresh failed')));
+            requestQueue = [];
+
+            if (isClient()) {
+              await store.user.signOut();
+              window.location.assign(`${config.BASE_PATH}`);
+            }
+            throw new Error('Token refresh failed');
           } catch (refreshError) {
-            // If refresh throws an error, redirect to login
+            // Handle refresh error
+            requestQueue.forEach(request => request.reject(refreshError));
+            requestQueue = [];
+
             if (isClient()) {
               const store = getStoreInstance();
               await store.user.signOut();
               window.location.assign(`${config.BASE_PATH}`);
             }
-            throw new Cancel('Operation canceled - refresh token error');
+            throw refreshError;
           } finally {
             isRefreshingToken = false;
-            requestQueue = [];
           }
         }
+
+        // Handle other errors
         return Promise.reject(error);
       }
     );
+
+    // For logging purposes
+    apiFetch.interceptors.response.use(...axiosResponseHandlers);
   }
   return apiFetch;
 };
