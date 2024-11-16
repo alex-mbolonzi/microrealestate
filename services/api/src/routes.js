@@ -8,10 +8,13 @@ import * as realmManager from './managers/realmmanager.js';
 import * as rentManager from './managers/rentmanager.js';
 import { Middlewares, Service } from '@microrealestate/common';
 import express from 'express';
+import multer from 'multer';
+import csv from 'csv-parser';
 
 export default function routes() {
   const { ACCESS_TOKEN_SECRET } = Service.getInstance().envConfig.getValues();
   const router = express.Router();
+  const upload = multer({ storage: multer.memoryStorage() });
   router.use(
     // protect the api access by checking the access token
     Middlewares.needAccessToken(ACCESS_TOKEN_SECRET),
@@ -55,6 +58,32 @@ export default function routes() {
   router.use('/tenants', occupantsRouter);
 
   const rentsRouter = express.Router();
+  rentsRouter.post('/upload', upload.single('file'), Middlewares.asyncWrapper(async (req, res) => {
+    if (!req.file) {
+      throw new Error('No file uploaded');
+    }
+
+    // Parse CSV file
+    const csvData = req.file.buffer.toString();
+    const parser = csv.parse(csvData, {
+      columns: true,
+      skip_empty_lines: true
+    });
+
+    const records = [];
+    for await (const record of parser) {
+      records.push({
+        tenant_reference: record.tenant_id,
+        payment_date: record.payment_date,
+        payment_type: record.payment_type,
+        reference: record.payment_reference,
+        amount: parseFloat(record.amount.replace(/,/g, '')),
+      });
+    }
+
+    req.body.payments = records;
+    await rentManager.uploadBulkPayments(req, res);
+  }));
   rentsRouter.patch(
     '/payment/:id/:term',
     Middlewares.asyncWrapper(rentManager.updateByTerm)
