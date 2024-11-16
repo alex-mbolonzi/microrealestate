@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { LuAlertTriangle, LuDownload, LuUpload } from 'react-icons/lu';
 import { toast } from 'sonner';
 import useTranslation from 'next-translate/useTranslation';
+import { apiFetcher } from '../../utils/fetch';
 
 export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
   const { t } = useTranslation('common');
@@ -34,9 +35,10 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/v2/rents/upload', {
-        method: 'POST',
-        body: formData,
+      const response = await apiFetcher().post('/rents/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       if (!response.ok) {
@@ -48,7 +50,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       onClose();
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || error.message || t('Failed to upload file'));
     } finally {
       setLoading(false);
       setFile(null);
