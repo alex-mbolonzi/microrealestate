@@ -415,69 +415,81 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
 
   console.log(`Processing ${payments.length} payments`);
 
-  for (const payment of payments) {
-    try {
-      console.log(`Processing payment for tenant ${payment.tenant_reference}`);
-      
-      const tenant = await Collections.Tenant.findOne({
-        realm,
-        reference: payment.tenant_reference
-      });
+  // Process payments in batches of 5
+  const batchSize = 5;
+  for (let i = 0; i < payments.length; i += batchSize) {
+    const batch = payments.slice(i, i + batchSize);
+    console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(payments.length/batchSize)}`);
 
-      if (!tenant) {
-        throw new ServiceError(`Tenant with reference ${payment.tenant_reference} not found`, 404);
-      }
+    await Promise.all(batch.map(async (payment) => {
+      try {
+        console.log(`Processing payment for tenant ${payment.tenant_reference}`);
+        
+        const tenant = await Collections.Tenant.findOne({
+          realm,
+          reference: payment.tenant_reference
+        });
 
-      // Check for duplicate payment
-      const isDuplicate = await _checkDuplicatePayment(
-        tenant,
-        payment.payment_date,
-        payment.amount
-      );
-
-      if (isDuplicate) {
-        throw new ServiceError('Duplicate payment detected - similar payment exists for same day and amount', 409);
-      }
-
-      // Process the payment using existing logic
-      await _updateByTerm(
-        authorizationHeader,
-        locale,
-        realm,
-        tenant._id,
-        {
-          payments: [{
-            date: payment.payment_date,
-            amount: payment.amount,
-            type: payment.payment_type,
-            reference: payment.reference,
-            description: payment.description,
-            promo_amount: payment.promo_amount,
-            promo_note: payment.promo_note,
-            extra_charge: payment.extra_charge,
-            extra_charge_note: payment.extra_charge_note
-          }]
+        if (!tenant) {
+          throw new ServiceError(`Tenant with reference ${payment.tenant_reference} not found`, 404);
         }
-      );
 
-      results.successful.push({
-        tenant_reference: payment.tenant_reference,
-        amount: payment.amount,
-        status: 'success',
-        payment_date: payment.payment_date
-      });
+        // Check for duplicate payment
+        const isDuplicate = await _checkDuplicatePayment(
+          tenant,
+          payment.payment_date,
+          payment.amount
+        );
 
-      console.log(`Successfully processed payment for tenant ${payment.tenant_reference}`);
-    } catch (error) {
-      console.error(`Failed to process payment for tenant ${payment.tenant_reference}:`, error);
-      
-      results.failed.push({
-        tenant_reference: payment.tenant_reference,
-        amount: payment.amount,
-        payment_date: payment.payment_date,
-        error: error.message,
-        status: 'failed'
-      });
+        if (isDuplicate) {
+          throw new ServiceError('Duplicate payment detected - similar payment exists for same day and amount', 409);
+        }
+
+        // Process the payment using existing logic
+        await _updateByTerm(
+          authorizationHeader,
+          locale,
+          realm,
+          tenant._id,
+          {
+            payments: [{
+              date: payment.payment_date,
+              amount: payment.amount,
+              type: payment.payment_type,
+              reference: payment.reference,
+              description: payment.description,
+              promo_amount: payment.promo_amount,
+              promo_note: payment.promo_note,
+              extra_charge: payment.extra_charge,
+              extra_charge_note: payment.extra_charge_note
+            }]
+          }
+        );
+
+        results.successful.push({
+          tenant_reference: payment.tenant_reference,
+          amount: payment.amount,
+          status: 'success',
+          payment_date: payment.payment_date
+        });
+
+        console.log(`Successfully processed payment for tenant ${payment.tenant_reference}`);
+      } catch (error) {
+        console.error(`Failed to process payment for tenant ${payment.tenant_reference}:`, error);
+        
+        results.failed.push({
+          tenant_reference: payment.tenant_reference,
+          amount: payment.amount,
+          payment_date: payment.payment_date,
+          error: error.message,
+          status: 'failed'
+        });
+      }
+    }));
+
+    // Add a small delay between batches to prevent overload
+    if (i + batchSize < payments.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 
@@ -496,7 +508,6 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
       results.failedRecordsCsv = json2csvParser.parse(results.failed);
     } catch (error) {
       console.error('Failed to generate CSV for failed records:', error);
-      // Don't throw, just log the error as this is not critical
     }
   }
 
