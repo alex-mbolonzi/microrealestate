@@ -130,23 +130,26 @@ export default class User {
       if (response?.data?.accessToken) {
         const { accessToken } = response.data;
         this.setUserFromToken(accessToken);
-        return { status: 200 };
-      } else {
-        this.firstName = undefined;
-        this.lastName = undefined;
-        this.email = undefined;
-        this.token = undefined;
-        this.tokenExpiry = undefined;
-        setAccessToken(null);
+        return { status: 200, accessToken };
       }
-    } catch (error) {
+      
+      // Clear user data if no token
       this.firstName = undefined;
       this.lastName = undefined;
       this.email = undefined;
       this.token = undefined;
       this.tokenExpiry = undefined;
       setAccessToken(null);
-      return { status: error?.response?.status, error };
+      return { status: 401, error: new Error('No access token in response') };
+    } catch (error) {
+      // Clear user data on error
+      this.firstName = undefined;
+      this.lastName = undefined;
+      this.email = undefined;
+      this.token = undefined;
+      this.tokenExpiry = undefined;
+      setAccessToken(null);
+      return { status: error?.response?.status || 500, error };
     }
   }
 

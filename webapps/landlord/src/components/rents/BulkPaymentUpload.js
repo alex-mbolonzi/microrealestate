@@ -36,8 +36,12 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     setLoading(true);
     try {
       // First ensure we have valid tokens
+      let refreshResult;
       try {
-        await store.user.refreshTokens();
+        refreshResult = await store.user.refreshTokens();
+        if (refreshResult.status !== 200 || !refreshResult.accessToken) {
+          throw new Error('Token refresh failed: ' + (refreshResult.error?.message || 'Unknown error'));
+        }
         console.log('Tokens refreshed successfully');
       } catch (refreshError) {
         console.error('Initial token refresh failed:', refreshError);
@@ -49,21 +53,13 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Get the latest token after refresh
-      const accessToken = store.user?.accessToken;
-      if (!accessToken) {
-        throw new Error('No access token available after refresh');
-      }
-
-      console.log('Using access token:', accessToken);
-
       // Get fresh instance of apiFetcher
       const api = apiFetcher();
       
       const { data } = await api.post('/rents/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${refreshResult.accessToken}`,
         },
         timeout: 300000, // 5 minutes timeout
         maxContentLength: Infinity,
@@ -102,10 +98,14 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       console.error('Upload error:', error);
       
       if (error.response?.status === 401) {
-        console.log('Received 401, attempting token refresh...');
+        console.log('Received 401 during upload, attempting token refresh...');
         try {
-          await store.user.refreshTokens();
-          toast.info(t('Session renewed. Please try uploading again.'));
+          const refreshResult = await store.user.refreshTokens();
+          if (refreshResult.status === 200 && refreshResult.accessToken) {
+            toast.info(t('Session renewed. Please try uploading again.'));
+          } else {
+            throw new Error('Token refresh failed');
+          }
         } catch (refreshError) {
           console.error('Token refresh failed:', refreshError);
           toast.error(t('Session expired. Please log in again.'));
