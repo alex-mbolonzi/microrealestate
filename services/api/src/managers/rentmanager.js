@@ -171,15 +171,26 @@ export async function update(req, res) {
 }
 
 export async function updateByTerm(req, res) {
-  const realm = req.realm;
-  const term = req.params.term;
-  const authorizationHeader = req.headers.authorization;
-  const locale = req.headers['accept-language'];
-  const paymentData = req.body;
+  const { id, term } = req.params;
+  const rent = req.body;
 
-  res.json(
-    await _updateByTerm(authorizationHeader, locale, realm, term, paymentData)
-  );
+  try {
+    const dbRent = await Rent.findOne({
+      'occupant._id': id,
+      term: term,
+    });
+
+    if (!dbRent) {
+      return res.sendStatus(404);
+    }
+
+    Object.assign(dbRent, rent);
+    await dbRent.save();
+    res.status(200).json(dbRent);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error);
+  }
 }
 
 async function _updateByTerm(
@@ -398,110 +409,4 @@ async function _checkDuplicatePayment(tenant, paymentDate, amount) {
     }
   });
   return existingPayment !== null;
-}
-
-async function _processBulkPayments(authorizationHeader, locale, realm, payments) {
-  const results = {
-    successful: [],
-    failed: []
-  };
-
-  for (const payment of payments) {
-    try {
-      const tenant = await Collections.Tenant.findOne({
-        reference: payment.tenant_reference
-      });
-
-      if (!tenant) {
-        throw new Error(`Tenant with reference ${payment.tenant_reference} not found`);
-      }
-
-      // Check for duplicate payment
-      const isDuplicate = await _checkDuplicatePayment(
-        tenant,
-        payment.payment_date,
-        payment.amount
-      );
-
-      if (isDuplicate) {
-        throw new Error('Duplicate payment detected - similar payment exists for same day and amount');
-      }
-
-      // Process the payment using existing logic
-      await _updateByTerm(
-        authorizationHeader,
-        locale,
-        realm,
-        tenant._id,
-        {
-          payments: [{
-            date: payment.payment_date,
-            amount: payment.amount,
-            type: payment.payment_type,
-            reference: payment.reference,
-            description: payment.description,
-            promo_amount: payment.promo_amount,
-            promo_note: payment.promo_note,
-            extra_charge: payment.extra_charge,
-            extra_charge_note: payment.extra_charge_note
-          }]
-        }
-      );
-
-      results.successful.push({
-        tenant_reference: payment.tenant_reference,
-        amount: payment.amount,
-        status: 'success',
-        payment_date: payment.payment_date
-      });
-    } catch (error) {
-      results.failed.push({
-        tenant_reference: payment.tenant_reference,
-        amount: payment.amount,
-        payment_date: payment.payment_date,
-        error: error.message,
-        status: 'failed'
-      });
-    }
-  }
-
-  // Generate CSV for failed records
-  if (results.failed.length > 0) {
-    const fields = [
-      'tenant_reference',
-      'payment_date',
-      'amount',
-      'error',
-      'status'
-    ];
-    
-    const json2csvParser = new Parser({ fields });
-    results.failedRecordsCsv = json2csvParser.parse(results.failed);
-  }
-
-  return results;
-}
-
-export async function uploadBulkPayments(req, res) {
-  try {
-    const results = await _processBulkPayments(
-      req.headers.authorization,
-      req.headers['accept-language'],
-      req.realm,
-      req.body.payments
-    );
-    
-    res.json({
-      successful: results.successful,
-      failed: results.failed,
-      failedRecordsCsv: results.failedRecordsCsv,
-      summary: {
-        total: req.body.payments.length,
-        successful: results.successful.length,
-        failed: results.failed.length
-      }
-    });
-  } catch (error) {
-    throw new ServiceError(error.message, error.status || 500);
-  }
 }
