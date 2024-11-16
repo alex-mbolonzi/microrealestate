@@ -39,6 +39,9 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 300000, // 5 minutes timeout
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
       });
 
       if (!response.ok) {

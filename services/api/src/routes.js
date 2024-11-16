@@ -58,37 +58,58 @@ export default function routes() {
   router.use('/tenants', occupantsRouter);
 
   const rentsRouter = express.Router();
-  rentsRouter.post('/upload', upload.single('file'), Middlewares.asyncWrapper(async (req, res) => {
-    if (!req.file) {
-      throw new ServiceError('No file uploaded', 400);
-    }
+  rentsRouter.post('/upload', 
+    upload.single('file'), 
+    Middlewares.asyncWrapper(async (req, res) => {
+      if (!req.file) {
+        throw new ServiceError('No file uploaded', 400);
+      }
 
-    try {
-      const csvData = req.file.buffer.toString();
-      const records = [];
-      
-      await new Promise((resolve, reject) => {
-        csv()
-          .on('data', (data) => {
-            records.push({
-              tenant_reference: data.tenant_id,
-              payment_date: data.payment_date,
-              payment_type: data.payment_type,
-              reference: data.payment_reference,
-              amount: parseFloat(data.amount.replace(/,/g, '')),
-            });
-          })
-          .on('end', () => resolve())
-          .on('error', reject)
-          .write(csvData);
-      });
+      try {
+        const csvData = req.file.buffer.toString();
+        const records = [];
+        let processedRows = 0;
+        
+        await new Promise((resolve, reject) => {
+          csv({ headers: true })
+            .on('data', (data) => {
+              processedRows++;
+              if (processedRows % 100 === 0) {
+                // Reset the timeout every 100 rows
+                req.setTimeout(300000); // 5 minutes
+              }
 
-      req.body = { payments: records };
-      await rentManager.uploadBulkPayments(req, res);
-    } catch (error) {
-      throw new ServiceError(error.message || 'Failed to parse CSV file', 400);
-    }
-  }));
+              records.push({
+                tenant_reference: data.tenant_id,
+                payment_date: data.payment_date,
+                payment_type: data.payment_type || 'cash',
+                reference: data.payment_reference,
+                amount: parseFloat(data.amount.replace(/[^0-9.-]+/g, '')),
+                description: data.description || '',
+                promo_amount: data.promo_amount ? parseFloat(data.promo_amount) : 0,
+                promo_note: data.promo_note || '',
+                extra_charge: data.extra_charge ? parseFloat(data.extra_charge) : 0,
+                extra_charge_note: data.extra_charge_note || ''
+              });
+            })
+            .on('end', () => {
+              if (records.length === 0) {
+                reject(new Error('No valid records found in CSV'));
+              }
+              resolve();
+            })
+            .on('error', reject)
+            .write(csvData);
+        });
+
+        req.body = { payments: records };
+        await rentManager.uploadBulkPayments(req, res);
+      } catch (error) {
+        console.error('CSV Processing Error:', error);
+        throw new ServiceError(error.message || 'Failed to process CSV file', 400);
+      }
+    })
+  );
   rentsRouter.patch('/payment/:id/:term', Middlewares.asyncWrapper(rentManager.updateByTerm));
   rentsRouter.get('/tenant/:id/:term', Middlewares.asyncWrapper(rentManager.rentOfOccupantByTerm));
   rentsRouter.get('/:year/:month', Middlewares.asyncWrapper(rentManager.all));
