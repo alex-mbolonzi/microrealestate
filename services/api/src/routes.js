@@ -69,10 +69,12 @@ export default function routes() {
         const csvData = req.file.buffer.toString();
         const records = [];
         let processedRows = 0;
+        let isFirstRow = true;  // Flag to track the header row
         
         await new Promise((resolve, reject) => {
           csv({ 
             headers: true,
+            skipLines: 1,  // Skip the first line (header row)
             skipEmptyLines: true,
             trim: true
           })
@@ -83,22 +85,27 @@ export default function routes() {
                   req.setTimeout(300000);
                 }
 
+                // Skip empty rows
+                if (Object.values(data).every(val => !val)) {
+                  return;
+                }
+
                 // Validate required fields
                 if (!data.tenant_id || !data.payment_date || !data.amount) {
-                  throw new Error(`Row ${processedRows}: Missing required fields (tenant_id, payment_date, amount)`);
+                  throw new ServiceError(`Row ${processedRows + 1}: Missing required fields (tenant_id, payment_date, amount)`, 400);
                 }
 
                 // Validate date format
                 const paymentDate = new Date(data.payment_date);
                 if (isNaN(paymentDate.getTime())) {
-                  throw new Error(`Row ${processedRows}: Invalid payment_date format`);
+                  throw new ServiceError(`Row ${processedRows + 1}: Invalid payment_date format`, 400);
                 }
 
                 // Safely parse amount, handling undefined or invalid values
                 const amountStr = (data.amount || '').toString();
                 const amount = parseFloat(amountStr.replace(/[^0-9.-]+/g, ''));
                 if (isNaN(amount)) {
-                  throw new Error(`Row ${processedRows}: Invalid amount format`);
+                  throw new ServiceError(`Row ${processedRows + 1}: Invalid amount format`, 400);
                 }
 
                 records.push({
@@ -115,7 +122,7 @@ export default function routes() {
                 });
               } catch (error) {
                 console.error('Error processing CSV row:', error);
-                reject(new ServiceError(`${error.message}`, 400));
+                reject(error);
               }
             })
             .on('end', () => {
