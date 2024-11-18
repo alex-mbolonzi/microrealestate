@@ -1,5 +1,5 @@
 import { fetchRents, QueryKeys } from '../../../../utils/restcalls';
-import { LuAlertTriangle, LuChevronDown, LuSend } from 'react-icons/lu';
+import { LuAlertTriangle, LuChevronDown, LuSend, LuUpload } from 'react-icons/lu';
 import {
   Popover,
   PopoverContent,
@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/router';
 import useTranslation from 'next-translate/useTranslation';
 import { withAuthentication } from '../../../../components/Authentication';
+import BulkPaymentUpload from '../../../../components/rents/BulkPaymentUpload';
 
 function _filterData(data, filters) {
   let filteredItems =
@@ -215,10 +216,15 @@ function Rents() {
     queryFn: () => fetchRents(store, yearMonth)
   });
   const [rentSelected, setRentSelected] = useState([]);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
 
   const handleActionDone = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: [QueryKeys.RENTS, yearMonth] });
     setRentSelected([]);
+  }, [queryClient, yearMonth]);
+
+  const handleUploadSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: [QueryKeys.RENTS, yearMonth] });
   }, [queryClient, yearMonth]);
 
   const period = useMemo(
@@ -257,11 +263,21 @@ function Rents() {
           { id: 'paid', label: t('Paid') }
         ]}
         filterFn={_filterData}
-        renderActions={() =>
-          store.organization.canSendEmails ? (
-            <Actions values={rentSelected} onDone={handleActionDone} />
-          ) : null
-        }
+        renderActions={() => (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowUploadDialog(true)}
+            >
+              <LuUpload className="mr-2 h-4 w-4" />
+              {t('Upload Payments')}
+            </Button>
+            {store.organization.canSendEmails ? (
+              <Actions values={rentSelected} onDone={handleActionDone} />
+            ) : null}
+          </div>
+        )}
         renderList={({ data }) => (
           <RentTable
             rents={data}
@@ -269,6 +285,12 @@ function Rents() {
             setSelected={setRentSelected}
           />
         )}
+      />
+
+      <BulkPaymentUpload
+        isOpen={showUploadDialog}
+        onClose={() => setShowUploadDialog(false)}
+        onSuccess={handleUploadSuccess}
       />
     </Page>
   );
