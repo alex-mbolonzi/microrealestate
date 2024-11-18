@@ -48,8 +48,8 @@ spec:
               value: "12264d724d371d79054887f65175aa3758d89dbc7a05ab54cdb3d8c47df3aace47ee415904a7f3229e6714263ae35ab24caa7a6861eba09bbbf23c5871daf850"
             - name: SIGNUP
               value: "true"
-            # - name: TOKEN_COOKIE_ATTRIBUTES
-            #   value: '{"httpOnly":true,"sameSite":"strict","secure":false,"domain":"localhost"}'
+            - name: TOKEN_COOKIE_ATTRIBUTES
+              value: "Path=/; SameSite=Lax; HttpOnly"
             - name: AUTHENTICATOR_DEBUG_PORT
               value: "9226"
             - name: NODE_ENV
