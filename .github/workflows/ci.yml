@@ -64,6 +64,9 @@ jobs:
           - appname: tenant-frontend
             image: ghcr.io/${{ github.repository }}/tenant-frontend
             dockerfile: webapps/tenant/Dockerfile
+          - appname: paymentprocessor
+            image: ghcr.io/${{ github.repository }}/paymentprocessor
+            dockerfile: services/paymentprocessor/Dockerfile
 
     steps:
       - name: Checkout
