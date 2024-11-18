@@ -12,7 +12,7 @@ const {
   displayHeader,
   askRunMode,
   showConfig,
-  askForEnvironmentVariables,
+  setEnvironmentVariables,
   writeDotEnv,
   restoreDB,
   dumpDB,
@@ -110,13 +110,16 @@ async function main() {
   let envConfig;
   if (fs.existsSync(path.resolve(process.cwd(), '.env'))) {
     envConfig = migrateEnvConfig(
-      loadEnv({ ignoreBaseEnv: true, ignoreProcessEnv: true })
+      loadEnv({ ignoreBaseEnv: false, ignoreProcessEnv: true })
     );
   }
-  const promptsConfig = await askForEnvironmentVariables(
-    envConfig,
-    command === 'configure'
-  );
+  // const promptsConfig = await askForEnvironmentVariables(
+  //   envConfig,
+  //   command === 'configure'
+  // );
+
+  const promptsConfig = setEnvironmentVariables(envConfig);
+  
   writeDotEnv(promptsConfig, envConfig);
 
   if (command === 'configure') {

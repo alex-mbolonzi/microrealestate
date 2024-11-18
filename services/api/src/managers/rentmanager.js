@@ -3,11 +3,11 @@ import * as FD from './frontdata.js';
 import {
   Collections,
   logger,
-  Service,
   ServiceError
 } from '@microrealestate/common';
 import axios from 'axios';
 import moment from 'moment';
+import { Parser } from 'json2csv';
 
 async function _findOccupants(realm, tenantId, startTerm, endTerm) {
   const filter = {
@@ -380,4 +380,249 @@ export async function all(req, res) {
       'months'
     )
   );
+}
+
+async function _checkDuplicatePayment(tenant, paymentDate, amount) {
+  // Look for existing payments within the same day with same amount
+  const existingPayment = await Collections.Rent.findOne({
+    'occupant._id': tenant._id,
+    payments: {
+      $elemMatch: {
+        date: {
+          $gte: moment(paymentDate).startOf('day').toDate(),
+          $lte: moment(paymentDate).endOf('day').toDate()
+        },
+        amount: amount
+      }
+    }
+  });
+  return existingPayment !== null;
+}
+
+async function _processBulkPayments(authorizationHeader, locale, realm, payments) {
+  const results = {
+    successful: [],
+    failed: []
+  };
+
+  if (!Array.isArray(payments)) {
+    throw new ServiceError('Invalid payments data format', 400);
+  }
+
+  if (payments.length === 0) {
+    throw new ServiceError('No payments provided', 400);
+  }
+
+  console.log(`CSV contains ${payments.length} total rows`);
+
+  // Process payments in smaller batches to avoid timeouts
+  const batchSize = 3;
+  for (let i = 0; i < payments.length; i += batchSize) {
+    const batch = payments.slice(i, i + batchSize);
+    console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(payments.length/batchSize)}`);
+
+    // Process each payment in the batch sequentially to avoid DB conflicts
+    for (const payment of batch) {
+      try {
+        console.log(`Processing row ${i + batch.indexOf(payment) + 1} of ${payments.length}: `, payment);
+        
+        // Find tenant and validate
+        const tenant = await Collections.Tenant.findOne({
+          realmId: realm._id,
+          reference: payment.tenant_id
+        }).lean();
+
+        if (!tenant) {
+          throw new ServiceError(`Tenant with ID ${payment.tenant_id} not found`, 404);
+        }
+
+        // Check for duplicate payment
+        const isDuplicate = await _checkDuplicatePayment(
+          tenant,
+          payment.payment_date,
+          payment.amount
+        );
+
+        if (isDuplicate) {
+          throw new ServiceError('Duplicate payment detected - similar payment exists for same day and amount', 409);
+        }
+
+        // Determine the term from payment date
+        const paymentMoment = moment(payment.payment_date, 'MM/DD/YYYY');
+        const term = Number(paymentMoment.format('YYYYMM'));
+
+        // Process the payment
+        await _updateByTerm(
+          authorizationHeader,
+          locale,
+          realm,
+          term,
+          {
+            _id: tenant._id,
+            payments: [{
+              date: paymentMoment.format('YYYY-MM-DD'),
+              amount: Number(payment.amount),
+              type: payment.payment_type || 'cash',
+              reference: payment.payment_reference || '',
+              description: `Payment recorded via bulk upload`
+            }]
+          }
+        );
+
+        results.successful.push({
+          tenant_id: payment.tenant_id,
+          amount: payment.amount,
+          status: 'success',
+          payment_date: payment.payment_date,
+          term: term
+        });
+
+        console.log(`Successfully processed payment for tenant ${payment.tenant_id}: ${payment.amount}`);
+      } catch (error) {
+        console.error(`Failed to process payment for tenant ${payment.tenant_id}:`, error);
+        
+        results.failed.push({
+          tenant_id: payment.tenant_id,
+          amount: payment.amount,
+          payment_date: payment.payment_date,
+          error: error.message,
+          status: 'failed'
+        });
+      }
+
+      // Add a small delay between payments to prevent overload
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+
+  // Generate CSV for failed records
+  if (results.failed.length > 0) {
+    try {
+      const fields = [
+        'tenant_id',
+        'payment_date',
+        'amount',
+        'error',
+        'status'
+      ];
+      
+      const json2csvParser = new Parser({ fields });
+      results.failedRecordsCsv = json2csvParser.parse(results.failed);
+    } catch (error) {
+      console.error('Failed to generate CSV for failed records:', error);
+    }
+  }
+
+  console.log(`Bulk payment processing complete. Success: ${results.successful.length}, Failed: ${results.failed.length}`);
+  return results;
+}
+
+export async function uploadBulkPayments(req, res) {
+  try {
+    if (!req.body || !req.body.payments) {
+      throw new ServiceError('No payment data provided', 400);
+    }
+
+    const payments = req.body.payments;
+    console.log(`Processing ${payments.length} payments`);
+
+    const results = {
+      successful: [],
+      failed: [],
+      failedRecordsCsv: ''
+    };
+
+    // Process each payment sequentially
+    for (const payment of payments) {
+      try {
+        // Validate required fields
+        if (!payment.tenant_id || !payment.payment_date || !payment.amount) {
+          throw new Error('Missing required fields');
+        }
+
+        // Parse and validate payment date
+        const paymentDate = moment(payment.payment_date, 'MM/DD/YYYY');
+        if (!paymentDate.isValid()) {
+          throw new Error('Invalid payment date format');
+        }
+
+        // Validate amount
+        const amount = parseFloat(payment.amount);
+        if (isNaN(amount) || amount <= 0) {
+          throw new Error('Invalid payment amount');
+        }
+
+        // Validate tenant exists
+        const tenant = await Collections.Tenant.findOne({
+          _id: payment.tenant_id,
+          realm: req.realm
+        });
+
+        if (!tenant) {
+          throw new Error('Tenant not found');
+        }
+
+        // Create payment record
+        const paymentRecord = {
+          tenant: tenant._id,
+          payment_date: paymentDate.toDate(),
+          amount: amount,
+          type: payment.payment_type || 'cash',
+          reference: payment.payment_reference || '',
+          description: `Bulk upload payment for ${tenant.name}`,
+          status: 'completed',
+          realm: req.realm
+        };
+
+        // Save payment
+        const savedPayment = await Collections.Payment.create(paymentRecord);
+        console.log(`Payment saved for tenant ${tenant._id}: ${savedPayment._id}`);
+
+        results.successful.push({
+          ...payment,
+          status: 'success',
+          payment_id: savedPayment._id
+        });
+
+      } catch (error) {
+        console.error('Payment processing error:', error);
+        results.failed.push({
+          ...payment,
+          error: error.message,
+          status: 'failed'
+        });
+      }
+
+      // Small delay between payments to prevent overwhelming the database
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // Generate CSV for failed records if any
+    if (results.failed.length > 0) {
+      const failedCsvRows = results.failed.map(record => {
+        return [
+          record.tenant_id,
+          record.payment_date,
+          record.payment_type,
+          record.payment_reference,
+          record.amount,
+          record.error
+        ].join(',');
+      });
+
+      results.failedRecordsCsv = [
+        'tenant_id,payment_date,payment_type,payment_reference,amount,error',
+        ...failedCsvRows
+      ].join('\\n');
+    }
+
+    res.json(results);
+  } catch (error) {
+    console.error('Bulk payment upload error:', error);
+    if (error instanceof ServiceError) {
+      res.status(error.status).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message || 'Failed to process bulk payments' });
+    }
+  }
 }

@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c
+    kompose.version: 1.34.0 (HEAD)
+  labels:
+    app: gateway
+  name: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c
+        kompose.version: 1.34.0 (HEAD)
+      labels:
+        app: gateway
+    spec:
+      containers:
+        - env:
+            - name: EXPOSE_FRONTENDS
+              value: "true"
+            - name: LOGGER_LEVEL
+              value: "debug"
+            - name: PORT
+              value: "8080"
+            - name: NODE_OPTIONS
+              value: "--trace-warnings"
+            - name: CORS_ENABLED
+              value: "false"
+            - name: DOMAIN_URL
+              value: "http://79.72.67.125:80"
+            - name: MONGO_URL
+              value: "mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster"
+            - name: PRODUCTION
+              value: "true"
+            - name: REDIS_URL
+              value: "redis://redis"
+            - name: GATEWAY_DEBUG_PORT
+              value: "9225"
+            - name: AUTHENTICATOR_URL
+              value: "http://authenticator:8000"
+            - name: API_URL
+              value: "http://api:8200/api/v2"
+            - name: PDFGENERATOR_URL
+              value: "http://pdfgenerator:8300/pdfgenerator"
+            - name: EMAILER_URL
+              value: "http://emailer:8400/emailer"
+            - name: LANDLORD_FRONTEND_URL
+              value: "http://landlord-frontend:8180"
+            - name: LANDLORD_BASE_PATH
+              value: "/landlord"
+            - name: TENANT_FRONTEND_URL
+              value: "http://tenant-frontend:8190"
+            - name: TENANT_BASE_PATH
+              value: "/tenant"
+            - name: TENANTAPI_URL
+              value: "http://tenantapi:8250/tenantapi"
+            - name: NODE_ENV
+              value: "production"
+            # - key: RESETSERVICE_URL
+            #   value: ${RESETSERVICE_URL}
+          image: ghcr.io/alex-mbolonzi/microrealestate/gateway:latest
+          name: gateway
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+      restartPolicy: Always
