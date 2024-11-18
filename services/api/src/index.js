@@ -5,6 +5,8 @@ import migratedb from '../scripts/migration.js';
 import path from 'path';
 import { restoreDB } from '../scripts/dbbackup.js';
 import routes from './routes.js';
+import express from 'express';
+import fileUpload from 'express-fileupload';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,6 +17,12 @@ i18n.configure({
 });
 
 async function onStartUp(application) {
+  const app = express();
+  application.use(fileUpload({
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max file size
+    abortOnLimit: true
+  }));
+  application.use(express.json());
   const { RESTORE_DB } = Service.getInstance().envConfig.getValues();
   if (RESTORE_DB) {
     logger.debug('restoring database from backup');

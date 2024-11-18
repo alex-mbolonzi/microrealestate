@@ -49,7 +49,9 @@ spec:
             - name: REDIS_PASSWORD
               value: "12264d724d371d79054887f65175aa3758d89dbc7a05ab54cdb3d8c47df3aace47ee415904a7f3229e6714263ae35ab24caa7a6861eba09bbbf23c5871daf850"
             - name: REDIS_URL
-              value: "redis://redis"
+              value: "redis://redis:6379"
+            - name: PAYMENT_PROCESSOR_URL
+              value: "http://paymentprocessor:8001"
             - name: RESTORE_DB
               value: "false"
             - name: API_DEBUG_PORT

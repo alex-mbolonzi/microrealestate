@@ -15,12 +15,17 @@ export default function routes() {
   const router = express.Router();
   
   // Add proxy for payment processor service
+  const paymentProcessorUrl = process.env.PAYMENT_PROCESSOR_URL || 'http://paymentprocessor:8001';
   router.use('/payments', createProxyMiddleware({
-    target: 'http://paymentprocessor:8001',
+    target: paymentProcessorUrl,
     pathRewrite: {
       '^/api/payments/process': '/process-payments'
     },
-    changeOrigin: true
+    changeOrigin: true,
+    onError: (err, req, res) => {
+      console.error('Payment processor proxy error:', err);
+      res.status(500).json({ error: 'Payment processor service unavailable' });
+    }
   }));
 
   router.use(

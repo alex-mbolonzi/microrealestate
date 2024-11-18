@@ -126,11 +126,12 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         throw new Error('Failed to get valid token');
       }
 
-      // First, send the file to the payment processor service
+      // Create form data with the file
       const formData = new FormData();
       formData.append('file', file);
 
-      const processorResponse = await fetch('/api/payments/process', {
+      // Send directly to API service
+      const response = await fetch('/api/rents/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -138,34 +139,12 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         body: formData
       });
 
-      if (!processorResponse.ok) {
-        const error = await processorResponse.json();
-        throw new Error(error.detail || 'Failed to process payments');
-      }
-
-      const processedPayments = await processorResponse.json();
-      console.log('Processed payments:', processedPayments);
-
-      if (!processedPayments || processedPayments.length === 0) {
-        throw new Error('No valid payments found in CSV');
-      }
-
-      // Now send the processed payments to the API service
-      const apiResponse = await fetch('/api/rents/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ payments: processedPayments })
-      });
-
-      if (!apiResponse.ok) {
-        const error = await apiResponse.json();
+      if (!response.ok) {
+        const error = await response.json();
         throw new Error(error.message || 'Failed to upload payments');
       }
 
-      const results = await apiResponse.json();
+      const results = await response.json();
 
       // Handle results
       if (results.failed && results.failed.length > 0) {
