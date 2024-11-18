@@ -97,11 +97,11 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     let refreshResult;
     try {
       refreshResult = await store.user.refreshTokens();
-      if (refreshResult.status !== 200 || !refreshResult.accessToken) {
+      if (refreshResult.status !== 200) {
         throw new Error('Token refresh failed: ' + (refreshResult.error?.message || 'Unknown error'));
       }
       console.log('Tokens refreshed successfully');
-      return refreshResult.accessToken;
+      return store.user.token;
     } catch (refreshError) {
       console.error('Initial token refresh failed:', refreshError);
       toast.error(t('Authentication error. Please log in again.'));
