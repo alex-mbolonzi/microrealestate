@@ -127,10 +127,32 @@ export const setOrganizationId = (organizationId) => {
 
 export const apiFetcher = () => {
   if (!apiFetch) {
-    const baseURL = isServer() 
-      ? config.DOCKER_GATEWAY_URL || config.GATEWAY_URL
-      : config.BASE_PATH || '';
+    // create an axios instance
+    const baseURL = `${
+      isServer()
+        ? config.DOCKER_GATEWAY_URL || config.GATEWAY_URL
+        : config.GATEWAY_URL
+    }/api/v2`;
 
+    if (isClient()) {
+      const webAppUrl = new URL(window.location.href);
+      const gatewayUrl = new URL(baseURL);
+
+      if (webAppUrl.origin !== gatewayUrl.origin) {
+        console.error(
+          `-----------------------------------------------------------------------------------------------------
+| 🚨 Important! 🚨                                                                                   |
+-----------------------------------------------------------------------------------------------------
+Origin mismatch between webapp and api endpoint: ${webAppUrl.origin} vs ${
+            gatewayUrl.origin
+          }
+Please restart the server with APP_DOMAIN=${webAppUrl.hostname}${
+            webAppUrl.port ? ` and APP_PORT=${webAppUrl.port}` : ''
+          }.
+-----------------------------------------------------------------------------------------------------`
+        );
+      }
+    }
     apiFetch = axios.create({
       baseURL: `${baseURL}/api/v2`,
       timeout: 30000,
