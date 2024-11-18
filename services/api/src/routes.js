@@ -8,10 +8,21 @@ import * as realmManager from './managers/realmmanager.js';
 import * as rentManager from './managers/rentmanager.js';
 import { Middlewares, Service } from '@microrealestate/common';
 import express from 'express';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 export default function routes() {
   const { ACCESS_TOKEN_SECRET } = Service.getInstance().envConfig.getValues();
   const router = express.Router();
+  
+  // Add proxy for payment processor service
+  router.use('/payments', createProxyMiddleware({
+    target: 'http://paymentprocessor:8001',
+    pathRewrite: {
+      '^/api/payments/process': '/process-payments'
+    },
+    changeOrigin: true
+  }));
+
   router.use(
     // protect the api access by checking the access token
     Middlewares.needAccessToken(ACCESS_TOKEN_SECRET),

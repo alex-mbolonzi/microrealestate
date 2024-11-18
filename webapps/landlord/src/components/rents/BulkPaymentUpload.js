@@ -130,7 +130,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const processorResponse = await fetch('http://localhost:8001/process-payments/', {
+      const processorResponse = await fetch('/api/payments/process', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

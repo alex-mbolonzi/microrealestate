@@ -16,10 +16,15 @@ app = FastAPI(title="Payment Processor Service")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=[
+        "http://localhost:8080",  # Development frontend
+        "http://localhost:3000",  # Alternative development port
+        "http://localhost:8081",  # Production frontend
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 class Payment(BaseModel):
