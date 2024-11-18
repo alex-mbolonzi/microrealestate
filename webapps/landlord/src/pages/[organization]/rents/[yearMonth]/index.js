@@ -1,15 +1,14 @@
 import { fetchRents, QueryKeys } from '../../../../utils/restcalls';
-import { LuAlertTriangle, LuChevronDown, LuSend, LuUpload } from 'react-icons/lu';
+import { LuAlertTriangle, LuChevronDown, LuSend } from 'react-icons/lu';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger
 } from '../../../../components/ui/popover';
-import { useCallback, useContext, useMemo, useState, useEffect } from 'react';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from '../../../../components/ui/alert';
 import { Button } from '../../../../components/ui/button';
-import BulkPaymentUpload from '../../../../components/rents/BulkPaymentUpload';
 import ConfirmDialog from '../../../../components/ConfirmDialog';
 import { GrDocumentPdf } from 'react-icons/gr';
 import { List } from '../../../../components/ResourceList';
@@ -91,9 +90,7 @@ function Actions({ values, onDone }) {
   const store = useContext(StoreContext);
   const [sending, setSending] = useState(false);
   const [showConfirmDlg, setShowConfirmDlg] = useState(false);
-  const [showUploadDlg, setShowUploadDlg] = useState(false);
   const [selectedDocumentName, setSelectedDocumentName] = useState(null);
-  const queryClient = useQueryClient();
   const disabled = !values?.length;
 
   const handleAction = useCallback(
@@ -101,35 +98,33 @@ function Actions({ values, onDone }) {
       setSelectedDocumentName(docName);
       setShowConfirmDlg(true);
     },
-    []
+    [setSelectedDocumentName, setShowConfirmDlg]
   );
 
   const handleConfirm = useCallback(async () => {
     try {
       setSending(true);
-      const response = await store.rent.sendEmail(
-        values.map(({ _id }) => _id),
-        selectedDocumentName
-      );
-      if (response.status !== 200) {
-        throw new Error(t('Something went wrong'));
+
+      const sendStatus = await store.rent.sendEmail({
+        document: selectedDocumentName,
+        tenantIds: values.map((r) => r._id),
+        terms: values.map((r) => r.term)
+      });
+
+      if (sendStatus !== 200) {
+        return toast.error(t('Email delivery service cannot send emails'));
       }
 
-      toast.success(t('Documents sent successfully'));
-      setShowConfirmDlg(false);
+      const response = await store.rent.fetch();
+      if (response.status !== 200) {
+        return toast.error(t('Cannot fetch rents from server'));
+      }
+
       onDone?.();
-    } catch (error) {
-      console.error(error);
-      toast.error(error.message);
     } finally {
       setSending(false);
     }
   }, [onDone, selectedDocumentName, store.rent, t, values]);
-
-  const handleUploadSuccess = useCallback(() => {
-    queryClient.invalidateQueries([QueryKeys.RENTS]);
-    onDone?.();
-  }, [queryClient, onDone]);
 
   return (
     <>
@@ -139,15 +134,7 @@ function Actions({ values, onDone }) {
           {t('Sending...')}
         </div>
       ) : (
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowUploadDlg(true)}
-          >
-            <LuUpload className="mr-2" />
-            {t('Upload Bulk Payments')}
-          </Button>
-
+        <div className="flex flex-col">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="secondary" disabled={disabled}>
@@ -179,7 +166,7 @@ function Actions({ values, onDone }) {
                   onClick={handleAction('rentcall_reminder')}
                   className="justify-start w-full rounded-none text-warning"
                 >
-                  <GrDocumentPdf className="mr-2" />{' '}
+                  <GrDocumentPdf className="mr-2 " />{' '}
                   {t('Second payment notice')}
                 </Button>
                 <Button
@@ -194,12 +181,6 @@ function Actions({ values, onDone }) {
           </Popover>
         </div>
       )}
-
-      <BulkPaymentUpload
-        isOpen={showUploadDlg}
-        onClose={() => setShowUploadDlg(false)}
-        onSuccess={handleUploadSuccess}
-      />
 
       {selectedDocumentName ? (
         <ConfirmDialog
@@ -229,31 +210,14 @@ function Rents() {
   const store = useContext(StoreContext);
   const router = useRouter();
   const { yearMonth } = router.query;
-  const [rents, setRents] = useState([]);
-  const { data: rentsData, isLoading, error } = useQuery(
-    ['rents', yearMonth],
-    () => fetchRents(store, yearMonth),
-    {
-      retry: false,
-      onError: (error) => {
-        console.error('Error fetching rents:', error);
-        if (error?.response?.status === 404) {
-          setRents([]);
-        }
-      }
-    }
-  );
-
-  useEffect(() => {
-    if (!isLoading && rentsData) {
-      setRents(rentsData);
-    }
-  }, [isLoading, rentsData]);
-
+  const { data, isError, isLoading } = useQuery({
+    queryKey: [QueryKeys.RENTS, yearMonth],
+    queryFn: () => fetchRents(store, yearMonth)
+  });
   const [rentSelected, setRentSelected] = useState([]);
 
   const handleActionDone = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['rents', yearMonth] });
+    queryClient.invalidateQueries({ queryKey: [QueryKeys.RENTS, yearMonth] });
     setRentSelected([]);
   }, [queryClient, yearMonth]);
 
@@ -263,18 +227,14 @@ function Rents() {
     [router.query.yearMonth]
   );
 
-  if (error) {
-    console.error('Rents page error:', error);
-    if (error?.response?.status === 401) {
-      router.push('/signin');
-      return null;
-    }
+  if (isError) {
+    toast.error(t('Error fetching rents'));
   }
 
   return (
     <Page loading={isLoading} dataCy="rentsPage">
       <div className="my-4">
-        <RentOverview data={{ period, ...rents?.overview }} />
+        <RentOverview data={{ period, ...data?.overview }} />
       </div>
 
       {!store.organization.canSendEmails ? (
@@ -290,7 +250,7 @@ function Rents() {
         </Alert>
       ) : null}
       <List
-        data={rents}
+        data={data}
         filters={[
           { id: 'notpaid', label: t('Not paid') },
           { id: 'partiallypaid', label: t('Partially paid') },
