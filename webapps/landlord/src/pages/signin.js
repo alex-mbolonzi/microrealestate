@@ -40,10 +40,19 @@ export default function SignIn() {
   const signIn = useCallback(
     async ({ email, password }) => {
       try {
-        const result = await store.user.signIn(email, password);
-        if (result.status !== 200) {
-          toast.error(t(result.error));
-          return;
+        const status = await store.user.signIn(email, password);
+        if (status !== 200) {
+          switch (status) {
+            case 422:
+              toast.error(t('Some fields are missing'));
+              return;
+            case 401:
+              toast.error(t('Incorrect email or password'));
+              return;
+            default:
+              toast.error(t('Something went wrong'));
+              return;
+          }
         }
 
         await store.organization.fetch();
@@ -66,8 +75,8 @@ export default function SignIn() {
           router.push('/firstaccess');
         }
       } catch (error) {
-        console.error('Sign in error:', error);
-        toast.error(t('Failed to sign in. Please try again.'));
+        console.error(error);
+        toast.error(t('Something went wrong'));
       }
     },
     [router, store, t]
