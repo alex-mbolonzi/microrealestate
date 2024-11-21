@@ -83,7 +83,7 @@
   "devDependencies": {
     "@babel/core": "7.21.3",
     "@types/lodash": "4.17.5",
-    "@types/node": "^18.17.0",
+    "@types/node": "18.19.64",
     "autoprefixer": "10.4.20",
     "babel-loader": "8.2.5",
     "eslint": "8.57.0",

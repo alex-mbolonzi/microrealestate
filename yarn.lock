@@ -2036,7 +2036,7 @@ __metadata:
     "@tiptap/react": 2.6.6
     "@tiptap/starter-kit": 2.6.6
     "@types/lodash": 4.17.5
-    "@types/node": ^18.17.0
+    "@types/node": 18.19.64
     autoprefixer: 10.4.20
     axios: 1.7.4
     babel-loader: 8.2.5
@@ -4910,21 +4910,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:18.19.64":
+  version: 18.19.64
+  resolution: "@types/node@npm:18.19.64"
+  dependencies:
+    undici-types: ~5.26.4
+  checksum: e7680215b03c9bee8a33947f03d06048e8e460f23b1b7b29c45350cf437faa5f8fcb7d8c3eb8dfec8427923e7a184df42bc710c1b6252b4852e3ed7064c6228f
+  languageName: node
+  linkType: hard
+
 "@types/node@npm:22.5.4":
   version: 22.5.4
   resolution: "@types/node@npm:22.5.4"
   dependencies:
     undici-types: ~6.19.2
   checksum: 77ac225c38c428200036780036da0bc6764e2721cfa8f528c7e7da7cfefe01a32a5791e28a54efbeedbc977949058d7db902b2e00139298225d4686cee4ae6db
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^18.17.0":
-  version: 18.19.64
-  resolution: "@types/node@npm:18.19.64"
-  dependencies:
-    undici-types: ~5.26.4
-  checksum: e7680215b03c9bee8a33947f03d06048e8e460f23b1b7b29c45350cf437faa5f8fcb7d8c3eb8dfec8427923e7a184df42bc710c1b6252b4852e3ed7064c6228f
   languageName: node
   linkType: hard
 
