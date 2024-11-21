@@ -1,1 +1,15 @@
-{}
+{
+  "name": "microrealestate",
+  "private": true,
+  "workspaces": [
+    "types",
+    "services/*",
+    "webapps/*"
+  ],
+  "scripts": {
+    "build": "yarn workspaces foreach -ptv run build",
+    "lint": "yarn workspaces foreach -ptv run lint",
+    "format": "yarn workspaces foreach -ptv run format",
+    "clean": "yarn workspaces foreach -ptv run clean"
+  }
+}
