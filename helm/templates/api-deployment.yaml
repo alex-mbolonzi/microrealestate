@@ -22,6 +22,27 @@ spec:
       labels:
         app: api
     spec:
+      volumes:
+        - name: backup
+          persistentVolumeClaim:
+            claimName: backup
+        - name: node-modules
+          emptyDir: {}
+        - configMap:
+            name: api-cm0
+          name: api-cm0
+      initContainers:
+        - name: install-deps
+          image: ghcr.io/alex-mbolonzi/microrealestate/api:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cd /usr/app
+              corepack enable
+              yarn workspaces focus @microrealestate/api
+          volumeMounts:
+            - name: node-modules
+              mountPath: /usr/app/node_modules
       containers:
         - env:
             - name: ACCESS_TOKEN_SECRET
@@ -60,14 +81,17 @@ spec:
               value: "production"
           image: ghcr.io/alex-mbolonzi/microrealestate/api:latest
           name: api
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cd /usr/app/services/api && npm install
+              node src/index.js
           ports:
             - containerPort: 8200
               protocol: TCP
           volumeMounts:
             - mountPath: /usr/app/backup
-              name: api-cm0
+              name: backup
+            - name: node-modules
+              mountPath: /usr/app/node_modules
       restartPolicy: Always
-      volumes:
-        - configMap:
-            name: api-cm0
-          name: api-cm0

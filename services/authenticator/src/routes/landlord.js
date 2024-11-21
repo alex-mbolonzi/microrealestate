@@ -17,10 +17,10 @@ const _generateTokens = async (dbAccount) => {
     Service.getInstance().envConfig.getValues();
   const { _id, password, ...account } = dbAccount;
   const refreshToken = jwt.sign({ account }, REFRESH_TOKEN_SECRET, {
-    expiresIn: PRODUCTION ? '600s' : '12h'
+    expiresIn: PRODUCTION ? '7d' : '12h'
   });
   const accessToken = jwt.sign({ account }, ACCESS_TOKEN_SECRET, {
-    expiresIn: '30s'
+    expiresIn: '15m'
   });
 
   // save tokens

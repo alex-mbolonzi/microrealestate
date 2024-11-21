@@ -49,7 +49,7 @@ spec:
             - name: SIGNUP
               value: "true"
             - name: TOKEN_COOKIE_ATTRIBUTES
-              value: "Path=/; SameSite=Lax; HttpOnly"
+              value: "Path=/; SameSite=Lax; HttpOnly; Secure=false"
             - name: AUTHENTICATOR_DEBUG_PORT
               value: "9226"
             - name: NODE_ENV
