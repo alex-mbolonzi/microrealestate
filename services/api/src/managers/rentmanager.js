@@ -362,7 +362,7 @@ async function _rentOfOccupant(
   return rent;
 }
 
-export async function all(req, res) {
+async function all(req, res) {
   const realm = req.realm;
 
   let currentDate = moment().startOf('month');
