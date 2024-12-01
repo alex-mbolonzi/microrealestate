@@ -5,6 +5,7 @@ import migratedb from '../scripts/migration.js';
 import path from 'path';
 import { restoreDB } from '../scripts/dbbackup.js';
 import routes from './routes.js';
+import express from 'express';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,6 +16,8 @@ i18n.configure({
 });
 
 async function onStartUp(application) {
+  const app = express();
+  application.use(express.json());
   const { RESTORE_DB } = Service.getInstance().envConfig.getValues();
   if (RESTORE_DB) {
     logger.debug('restoring database from backup');

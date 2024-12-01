@@ -71,7 +71,7 @@ async function build({ service = 'all' }) {
     composeArgs.push(service);
   }
 
-  await runCompose('build', composeArgs, { runMode: 'prod' });
+  // await runCompose('build', composeArgs, { runMode: 'prod' });
 
   console.log(chalk.green('build completed'));
 }
@@ -81,11 +81,11 @@ async function start() {
 
   initDirectories();
 
-  await runCompose('start', [], { runMode: 'prod' });
+  // await runCompose('start', [], { runMode: 'prod' });
 
-  if (!await checkHealth()) {
-    return;
-  }
+  // if (!await checkHealth()) {
+  //   return;
+  // }
 
   const landlordAppUrl = process.env.APP_URL || process.env.LANDLORD_APP_URL;
   console.log(
@@ -162,6 +162,7 @@ async function showConfig(runMode) {
   });
 }
 
+// eslint-disable-next-line no-unused-vars
 async function checkHealth() {
   let healthcheckSuccess = true;
   const maxAttempt = 10;
@@ -384,6 +385,7 @@ function displayHelp() {
 }
 
 function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
+
   const questions = [
     {
       name: 'dbData',
@@ -393,7 +395,7 @@ function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
         { name: 'no data (keep existing data)', value: 'no_data' },
         { name: 'demonstration data', value: 'demo_data' }
       ],
-      default: 'empty_data'
+      default: 'no_data'
     },
     {
       name: 'emailConfig',
@@ -584,6 +586,59 @@ function askForEnvironmentVariables(envConfig, ignorePreviousAnswers = false) {
           tenantAppUrl: envConfig?.TENANT_APP_URL
         }
   );
+}
+
+function setEnvironmentVariables(envConfig) {
+  const answers = {
+    dbData: envConfig?.DEMO_MODE === 'true' ? 'demo_data' : 'no_data',
+    emailConfig: envConfig?.GMAIL_EMAIL
+      ? 'gmail'
+      : envConfig?.SMTP_SERVER
+      ? 'smtp'
+      : envConfig?.MAILGUN_API_KEY
+      ? 'mailgun'
+      : envConfig?.ALLOW_SENDING_EMAILS === 'false'
+      ? 'none'
+      : 'none', // Set a default here if necessary
+    gmailEmail: envConfig?.GMAIL_EMAIL || '',
+    gmailAppPassword: envConfig?.GMAIL_APP_PASSWORD || '',
+    mailgunApiKey: envConfig?.MAILGUN_API_KEY || '',
+    mailgunDomain: envConfig?.MAILGUN_DOMAIN || '',
+    smtpServer: envConfig?.SMTP_SERVER || '',
+    smtpPort: envConfig?.SMTP_PORT || 587,
+    smtpSecure: envConfig?.SMTP_SECURE || false,
+    smtpUsername: envConfig?.SMTP_USERNAME || '',
+    smtpPassword: envConfig?.SMTP_PASSWORD || '',
+    fromEmail: envConfig?.EMAIL_FROM || envConfig?.GMAIL_EMAIL || '',
+    replyToEmail: envConfig?.EMAIL_REPLY_TO || envConfig?.EMAIL_FROM || '',
+    landlordAppUrl: envConfig?.LANDLORD_APP_URL || 'http://localhost:8080/landlord',
+    tenantAppUrl: (() => {
+      try {
+        const { protocol, subDomain, domain, port, basePath } = destructUrl(
+          envConfig?.LANDLORD_APP_URL || 'http://localhost:8080/landlord'
+        );
+        if (basePath) {
+          return buildUrl({
+            protocol,
+            subDomain,
+            domain,
+            port,
+            basePath: '/tenant'
+          });
+        }
+        return buildUrl({
+          protocol,
+          subDomain: 'tenant',
+          domain,
+          port
+        });
+      } catch (error) {
+        return 'http://localhost:8080/tenant';
+      }
+    })()
+  };
+
+  return answers;
 }
 
 function askRunMode() {
@@ -855,6 +910,7 @@ module.exports = {
   displayHelp,
   displayConfigWarningsAndErrors,
   askForEnvironmentVariables,
+  setEnvironmentVariables,
   askRunMode,
   askBackupFile,
   writeDotEnv,

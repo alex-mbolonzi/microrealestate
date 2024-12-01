@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c
+    kompose.version: 1.34.0 (HEAD)
+  labels:
+    app: authenticator
+  name: authenticator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: authenticator
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c
+        kompose.version: 1.34.0 (HEAD)
+      labels:
+        app: authenticator
+    spec:
+      containers:
+        - env:
+            - name: ACCESS_TOKEN_SECRET
+              value: "8126d047374a1fbf247064638770504f4cf42b57aa565992116d039c2c4fb7cf78bdf4bce7f409d130d787b67fbc4265cddad7f6697b193d0e4941981d0d45cb"
+            - name: APPCREDZ_TOKEN_SECRET
+              value: "ed2897fcdb239078543594cdc9bfd0bba3e88633c1d76ad746713150fd43f698a1e2544c4a3ed5099e37ef0c4b70b190b8487c9508855b8f10c36c9b2f14d2d9"
+            - name: PORT
+              value: "8000"
+            - name: REFRESH_TOKEN_SECRET
+              value: "a090f9d3a7fb14bc0dda75b963e16567b34cfaf0ad9c1f02a6c0c75d74ddd29bc56872b8a54d8e9aaad0fb59ab8e5db56025dd7cc2936b2f442907f410ad2570"
+            - name: RESET_TOKEN_SECRET
+              value: "a3ad72122b820f88d1b74f3db5e38970ef7ad63ad4bc0c17b997931a8ab499322ba528ae9d82977a572266b1d90c0e75b905e48ace7b0dda26145bf9ec7f0d47"
+            - name: NODE_OPTIONS
+              value: "--trace-warnings"
+            - name: EMAILER_URL
+              value: "http://emailer:8400/emailer"
+            - name: LOGGER_LEVEL
+              value: "debug"
+            - name: MONGO_URL
+              value: "mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster"
+            - name: PRODUCTION
+              value: "true"
+            - name: REDIS_URL
+              value: "redis://redis"
+            - name: REDIS_PASSWORD
+              value: "12264d724d371d79054887f65175aa3758d89dbc7a05ab54cdb3d8c47df3aace47ee415904a7f3229e6714263ae35ab24caa7a6861eba09bbbf23c5871daf850"
+            - name: SIGNUP
+              value: "true"
+            - name: TOKEN_COOKIE_ATTRIBUTES
+              value: "Path=/; SameSite=Lax; HttpOnly; Secure=false"
+            - name: AUTHENTICATOR_DEBUG_PORT
+              value: "9226"
+            - name: NODE_ENV
+              value: "production"
+            # - name: DOMAIN_URL
+            #   value: "http://gateway:8080"
+            - name: APP_DOMAIN
+              value: "79.72.67.125"
+            - name: APP_PROTOCOL
+              value: "http"
+          image: ghcr.io/alex-mbolonzi/microrealestate/authenticator:latest
+          name: authenticator
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+      restartPolicy: Always

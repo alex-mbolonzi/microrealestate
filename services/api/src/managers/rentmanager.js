@@ -3,7 +3,6 @@ import * as FD from './frontdata.js';
 import {
   Collections,
   logger,
-  Service,
   ServiceError
 } from '@microrealestate/common';
 import axios from 'axios';
@@ -363,7 +362,7 @@ async function _rentOfOccupant(
   return rent;
 }
 
-export async function all(req, res) {
+async function all(req, res) {
   const realm = req.realm;
 
   let currentDate = moment().startOf('month');
@@ -381,3 +380,22 @@ export async function all(req, res) {
     )
   );
 }
+
+function _checkDuplicatePayment(tenant, paymentDate, amount) {
+  return tenant.rents.some((rent) => {
+    return rent.payments.some((payment) => {
+      return (
+        payment.date === paymentDate &&
+        payment.amount === amount
+      );
+    });
+  });
+}
+
+export {
+  update,
+  updateByTerm,
+  rentsOfOccupant,
+  rentOfOccupantByTerm,
+  all
+};

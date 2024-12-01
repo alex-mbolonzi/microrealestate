@@ -26,6 +26,11 @@ export default function usePaymentTypes() {
         label: t('Transfer'),
         value: 'transfer',
       },
+      {
+        id: 'mpesa',
+        label: t('Mpesa'),
+        value: 'mpesa',
+      },
     ];
 
     return {

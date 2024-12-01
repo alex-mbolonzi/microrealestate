@@ -37,8 +37,8 @@ services:
       - '$RESETSERVICE_PORT'
     ports:
       - '$RESETSERVICE_DEBUG_PORT:9230'
-    networks:
-      - net
+    # networks:
+    #   - net
     depends_on:
       - redis
       - mongo

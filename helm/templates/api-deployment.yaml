@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c
+    kompose.version: 1.34.0 (HEAD)
+  labels:
+    app: api
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c
+        kompose.version: 1.34.0 (HEAD)
+      labels:
+        app: api
+    spec:
+      containers:
+        - env:
+            - name: ACCESS_TOKEN_SECRET
+              value: "8126d047374a1fbf247064638770504f4cf42b57aa565992116d039c2c4fb7cf78bdf4bce7f409d130d787b67fbc4265cddad7f6697b193d0e4941981d0d45cb"
+            - name: PORT
+              value: "8200"
+            - name: NODE_OPTIONS
+              value: "--trace-warnings"
+            - name: CIPHER_IV_KEY
+              value: "e62d3774d57565718912a2fda32c30b86d4320ab483e41f739951130ad48c482"
+            - name: CIPHER_KEY
+              value: "4f9078a9c90d6e30d24400373734db3988758f773ae4f0b9b0d773aefe8c3dc6"
+            - name: DEMO_MODE
+              value: "false"
+            - name: EMAILER_URL
+              value: "http://emailer:8400/emailer"
+            - name: LOGGER_LEVEL
+              value: "debug"
+            - name: MONGO_URL
+              value: "mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster"
+            - name: PDFGENERATOR_URL
+              value: "http://pdfgenerator:8300/pdfgenerator"
+            - name: PRODUCTION
+              value: "true"
+            - name: REDIS_PASSWORD
+              value: "12264d724d371d79054887f65175aa3758d89dbc7a05ab54cdb3d8c47df3aace47ee415904a7f3229e6714263ae35ab24caa7a6861eba09bbbf23c5871daf850"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: PAYMENT_PROCESSOR_URL
+              value: "http://paymentprocessor:8001"
+            - name: RESTORE_DB
+              value: "false"
+            - name: API_DEBUG_PORT
+              value: "9229"
+            - name: NODE_ENV
+              value: "production"
+          image: ghcr.io/alex-mbolonzi/microrealestate/api:latest
+          name: api
+          ports:
+            - containerPort: 8200
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /usr/app/backup
+              name: api-cm0
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            name: api-cm0
+          name: api-cm0

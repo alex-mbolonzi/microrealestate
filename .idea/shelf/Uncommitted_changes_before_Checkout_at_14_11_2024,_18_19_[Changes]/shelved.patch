@@ -1,0 +1,142 @@
+Index: helm/templates/pdfgenerator-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  annotations:\n    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n    kompose.version: 1.34.0 (HEAD)\n  labels:\n    app: pdfgenerator\n  name: pdfgenerator\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: pdfgenerator\n  template:\n    metadata:\n      annotations:\n        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n        kompose.version: 1.34.0 (HEAD)\n      labels:\n        app: pdfgenerator\n    spec:\n      containers:\n        - env:\n            - name: ACCESS_TOKEN_SECRET\n              value: \"8126d047374a1fbf247064638770504f4cf42b57aa565992116d039c2c4fb7cf78bdf4bce7f409d130d787b67fbc4265cddad7f6697b193d0e4941981d0d45cb\"\n            - name: PORT\n              value: \"8300\"\n            - name: NODE_OPTIONS\n              value: \"--trace-warnings\"\n            - name: CHROMIUM_BIN\n              value: \"/usr/bin/chromium-browser\"\n            - name: DATA_DIRECTORY\n              value: \"/usr/app/services/pdfgenerator/data\"\n            - name: LOGGER_LEVEL\n              value: \"debug\"\n            - name: MONGO_URL\n              value: \"mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster\"\n            - name: PDF_DIRECTORY\n              value: \"/usr/app/services/pdfgenerator/pdf_documents\"\n            - name: PRODUCTION\n              value: \"true\"\n            - name: REDIS_URL\n              value: \"redis://redis\"\n            - name: REDIS_PASSWORD\n              value: \"12264d724d371d79054887f65175aa3758d89dbc7a05ab54cdb3d8c47df3aace47ee415904a7f3229e6714263ae35ab24caa7a6861eba09bbbf23c5871daf850\"\n            - name: TEMPLATES_DIRECTORY\n              value: \"/usr/app/services/pdfgenerator/templates\"\n            - name: TEMPORARY_DIRECTORY\n              value: \"/usr/app/services/pdfgenerator/tmp\"\n            - name: UPLOAD_MAX_SIZE\n              value: \"2000000000\"\n            - name: UPLOADS_DIRECTORY\n              value: \"/usr/app/services/pdfgenerator/uploads\"\n            - name: PDFGENERATOR_DEBUG_PORT\n              value: \"9227\"\n            - name: NODE_ENV\n              value: \"production\"\n            - name: CIPHER_IV_KEY\n              value: \"e62d3774d57565718912a2fda32c30b86d4320ab483e41f739951130ad48c482\"\n            - name: CIPHER_KEY\n              value: \"4f9078a9c90d6e30d24400373734db3988758f773ae4f0b9b0d773aefe8c3dc6\"\n          image: ghcr.io/alex-mbolonzi/microrealestate/pdfgenerator:d88630553c216b9abbae70ec6ae4bd58fcf91341\n          name: pdfgenerator\n          ports:\n            - containerPort: 8300\n              protocol: TCP\n      restartPolicy: Always\n
+===================================================================
+diff --git a/helm/templates/pdfgenerator-deployment.yaml b/helm/templates/pdfgenerator-deployment.yaml
+--- a/helm/templates/pdfgenerator-deployment.yaml	(revision d77d0896e3e977a15cc3a91b2fce72aa6f887b0c)
++++ b/helm/templates/pdfgenerator-deployment.yaml	(date 1731593932893)
+@@ -60,7 +60,7 @@
+               value: "e62d3774d57565718912a2fda32c30b86d4320ab483e41f739951130ad48c482"
+             - name: CIPHER_KEY
+               value: "4f9078a9c90d6e30d24400373734db3988758f773ae4f0b9b0d773aefe8c3dc6"
+-          image: ghcr.io/alex-mbolonzi/microrealestate/pdfgenerator:d88630553c216b9abbae70ec6ae4bd58fcf91341
++          image: ghcr.io/alex-mbolonzi/microrealestate/pdfgenerator:latest
+           name: pdfgenerator
+           ports:
+             - containerPort: 8300
+Index: helm/templates/api-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  annotations:\n    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n    kompose.version: 1.34.0 (HEAD)\n  labels:\n    app: api\n  name: api\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: api\n  strategy:\n    type: Recreate\n  template:\n    metadata:\n      annotations:\n        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n        kompose.version: 1.34.0 (HEAD)\n      labels:\n        app: api\n    spec:\n      containers:\n        - env:\n            - name: ACCESS_TOKEN_SECRET\n              value: \"8126d047374a1fbf247064638770504f4cf42b57aa565992116d039c2c4fb7cf78bdf4bce7f409d130d787b67fbc4265cddad7f6697b193d0e4941981d0d45cb\"\n            - name: PORT\n              value: \"8200\"\n            - name: NODE_OPTIONS\n              value: \"--trace-warnings\"\n            - name: CIPHER_IV_KEY\n              value: \"e62d3774d57565718912a2fda32c30b86d4320ab483e41f739951130ad48c482\"\n            - name: CIPHER_KEY\n              value: \"4f9078a9c90d6e30d24400373734db3988758f773ae4f0b9b0d773aefe8c3dc6\"\n            - name: DEMO_MODE\n              value: \"false\"\n            - name: EMAILER_URL\n              value: \"http://emailer:8400/emailer\"\n            - name: LOGGER_LEVEL\n              value: \"debug\"\n            - name: MONGO_URL\n              value: \"mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster\"\n            - name: PDFGENERATOR_URL\n              value: \"http://pdfgenerator:8300/pdfgenerator\"\n            - name: PRODUCTION\n              value: \"true\"\n            - name: REDIS_PASSWORD\n              value: \"12264d724d371d79054887f65175aa3758d89dbc7a05ab54cdb3d8c47df3aace47ee415904a7f3229e6714263ae35ab24caa7a6861eba09bbbf23c5871daf850\"\n            - name: REDIS_URL\n              value: \"redis://redis\"\n            - name: RESTORE_DB\n              value: \"false\"\n            - name: API_DEBUG_PORT\n              value: \"9229\"\n            - name: NODE_ENV\n              value: \"production\"\n          image: ghcr.io/alex-mbolonzi/microrealestate/api:d88630553c216b9abbae70ec6ae4bd58fcf91341\n          name: api\n          ports:\n            - containerPort: 8200\n              protocol: TCP\n          volumeMounts:\n            - mountPath: /usr/app/backup\n              name: api-cm0\n      restartPolicy: Always\n      volumes:\n        - configMap:\n            name: api-cm0\n          name: api-cm0\n
+===================================================================
+diff --git a/helm/templates/api-deployment.yaml b/helm/templates/api-deployment.yaml
+--- a/helm/templates/api-deployment.yaml	(revision d77d0896e3e977a15cc3a91b2fce72aa6f887b0c)
++++ b/helm/templates/api-deployment.yaml	(date 1731593839674)
+@@ -56,7 +56,7 @@
+               value: "9229"
+             - name: NODE_ENV
+               value: "production"
+-          image: ghcr.io/alex-mbolonzi/microrealestate/api:d88630553c216b9abbae70ec6ae4bd58fcf91341
++          image: ghcr.io/alex-mbolonzi/microrealestate/api:latest
+           name: api
+           ports:
+             - containerPort: 8200
+Index: helm/templates/tenant-frontend-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  annotations:\n    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n    kompose.version: 1.34.0 (HEAD)\n  labels:\n    app: tenant-frontend\n  name: tenant-frontend\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: tenant-frontend\n  template:\n    metadata:\n      annotations:\n        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n        kompose.version: 1.34.0 (HEAD)\n      labels:\n        app: tenant-frontend\n    spec:\n      containers:\n        - env:\n            - name: BASE_PATH\n              value: \"/tenant\"\n            - name: PORT\n              value: \"8190\"\n            - name: DOCKER_GATEWAY_URL\n              value: \"http://gateway:8080\"\n            - name: APP_NAME\n              value: \"Bomatech\"\n            - name: CORS_ENABLED\n              value: \"false\"\n            - name: DEMO_MODE\n              value: \"false\"\n            - name: GATEWAY_URL\n              value: \"http://gateway:8080\"\n            # - name: NODE_ENV\n            #   value: \"production\"\n            # - name: SIGNUP\n            #   value: \"true\"\n            # - name: DOMAIN_URL\n            #   value: \"http://34.133.214.175:8080\"\n          image: ghcr.io/alex-mbolonzi/microrealestate/tenant-frontend:d88630553c216b9abbae70ec6ae4bd58fcf91341\n          name: tenant-frontend\n          ports:\n            - containerPort: 8190\n              protocol: TCP\n      restartPolicy: Always\n
+===================================================================
+diff --git a/helm/templates/tenant-frontend-deployment.yaml b/helm/templates/tenant-frontend-deployment.yaml
+--- a/helm/templates/tenant-frontend-deployment.yaml	(revision d77d0896e3e977a15cc3a91b2fce72aa6f887b0c)
++++ b/helm/templates/tenant-frontend-deployment.yaml	(date 1731593956998)
+@@ -42,7 +42,7 @@
+             #   value: "true"
+             # - name: DOMAIN_URL
+             #   value: "http://34.133.214.175:8080"
+-          image: ghcr.io/alex-mbolonzi/microrealestate/tenant-frontend:d88630553c216b9abbae70ec6ae4bd58fcf91341
++          image: ghcr.io/alex-mbolonzi/microrealestate/tenant-frontend:latest
+           name: tenant-frontend
+           ports:
+             - containerPort: 8190
+Index: helm/templates/authenticator-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  annotations:\n    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n    kompose.version: 1.34.0 (HEAD)\n  labels:\n    app: authenticator\n  name: authenticator\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: authenticator\n  template:\n    metadata:\n      annotations:\n        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n        kompose.version: 1.34.0 (HEAD)\n      labels:\n        app: authenticator\n    spec:\n      containers:\n        - env:\n            - name: ACCESS_TOKEN_SECRET\n              value: \"8126d047374a1fbf247064638770504f4cf42b57aa565992116d039c2c4fb7cf78bdf4bce7f409d130d787b67fbc4265cddad7f6697b193d0e4941981d0d45cb\"\n            - name: APPCREDZ_TOKEN_SECRET\n              value: \"ed2897fcdb239078543594cdc9bfd0bba3e88633c1d76ad746713150fd43f698a1e2544c4a3ed5099e37ef0c4b70b190b8487c9508855b8f10c36c9b2f14d2d9\"\n            - name: PORT\n              value: \"8000\"\n            - name: REFRESH_TOKEN_SECRET\n              value: \"a090f9d3a7fb14bc0dda75b963e16567b34cfaf0ad9c1f02a6c0c75d74ddd29bc56872b8a54d8e9aaad0fb59ab8e5db56025dd7cc2936b2f442907f410ad2570\"\n            - name: RESET_TOKEN_SECRET\n              value: \"a3ad72122b820f88d1b74f3db5e38970ef7ad63ad4bc0c17b997931a8ab499322ba528ae9d82977a572266b1d90c0e75b905e48ace7b0dda26145bf9ec7f0d47\"\n            - name: NODE_OPTIONS\n              value: \"--trace-warnings\"\n            - name: EMAILER_URL\n              value: \"http://emailer:8400/emailer\"\n            - name: LOGGER_LEVEL\n              value: \"debug\"\n            - name: MONGO_URL\n              value: \"mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster\"\n            - name: PRODUCTION\n              value: \"true\"\n            - name: REDIS_URL\n              value: \"redis://redis\"\n            - name: REDIS_PASSWORD\n              value: \"12264d724d371d79054887f65175aa3758d89dbc7a05ab54cdb3d8c47df3aace47ee415904a7f3229e6714263ae35ab24caa7a6861eba09bbbf23c5871daf850\"\n            - name: SIGNUP\n              value: \"true\"\n            # - name: TOKEN_COOKIE_ATTRIBUTES\n            #   value: '{\"httpOnly\":true,\"sameSite\":\"strict\",\"secure\":false,\"domain\":\"localhost\"}'\n            - name: AUTHENTICATOR_DEBUG_PORT\n              value: \"9226\"\n            - name: NODE_ENV\n              value: \"production\"\n            # - name: DOMAIN_URL\n            #   value: \"http://gateway:8080\"\n            - name: APP_DOMAIN\n              value: \"79.72.67.125\"\n            - name: APP_PROTOCOL\n              value: \"http\"\n          image: ghcr.io/alex-mbolonzi/microrealestate/authenticator:d88630553c216b9abbae70ec6ae4bd58fcf91341\n          name: authenticator\n          ports:\n            - containerPort: 8000\n              protocol: TCP\n      restartPolicy: Always\n
+===================================================================
+diff --git a/helm/templates/authenticator-deployment.yaml b/helm/templates/authenticator-deployment.yaml
+--- a/helm/templates/authenticator-deployment.yaml	(revision d77d0896e3e977a15cc3a91b2fce72aa6f887b0c)
++++ b/helm/templates/authenticator-deployment.yaml	(date 1731593869100)
+@@ -60,7 +60,7 @@
+               value: "79.72.67.125"
+             - name: APP_PROTOCOL
+               value: "http"
+-          image: ghcr.io/alex-mbolonzi/microrealestate/authenticator:d88630553c216b9abbae70ec6ae4bd58fcf91341
++          image: ghcr.io/alex-mbolonzi/microrealestate/authenticator:latest
+           name: authenticator
+           ports:
+             - containerPort: 8000
+Index: helm/templates/emailer-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  annotations:\n    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n    kompose.version: 1.34.0 (HEAD)\n  labels:\n    app: emailer\n  name: emailer\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: emailer\n  template:\n    metadata:\n      annotations:\n        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n        kompose.version: 1.34.0 (HEAD)\n      labels:\n        app: emailer\n    spec:\n      containers:\n        - env:\n            - name: ACCESS_TOKEN_SECRET\n              value: \"8126d047374a1fbf247064638770504f4cf42b57aa565992116d039c2c4fb7cf78bdf4bce7f409d130d787b67fbc4265cddad7f6697b193d0e4941981d0d45cb\"\n            - name: PORT\n              value: \"8400\"\n            - name: NODE_OPTIONS\n              value: \"--trace-warnings\"\n            - name: ALLOW_SENDING_EMAILS\n              value: \"true\"\n            - name: APP_NAME\n              value: \"Bomatech\"\n            - name: CIPHER_IV_KEY\n              value: \"e62d3774d57565718912a2fda32c30b86d4320ab483e41f739951130ad48c482\"\n            - name: CIPHER_KEY\n              value: \"4f9078a9c90d6e30d24400373734db3988758f773ae4f0b9b0d773aefe8c3dc6\"\n            - name: LANDLORD_APP_URL\n              value: \"http://landlord-frontend:8180/landlord\"\n            - name: LOGGER_LEVEL\n              value: \"debug\"\n            - name: MONGO_URL\n              value: \"mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster\"\n            - name: PDFGENERATOR_URL\n              value: \"http://pdfgenerator:8300/pdfgenerator\"\n            - name: REDIS_PASSWORD\n              value: \"12264d724d371d79054887f65175aa3758d89dbc7a05ab54cdb3d8c47df3aace47ee415904a7f3229e6714263ae35ab24caa7a6861eba09bbbf23c5871daf850\"\n            - name: REDIS_URL\n              value: \"redis://redis\"\n            # - name: TEMPORARY_DIRECTORY\n            #   value: \"/usr/app/services/pdfgenerator/tmp\"\n            - name: TENANT_APP_URL\n              value: \"http://tenant-frontend:8190/tenant\"\n            - name: EMAILER_DEBUG_PORT\n              value: \"9228\"\n            - name: NODE_ENV\n              value: \"production\"\n            - name: SMTP_SERVER\n              value: \"smtp.sendgrid.net\"\n            - name: SMTP_PORT\n              value: \"465\"\n            - name: SMTP_SECURE\n              value: \"true\"\n            - name: SMTP_USERNAME\n              value: \"apikey\"\n            - name: SMTP_PASSWORD\n              value: \"\"\n            - name: EMAIL_REPLY_TO\n              value: \"bomatech.ke@gmail.com\"\n            - name: EMAIL_BCC\n              value: \"bomatech.ke@gmail.com\"\n          image: ghcr.io/alex-mbolonzi/microrealestate/emailer:d88630553c216b9abbae70ec6ae4bd58fcf91341\n          name: emailer\n          ports:\n            - containerPort: 8400\n              protocol: TCP\n      restartPolicy: Always\n
+===================================================================
+diff --git a/helm/templates/emailer-deployment.yaml b/helm/templates/emailer-deployment.yaml
+--- a/helm/templates/emailer-deployment.yaml	(revision d77d0896e3e977a15cc3a91b2fce72aa6f887b0c)
++++ b/helm/templates/emailer-deployment.yaml	(date 1731593882815)
+@@ -65,12 +65,12 @@
+             - name: SMTP_USERNAME
+               value: "apikey"
+             - name: SMTP_PASSWORD
+-              value: ""
++              value: "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"
+             - name: EMAIL_REPLY_TO
+               value: "bomatech.ke@gmail.com"
+             - name: EMAIL_BCC
+               value: "bomatech.ke@gmail.com"
+-          image: ghcr.io/alex-mbolonzi/microrealestate/emailer:d88630553c216b9abbae70ec6ae4bd58fcf91341
++          image: ghcr.io/alex-mbolonzi/microrealestate/emailer:latest
+           name: emailer
+           ports:
+             - containerPort: 8400
+Index: helm/templates/landlord-frontend-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  annotations:\n    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n    kompose.version: 1.34.0 (HEAD)\n  labels:\n    app: landlord-frontend\n  name: landlord-frontend\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: landlord-frontend\n  template:\n    metadata:\n      annotations:\n        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n        kompose.version: 1.34.0 (HEAD)\n      labels:\n        app: landlord-frontend\n    spec:\n      containers:\n        - env:\n            - name: BASE_PATH\n              value: \"/landlord\"\n            - name: PORT\n              value: \"8180\"\n            # - name: DOCKER_GATEWAY_URL\n            #   value: \"http://localhost:8080\"\n            - name: APP_NAME\n              value: \"Bomatech\"\n            - name: CORS_ENABLED\n              value: \"false\"\n            - name: DEMO_MODE\n              value: \"false\"\n            - name: GATEWAY_URL\n              value: \"http://79.72.67.125:80\"\n            - name: NODE_ENV\n              value: \"production\"\n            - name: SIGNUP\n              value: \"true\"\n          image: ghcr.io/alex-mbolonzi/microrealestate/landlord-frontend:345a0de623efba547be9a95e63596e5ce0e7eeb9\n          name: landlord-frontend\n          ports:\n            - containerPort: 8180\n              protocol: TCP\n      restartPolicy: Always\n
+===================================================================
+diff --git a/helm/templates/landlord-frontend-deployment.yaml b/helm/templates/landlord-frontend-deployment.yaml
+--- a/helm/templates/landlord-frontend-deployment.yaml	(revision d77d0896e3e977a15cc3a91b2fce72aa6f887b0c)
++++ b/helm/templates/landlord-frontend-deployment.yaml	(date 1731593917922)
+@@ -40,7 +40,7 @@
+               value: "production"
+             - name: SIGNUP
+               value: "true"
+-          image: ghcr.io/alex-mbolonzi/microrealestate/landlord-frontend:345a0de623efba547be9a95e63596e5ce0e7eeb9
++          image: ghcr.io/alex-mbolonzi/microrealestate/landlord-frontend:latest
+           name: landlord-frontend
+           ports:
+             - containerPort: 8180
+Index: helm/templates/tenantapi-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  annotations:\n    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n    kompose.version: 1.34.0 (HEAD)\n  labels:\n    app: tenantapi\n  name: tenantapi\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: tenantapi\n  template:\n    metadata:\n      annotations:\n        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n        kompose.version: 1.34.0 (HEAD)\n      labels:\n        app: tenantapi\n    spec:\n      containers:\n        - env:\n            - name: ACCESS_TOKEN_SECRET\n              value: \"8126d047374a1fbf247064638770504f4cf42b57aa565992116d039c2c4fb7cf78bdf4bce7f409d130d787b67fbc4265cddad7f6697b193d0e4941981d0d45cb\"\n            - name: PORT\n              value: \"8250\"\n            - name: NODE_OPTIONS\n              value: \"--trace-warnings\"\n            - name: CIPHER_IV_KEY\n              value: \"e62d3774d57565718912a2fda32c30b86d4320ab483e41f739951130ad48c482\"\n            - name: CIPHER_KEY\n              value: \"4f9078a9c90d6e30d24400373734db3988758f773ae4f0b9b0d773aefe8c3dc6\"\n            - name: DEMO_MODE\n              value: \"false\"\n            - name: LOGGER_LEVEL\n              value: \"debug\"\n            - name: MONGO_URL\n              value: \"mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster\"\n            - name: TENANTAPI_DEBUG_PORT\n              value: \"9240\"\n            - name: NODE_ENV\n              value: \"production\"\n          image: ghcr.io/alex-mbolonzi/microrealestate/tenantapi:d88630553c216b9abbae70ec6ae4bd58fcf91341\n          name: tenantapi\n          ports:\n            - containerPort: 8250\n              protocol: TCP\n      restartPolicy: Always\n
+===================================================================
+diff --git a/helm/templates/tenantapi-deployment.yaml b/helm/templates/tenantapi-deployment.yaml
+--- a/helm/templates/tenantapi-deployment.yaml	(revision d77d0896e3e977a15cc3a91b2fce72aa6f887b0c)
++++ b/helm/templates/tenantapi-deployment.yaml	(date 1731593975256)
+@@ -42,7 +42,7 @@
+               value: "9240"
+             - name: NODE_ENV
+               value: "production"
+-          image: ghcr.io/alex-mbolonzi/microrealestate/tenantapi:d88630553c216b9abbae70ec6ae4bd58fcf91341
++          image: ghcr.io/alex-mbolonzi/microrealestate/tenantapi:latest
+           name: tenantapi
+           ports:
+             - containerPort: 8250
+Index: helm/templates/gateway-deployment.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  annotations:\n    kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n    kompose.version: 1.34.0 (HEAD)\n  labels:\n    app: gateway\n  name: gateway\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: gateway\n  template:\n    metadata:\n      annotations:\n        kompose.cmd: kompose --file ../docker-compose.microservices.base.yml convert -c\n        kompose.version: 1.34.0 (HEAD)\n      labels:\n        app: gateway\n    spec:\n      containers:\n        - env:\n            - name: EXPOSE_FRONTENDS\n              value: \"true\"\n            - name: LOGGER_LEVEL\n              value: \"debug\"\n            - name: PORT\n              value: \"8080\"\n            - name: NODE_OPTIONS\n              value: \"--trace-warnings\"\n            - name: CORS_ENABLED\n              value: \"false\"\n            - name: DOMAIN_URL\n              value: \"http://79.72.67.125:80\"\n            - name: MONGO_URL\n              value: \"mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster\"\n            - name: PRODUCTION\n              value: \"true\"\n            - name: REDIS_URL\n              value: \"redis://redis\"\n            - name: GATEWAY_DEBUG_PORT\n              value: \"9225\"\n            - name: AUTHENTICATOR_URL\n              value: \"http://authenticator:8000\"\n            - name: API_URL\n              value: \"http://api:8200/api/v2\"\n            - name: PDFGENERATOR_URL\n              value: \"http://pdfgenerator:8300/pdfgenerator\"\n            - name: EMAILER_URL\n              value: \"http://emailer:8400/emailer\"\n            - name: LANDLORD_FRONTEND_URL\n              value: \"http://landlord-frontend:8180\"\n            - name: LANDLORD_BASE_PATH\n              value: \"/landlord\"\n            - name: TENANT_FRONTEND_URL\n              value: \"http://tenant-frontend:8190\"\n            - name: TENANT_BASE_PATH\n              value: \"/tenant\"\n            - name: TENANTAPI_URL\n              value: \"http://tenantapi:8250/tenantapi\"\n            - name: NODE_ENV\n              value: \"production\"\n            # - key: RESETSERVICE_URL\n            #   value: ${RESETSERVICE_URL}\n          image: ghcr.io/alex-mbolonzi/microrealestate/gateway:d88630553c216b9abbae70ec6ae4bd58fcf91341\n          name: gateway\n          ports:\n            - containerPort: 8080\n              protocol: TCP\n      restartPolicy: Always\n
+===================================================================
+diff --git a/helm/templates/gateway-deployment.yaml b/helm/templates/gateway-deployment.yaml
+--- a/helm/templates/gateway-deployment.yaml	(revision d77d0896e3e977a15cc3a91b2fce72aa6f887b0c)
++++ b/helm/templates/gateway-deployment.yaml	(date 1731593902673)
+@@ -64,7 +64,7 @@
+               value: "production"
+             # - key: RESETSERVICE_URL
+             #   value: ${RESETSERVICE_URL}
+-          image: ghcr.io/alex-mbolonzi/microrealestate/gateway:d88630553c216b9abbae70ec6ae4bd58fcf91341
++          image: ghcr.io/alex-mbolonzi/microrealestate/gateway:latest
+           name: gateway
+           ports:
+             - containerPort: 8080
