@@ -105,7 +105,7 @@ export default function OrganizationMenu({ className }) {
       await store.user.signOut();
       window.sessionStorage.clear();
       window.localStorage.clear();
-      window.location.assign(config.BASE_PATH); // will be redirected to /signin
+      window.location.assign(`${config.BASE_PATH}/signin`);
     },
     [store.user]
   );
