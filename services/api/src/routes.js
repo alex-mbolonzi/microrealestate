@@ -23,6 +23,15 @@ export default function routes() {
       fileSize: 5 * 1024 * 1024 // 5MB limit
     }
   });
+
+  router.use(
+    // protect the api access by checking the access token
+    Middlewares.needAccessToken(ACCESS_TOKEN_SECRET),
+    // update req with the user organizations
+    Middlewares.checkOrganization(),
+    // forbid access to tenant
+    Middlewares.notRoles(['tenant'])
+  );
   
   // Add proxy for payment processor service
   const paymentProcessorUrl = process.env.PAYMENT_PROCESSOR_URL || 'http://paymentprocessor:8001';
@@ -31,7 +40,7 @@ export default function routes() {
     createProxyMiddleware({
       target: paymentProcessorUrl,
       pathRewrite: {
-        '^/api/paymentprocessor/upload': '/upload'
+        '^/api/paymentprocessor/upload': '/process-payments'
       },
       changeOrigin: true,
       onProxyReq: (proxyReq, req, res) => {
@@ -42,8 +51,15 @@ export default function routes() {
             filename: req.file.originalname,
             contentType: 'text/csv'
           });
-          proxyReq.setHeader('Content-Type', `multipart/form-data; boundary=${formData.getBoundary()}`);
-          proxyReq.setHeader('Content-Length', formData.getLengthSync());
+          // Set the correct headers for multipart/form-data
+          const contentType = `multipart/form-data; boundary=${formData.getBoundary()}`;
+          proxyReq.setHeader('Content-Type', contentType);
+          
+          // Get the content length synchronously
+          const contentLength = formData.getLengthSync();
+          proxyReq.setHeader('Content-Length', contentLength);
+          
+          // Pipe the form data to the proxy request
           formData.pipe(proxyReq);
         }
       },
@@ -52,15 +68,6 @@ export default function routes() {
         res.status(500).json({ error: 'Payment processor service unavailable' });
       }
     })
-  );
-
-  router.use(
-    // protect the api access by checking the access token
-    Middlewares.needAccessToken(ACCESS_TOKEN_SECRET),
-    // update req with the user organizations
-    Middlewares.checkOrganization(),
-    // forbid access to tenant
-    Middlewares.notRoles(['tenant'])
   );
 
   const realmsRouter = express.Router();

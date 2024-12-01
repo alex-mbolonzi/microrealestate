@@ -276,11 +276,14 @@ services:
     image: 'ghcr.io/microrealestate/microrealestate/tenant-frontend:${MRE_VERSION:-latest}'
     environment:
       BASE_PATH: /tenant
-      PORT: 8190
-      DOCKER_GATEWAY_URL: http://gateway:8080
-      CORS_ENABLED: 'true'
-      GATEWAY_URL: ${APP_PROTOCOL:-http}://${APP_DOMAIN:-localhost}${APP_PORT:+:}$APP_PORT
-      NODE_ENV: production
+      NEXT_PUBLIC_APP_NAME: ${APP_NAME:-MicroRealEstate}
+      NEXT_PUBLIC_GA_ID: ${GA_ID:-your-ga-id}
+      NEXT_PUBLIC_DEMO_MODE: ${DEMO_MODE:-false}
+      NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN:-https://your-sentry-dsn}
+      NEXT_PUBLIC_BASE_PATH: /tenant
+      NEXT_PUBLIC_APP_URL: ${APP_PROTOCOL:-http}://${APP_DOMAIN:-localhost}${APP_PORT:+:}$APP_PORT
+      NEXT_PUBLIC_GATEWAY_URL: ${APP_PROTOCOL:-http}://${APP_DOMAIN:-localhost}${APP_PORT:+:}$APP_PORT
+      NEXT_PUBLIC_CORS_ENABLED: 'true'
     expose:
       - '8190'
     networks:
@@ -288,6 +291,28 @@ services:
     depends_on:
       gateway:
         condition: service_started
+  ###############################################################################
+  # Payment Processor
+  ###############################################################################
+  paymentprocessor:
+    restart: unless-stopped
+    build:
+      context: ./services/paymentprocessor
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      LOGGER_LEVEL: info
+      PORT: 8001
+      MONGO_URL: mongodb://mongo:27017/microrealestate
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379
+    expose:
+      - '8001'
+    networks:
+      - net
+    depends_on:
+      - mongo
+      - redis
+
 ###############################################################################
 # microservices network
 ###############################################################################

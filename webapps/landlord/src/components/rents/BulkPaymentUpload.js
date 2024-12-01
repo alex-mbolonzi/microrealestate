@@ -76,46 +76,26 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         body: formData
       });
 
-      // Clone the response before attempting to read it
-      const responseClone = response.clone();
-      
       let responseData;
       try {
         responseData = await response.json();
       } catch (parseError) {
         console.error('Response parsing error:', parseError);
-        const text = await responseClone.text();
-        console.error('Raw response:', text);
         throw new Error('Invalid response format from server');
       }
 
       if (!response.ok) {
-        throw new Error(responseData?.error || responseData?.message || 'Failed to upload payments');
+        throw new Error(responseData.detail || responseData.error || responseData.message || 'Failed to upload payments');
       }
 
-      // Handle results
-      if (responseData.failed && responseData.failed.length > 0) {
-        toast.error(t('Some payments failed to process. Check the error report.'));
-        if (responseData.failedRecordsCsv) {
-          const blob = new Blob([responseData.failedRecordsCsv], { type: 'text/csv' });
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'failed_payments.csv';
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        }
-      } else {
-        toast.success(t('All payments processed successfully'));
-      }
+      // Handle successful response
+      const successful = responseData.length || 0;
+      const failed = 0; // Python service currently doesn't return failed records
 
-      // Show final summary
-      toast.info(
-        t('Upload Summary: {{successful}} successful, {{failed}} failed', {
-          successful: responseData.successful?.length || 0,
-          failed: responseData.failed?.length || 0
+      // Show summary
+      toast.success(
+        t('Upload Summary: {{successful}} payments processed successfully', {
+          successful
         })
       );
 

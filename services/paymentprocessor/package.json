@@ -1,0 +1,28 @@
+{
+  "name": "@microrealestate/paymentprocessor",
+  "version": "1.0.0",
+  "description": "Payment processor service for MicroRealEstate",
+  "main": "src/index.js",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon -w src --inspect=0.0.0.0:9227 src/index.js",
+    "test": "jest",
+    "lint": "eslint .",
+    "format": "prettier --write '**/*.{js,jsx,ts,tsx,json,css}'"
+  },
+  "dependencies": {
+    "@microrealestate/common": "*",
+    "csv-parse": "^5.5.3",
+    "express": "^4.18.2",
+    "multer": "1.4.5-lts.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.0",
+    "prettier": "^3.2.5"
+  }
+}
