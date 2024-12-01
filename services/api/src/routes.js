@@ -84,7 +84,6 @@ export default function routes() {
     Middlewares.asyncWrapper(rentManager.rentOfOccupantByTerm)
   );
   rentsRouter.get('/:year/:month', Middlewares.asyncWrapper(rentManager.all));
-  rentsRouter.post('/upload', Middlewares.asyncWrapper(rentManager.uploadBulkPayments));
   router.use('/rents', rentsRouter);
 
   const propertiesRouter = express.Router();

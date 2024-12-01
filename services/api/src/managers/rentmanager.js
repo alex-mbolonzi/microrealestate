@@ -7,7 +7,6 @@ import {
 } from '@microrealestate/common';
 import axios from 'axios';
 import moment from 'moment';
-import { Parser } from 'json2csv';
 
 async function _findOccupants(realm, tenantId, startTerm, endTerm) {
   const filter = {
@@ -382,187 +381,21 @@ export async function all(req, res) {
   );
 }
 
-async function _checkDuplicatePayment(tenant, paymentDate, amount) {
-  // Look for existing payments within the same day with same amount
-  const existingPayment = await Collections.Rent.findOne({
-    'occupant._id': tenant._id,
-    payments: {
-      $elemMatch: {
-        date: {
-          $gte: moment(paymentDate).startOf('day').toDate(),
-          $lte: moment(paymentDate).endOf('day').toDate()
-        },
-        amount: amount
-      }
-    }
+function _checkDuplicatePayment(tenant, paymentDate, amount) {
+  return tenant.rents.some((rent) => {
+    return rent.payments.some((payment) => {
+      return (
+        payment.date === paymentDate &&
+        payment.amount === amount
+      );
+    });
   });
-  return existingPayment !== null;
 }
 
-async function _processBulkPayments(authorizationHeader, locale, realm, payments) {
-  const results = {
-    successful: [],
-    failed: []
-  };
-
-  if (!Array.isArray(payments)) {
-    throw new ServiceError('Invalid payments data format', 400);
-  }
-
-  if (payments.length === 0) {
-    throw new ServiceError('No payments provided', 400);
-  }
-
-  console.log(`CSV contains ${payments.length} total rows`);
-
-  // Process payments in smaller batches to avoid timeouts
-  const batchSize = 3;
-  for (let i = 0; i < payments.length; i += batchSize) {
-    const batch = payments.slice(i, i + batchSize);
-    console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(payments.length/batchSize)}`);
-
-    // Process each payment in the batch sequentially to avoid DB conflicts
-    for (const payment of batch) {
-      try {
-        console.log(`Processing row ${i + batch.indexOf(payment) + 1} of ${payments.length}: `, payment);
-        
-        // Find tenant and validate
-        const tenant = await Collections.Tenant.findOne({
-          realmId: realm._id,
-          reference: payment.tenant_id
-        }).lean();
-
-        if (!tenant) {
-          throw new ServiceError(`Tenant with ID ${payment.tenant_id} not found`, 404);
-        }
-
-        // Check for duplicate payment
-        const isDuplicate = await _checkDuplicatePayment(
-          tenant,
-          payment.payment_date,
-          payment.amount
-        );
-
-        if (isDuplicate) {
-          throw new ServiceError('Duplicate payment detected - similar payment exists for same day and amount', 409);
-        }
-
-        // Determine the term from payment date
-        const paymentMoment = moment(payment.payment_date, 'MM/DD/YYYY');
-        const term = Number(paymentMoment.format('YYYYMM'));
-
-        // Process the payment
-        await _updateByTerm(
-          authorizationHeader,
-          locale,
-          realm,
-          term,
-          {
-            _id: tenant._id,
-            payments: [{
-              date: paymentMoment.format('YYYY-MM-DD'),
-              amount: Number(payment.amount),
-              type: payment.payment_type || 'cash',
-              reference: payment.payment_reference || '',
-              description: `Payment recorded via bulk upload`
-            }]
-          }
-        );
-
-        results.successful.push({
-          tenant_id: payment.tenant_id,
-          amount: payment.amount,
-          status: 'success',
-          payment_date: payment.payment_date,
-          term: term
-        });
-
-        console.log(`Successfully processed payment for tenant ${payment.tenant_id}: ${payment.amount}`);
-      } catch (error) {
-        console.error(`Failed to process payment for tenant ${payment.tenant_id}:`, error);
-        
-        results.failed.push({
-          tenant_id: payment.tenant_id,
-          amount: payment.amount,
-          payment_date: payment.payment_date,
-          error: error.message,
-          status: 'failed'
-        });
-      }
-
-      // Add a small delay between payments to prevent overload
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-  }
-
-  // Generate CSV for failed records
-  if (results.failed.length > 0) {
-    try {
-      const fields = [
-        'tenant_id',
-        'payment_date',
-        'amount',
-        'error',
-        'status'
-      ];
-      
-      const json2csvParser = new Parser({ fields });
-      results.failedRecordsCsv = json2csvParser.parse(results.failed);
-    } catch (error) {
-      console.error('Failed to generate CSV for failed records:', error);
-    }
-  }
-
-  console.log(`Bulk payment processing complete. Success: ${results.successful.length}, Failed: ${results.failed.length}`);
-  return results;
-}
-
-export async function uploadBulkPayments(req, res) {
-  try {
-    if (!req.files || !req.files.file) {
-      throw new ServiceError('No file provided', 400);
-    }
-
-    const file = req.files.file;
-    
-    // Create form data for payment processor
-    const formData = new FormData();
-    formData.append('file', file.data, {
-      filename: file.name,
-      contentType: file.mimetype
-    });
-
-    // Send to payment processor
-    const paymentProcessorUrl = process.env.PAYMENT_PROCESSOR_URL || 'http://paymentprocessor:8001';
-    const processorResponse = await fetch(`${paymentProcessorUrl}/process-payments`, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!processorResponse.ok) {
-      const error = await processorResponse.json();
-      throw new ServiceError(error.detail || 'Failed to process payments', processorResponse.status);
-    }
-
-    const processedPayments = await processorResponse.json();
-    
-    if (!processedPayments || processedPayments.length === 0) {
-      throw new ServiceError('No valid payments found in CSV', 400);
-    }
-
-    console.log(`Processing ${processedPayments.length} payments`);
-
-    // Process the validated payments
-    const results = await _processBulkPayments(
-      req.headers.authorization,
-      req.locale,
-      req.realm,
-      processedPayments
-    );
-
-    res.json(results);
-  } catch (error) {
-    console.error('Upload error:', error);
-    throw new ServiceError(error.message || 'Failed to process payments', error.status || 500);
-  }
-}
+export {
+  update,
+  updateByTerm,
+  rentsOfOccupant,
+  rentOfOccupantByTerm,
+  all
+};
