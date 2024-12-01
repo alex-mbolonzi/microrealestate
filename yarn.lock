@@ -1846,18 +1846,15 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 7.15.0
     "@typescript-eslint/parser": 7.15.0
     axios: 1.7.4
-    csv-parser: ^3.0.0
     eslint: 8.57.0
     eslint-config-prettier: 9.1.0
     eslint-plugin-import: 2.29.1
     i18n: 0.13.3
     jest: 29.7.0
-    json2csv: 5.0.6
     jsonwebtoken: 9.0.0
     lodash: 4.17.21
     moment: 2.29.4
     mongobackup: 0.3.5
-    multer: ^1.4.5-lts.1
     nanoid: 5.0.7
     nodemon: 3.1.4
     npm-run-all: 4.1.5
@@ -6433,13 +6430,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"commander@npm:^6.1.0":
-  version: 6.2.1
-  resolution: "commander@npm:6.2.1"
-  checksum: d7090410c0de6bc5c67d3ca41c41760d6d268f3c799e530aafb73b7437d1826bbf0d2a3edac33f8b57cc9887b4a986dce307fa5557e109be40eadb7c43b21742
-  languageName: node
-  linkType: hard
-
 "commondir@npm:^1.0.1":
   version: 1.0.1
   resolution: "commondir@npm:1.0.1"
@@ -6669,17 +6659,6 @@ __metadata:
   version: 3.1.3
   resolution: "csstype@npm:3.1.3"
   checksum: 8db785cc92d259102725b3c694ec0c823f5619a84741b5c7991b8ad135dfaa66093038a1cc63e03361a6cd28d122be48f2106ae72334e067dd619a51f49eddf7
-  languageName: node
-  linkType: hard
-
-"csv-parser@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "csv-parser@npm:3.0.0"
-  dependencies:
-    minimist: ^1.2.0
-  bin:
-    csv-parser: bin/csv-parser
-  checksum: adc9d67d9f185249825570778c24d13004625301655330f6b735a052b9fdfbe1a239a014afb1f89939e0626ee573718f71f9f14164db7c17e4bcb2f38d6a162b
   languageName: node
   linkType: hard
 
@@ -10079,19 +10058,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json2csv@npm:5.0.6":
-  version: 5.0.6
-  resolution: "json2csv@npm:5.0.6"
-  dependencies:
-    commander: ^6.1.0
-    jsonparse: ^1.3.1
-    lodash.get: ^4.4.2
-  bin:
-    json2csv: bin/json2csv.js
-  checksum: 82cf796dbaeade644303295262ac9f554cf3924ec00b263bb094028b80f0959d89a1eaa99b3634de022916fd3278adb82ec478c57fc176827a2569f6cef1db31
-  languageName: node
-  linkType: hard
-
 "json5@npm:^1.0.2":
   version: 1.0.2
   resolution: "json5@npm:1.0.2"
@@ -10122,13 +10088,6 @@ __metadata:
     graceful-fs:
       optional: true
   checksum: 7af3b8e1ac8fe7f1eccc6263c6ca14e1966fcbc74b618d3c78a0a2075579487547b94f72b7a1114e844a1e15bb00d440e5d1720bfc4612d790a6f285d5ea8354
-  languageName: node
-  linkType: hard
-
-"jsonparse@npm:^1.3.1":
-  version: 1.3.1
-  resolution: "jsonparse@npm:1.3.1"
-  checksum: 6514a7be4674ebf407afca0eda3ba284b69b07f9958a8d3113ef1005f7ec610860c312be067e450c569aab8b89635e332cee3696789c750692bb60daba627f4d
   languageName: node
   linkType: hard
 
@@ -10415,13 +10374,6 @@ __metadata:
   version: 4.0.8
   resolution: "lodash.debounce@npm:4.0.8"
   checksum: a3f527d22c548f43ae31c861ada88b2637eb48ac6aa3eb56e82d44917971b8aa96fbb37aa60efea674dc4ee8c42074f90f7b1f772e9db375435f6c83a19b3bc6
-  languageName: node
-  linkType: hard
-
-"lodash.get@npm:^4.4.2":
-  version: 4.4.2
-  resolution: "lodash.get@npm:4.4.2"
-  checksum: e403047ddb03181c9d0e92df9556570e2b67e0f0a930fcbbbd779370972368f5568e914f913e93f3b08f6d492abc71e14d4e9b7a18916c31fa04bd2306efe545
   languageName: node
   linkType: hard
 
@@ -11096,7 +11048,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"multer@npm:1.4.5-lts.1, multer@npm:^1.4.5-lts.1":
+"multer@npm:1.4.5-lts.1":
   version: 1.4.5-lts.1
   resolution: "multer@npm:1.4.5-lts.1"
   dependencies:
