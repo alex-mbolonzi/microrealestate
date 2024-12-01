@@ -16,10 +16,11 @@ export default function routes() {
   
   // Add proxy for payment processor service
   const paymentProcessorUrl = process.env.PAYMENT_PROCESSOR_URL || 'http://paymentprocessor:8001';
-  router.use('/payments', createProxyMiddleware({
+  router.use('/paymentprocessor', createProxyMiddleware({
     target: paymentProcessorUrl,
     pathRewrite: {
-      '^/api/payments/process': '/process-payments'
+      '^/api/paymentprocessor/upload': '/upload',
+      '^/api/paymentprocessor/process': '/process'
     },
     changeOrigin: true,
     onError: (err, req, res) => {
