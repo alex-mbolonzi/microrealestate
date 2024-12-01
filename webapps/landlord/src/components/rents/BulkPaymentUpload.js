@@ -70,23 +70,31 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const response = await fetch('/api/paymentprocessor/upload', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`
+          // Don't set Content-Type, let the browser set it with the boundary
         },
         body: formData
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to upload payments');
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (parseError) {
+        console.error('Response parsing error:', parseError);
+        const text = await response.text();
+        console.error('Raw response:', text);
+        throw new Error('Invalid response format from server');
       }
 
-      const results = await response.json();
+      if (!response.ok) {
+        throw new Error(responseData.error || responseData.message || 'Failed to upload payments');
+      }
 
       // Handle results
-      if (results.failed && results.failed.length > 0) {
+      if (responseData.failed && responseData.failed.length > 0) {
         toast.error(t('Some payments failed to process. Check the error report.'));
-        if (results.failedRecordsCsv) {
-          const blob = new Blob([results.failedRecordsCsv], { type: 'text/csv' });
+        if (responseData.failedRecordsCsv) {
+          const blob = new Blob([responseData.failedRecordsCsv], { type: 'text/csv' });
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
@@ -103,8 +111,8 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       // Show final summary
       toast.info(
         t('Upload Summary: {{successful}} successful, {{failed}} failed', {
-          successful: results.successful?.length || 0,
-          failed: results.failed?.length || 0
+          successful: responseData.successful?.length || 0,
+          failed: responseData.failed?.length || 0
         })
       );
 

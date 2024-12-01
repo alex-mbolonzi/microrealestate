@@ -9,25 +9,49 @@ import * as rentManager from './managers/rentmanager.js';
 import { Middlewares, Service } from '@microrealestate/common';
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import multer from 'multer';
 
 export default function routes() {
   const { ACCESS_TOKEN_SECRET } = Service.getInstance().envConfig.getValues();
   const router = express.Router();
   
+  // Configure multer for file uploads
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+  });
+  
   // Add proxy for payment processor service
   const paymentProcessorUrl = process.env.PAYMENT_PROCESSOR_URL || 'http://paymentprocessor:8001';
-  router.use('/paymentprocessor', createProxyMiddleware({
-    target: paymentProcessorUrl,
-    pathRewrite: {
-      '^/api/paymentprocessor/upload': '/upload',
-      '^/api/paymentprocessor/process': '/process'
-    },
-    changeOrigin: true,
-    onError: (err, req, res) => {
-      console.error('Payment processor proxy error:', err);
-      res.status(500).json({ error: 'Payment processor service unavailable' });
-    }
-  }));
+  router.post('/paymentprocessor/upload', 
+    upload.single('file'),
+    createProxyMiddleware({
+      target: paymentProcessorUrl,
+      pathRewrite: {
+        '^/api/paymentprocessor/upload': '/upload'
+      },
+      changeOrigin: true,
+      onProxyReq: (proxyReq, req, res) => {
+        // Handle the file buffer
+        if (req.file) {
+          proxyReq.setHeader('Content-Type', 'multipart/form-data');
+          const formData = new FormData();
+          formData.append('file', req.file.buffer, {
+            filename: req.file.originalname,
+            contentType: 'text/csv'
+          });
+          proxyReq.setHeader('Content-Length', formData.length);
+          formData.pipe(proxyReq);
+        }
+      },
+      onError: (err, req, res) => {
+        console.error('Payment processor proxy error:', err);
+        res.status(500).json({ error: 'Payment processor service unavailable' });
+      }
+    })
+  );
 
   router.use(
     // protect the api access by checking the access token
