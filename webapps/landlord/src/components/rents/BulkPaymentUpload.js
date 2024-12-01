@@ -76,18 +76,21 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         body: formData
       });
 
+      // Clone the response before attempting to read it
+      const responseClone = response.clone();
+      
       let responseData;
       try {
         responseData = await response.json();
       } catch (parseError) {
         console.error('Response parsing error:', parseError);
-        const text = await response.text();
+        const text = await responseClone.text();
         console.error('Raw response:', text);
         throw new Error('Invalid response format from server');
       }
 
       if (!response.ok) {
-        throw new Error(responseData.error || responseData.message || 'Failed to upload payments');
+        throw new Error(responseData?.error || responseData?.message || 'Failed to upload payments');
       }
 
       // Handle results
