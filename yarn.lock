@@ -1849,6 +1849,7 @@ __metadata:
     eslint: 8.57.0
     eslint-config-prettier: 9.1.0
     eslint-plugin-import: 2.29.1
+    form-data: 4.0.0
     http-proxy-middleware: 2.0.6
     i18n: 0.13.3
     jest: 29.7.0
@@ -1857,6 +1858,7 @@ __metadata:
     lodash: 4.17.21
     moment: 2.29.4
     mongobackup: 0.3.5
+    multer: 1.4.5-lts.1
     nanoid: 5.0.7
     nodemon: 3.1.4
     npm-run-all: 4.1.5
@@ -8301,6 +8303,17 @@ __metadata:
     cross-spawn: ^7.0.0
     signal-exit: ^4.0.1
   checksum: 1989698488f725b05b26bc9afc8a08f08ec41807cd7b92ad85d96004ddf8243fd3e79486b8348c64a3011ae5cc2c9f0936af989e1f28339805d8bc178a75b451
+  languageName: node
+  linkType: hard
+
+"form-data@npm:4.0.0":
+  version: 4.0.0
+  resolution: "form-data@npm:4.0.0"
+  dependencies:
+    asynckit: ^0.4.0
+    combined-stream: ^1.0.8
+    mime-types: ^2.1.12
+  checksum: 01135bf8675f9d5c61ff18e2e2932f719ca4de964e3be90ef4c36aacfc7b9cb2fceb5eca0b7e0190e3383fe51c5b37f4cb80b62ca06a99aaabfcfd6ac7c9328c
   languageName: node
   linkType: hard
 

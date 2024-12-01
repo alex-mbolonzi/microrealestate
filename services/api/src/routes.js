@@ -10,6 +10,7 @@ import { Middlewares, Service } from '@microrealestate/common';
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import multer from 'multer';
+import FormData from 'form-data';
 
 export default function routes() {
   const { ACCESS_TOKEN_SECRET } = Service.getInstance().envConfig.getValues();
@@ -36,13 +37,13 @@ export default function routes() {
       onProxyReq: (proxyReq, req, res) => {
         // Handle the file buffer
         if (req.file) {
-          proxyReq.setHeader('Content-Type', 'multipart/form-data');
           const formData = new FormData();
           formData.append('file', req.file.buffer, {
             filename: req.file.originalname,
             contentType: 'text/csv'
           });
-          proxyReq.setHeader('Content-Length', formData.length);
+          proxyReq.setHeader('Content-Type', `multipart/form-data; boundary=${formData.getBoundary()}`);
+          proxyReq.setHeader('Content-Length', formData.getLengthSync());
           formData.pipe(proxyReq);
         }
       },
