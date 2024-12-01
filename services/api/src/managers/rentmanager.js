@@ -156,7 +156,7 @@ async function _getRentsDataByTerm(
 ////////////////////////////////////////////////////////////////////////////////
 // Exported functions
 ////////////////////////////////////////////////////////////////////////////////
-export async function update(req, res) {
+async function update(req, res) {
   const realm = req.realm;
   const authorizationHeader = req.headers.authorization;
   const locale = req.headers['accept-language'];
@@ -168,7 +168,7 @@ export async function update(req, res) {
   );
 }
 
-export async function updateByTerm(req, res) {
+async function updateByTerm(req, res) {
   const realm = req.realm;
   const term = req.params.term;
   const authorizationHeader = req.headers.authorization;
@@ -177,6 +177,66 @@ export async function updateByTerm(req, res) {
 
   res.json(
     await _updateByTerm(authorizationHeader, locale, realm, term, paymentData)
+  );
+}
+
+async function rentsOfOccupant(req, res) {
+  const realm = req.realm;
+  const { id } = req.params;
+  const term = Number(moment().format('YYYYMMDDHH'));
+
+  const dbOccupants = await _findOccupants(realm, id);
+  if (!dbOccupants.length) {
+    return res.sendStatus(404);
+  }
+
+  const dbOccupant = dbOccupants[0];
+  const rentsToReturn = dbOccupant.rents.map((currentRent) => {
+    const rent = FD.toRentData(currentRent);
+    if (currentRent.term === term) {
+      rent.active = 'active';
+    }
+    rent.vatRatio = dbOccupant.vatRatio;
+    return rent;
+  });
+
+  res.json({
+    occupant: FD.toOccupantData(dbOccupant),
+    rents: rentsToReturn
+  });
+}
+
+async function rentOfOccupantByTerm(req, res) {
+  const realm = req.realm;
+  const { id, term } = req.params;
+
+  res.json(
+    await _rentOfOccupant(
+      req.headers.authorization,
+      req.headers['accept-language'],
+      realm,
+      id,
+      term
+    )
+  );
+}
+
+async function all(req, res) {
+  const realm = req.realm;
+
+  let currentDate = moment().startOf('month');
+  if (req.params.year && req.params.month) {
+    currentDate = moment(`${req.params.month}/${req.params.year}`, 'MM/YYYY');
+  }
+
+  res.json(
+    await _getRentsDataByTerm(
+      req.headers.authorization,
+      req.headers['accept-language'],
+      realm,
+      currentDate,
+      'months'
+    )
   );
 }
 
@@ -286,47 +346,6 @@ async function _updateByTerm(
   );
 }
 
-export async function rentsOfOccupant(req, res) {
-  const realm = req.realm;
-  const { id } = req.params;
-  const term = Number(moment().format('YYYYMMDDHH'));
-
-  const dbOccupants = await _findOccupants(realm, id);
-  if (!dbOccupants.length) {
-    return res.sendStatus(404);
-  }
-
-  const dbOccupant = dbOccupants[0];
-  const rentsToReturn = dbOccupant.rents.map((currentRent) => {
-    const rent = FD.toRentData(currentRent);
-    if (currentRent.term === term) {
-      rent.active = 'active';
-    }
-    rent.vatRatio = dbOccupant.vatRatio;
-    return rent;
-  });
-
-  res.json({
-    occupant: FD.toOccupantData(dbOccupant),
-    rents: rentsToReturn
-  });
-}
-
-export async function rentOfOccupantByTerm(req, res) {
-  const realm = req.realm;
-  const { id, term } = req.params;
-
-  res.json(
-    await _rentOfOccupant(
-      req.headers.authorization,
-      req.headers['accept-language'],
-      realm,
-      id,
-      term
-    )
-  );
-}
-
 async function _rentOfOccupant(
   authorizationHeader,
   locale,
@@ -360,25 +379,6 @@ async function _rentOfOccupant(
   rent.vatRatio = dbOccupant.vatRatio;
 
   return rent;
-}
-
-async function all(req, res) {
-  const realm = req.realm;
-
-  let currentDate = moment().startOf('month');
-  if (req.params.year && req.params.month) {
-    currentDate = moment(`${req.params.month}/${req.params.year}`, 'MM/YYYY');
-  }
-
-  res.json(
-    await _getRentsDataByTerm(
-      req.headers.authorization,
-      req.headers['accept-language'],
-      realm,
-      currentDate,
-      'months'
-    )
-  );
 }
 
 function _checkDuplicatePayment(tenant, paymentDate, amount) {
