@@ -8,10 +8,26 @@ import * as realmManager from './managers/realmmanager.js';
 import * as rentManager from './managers/rentmanager.js';
 import { Middlewares, Service } from '@microrealestate/common';
 import express from 'express';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 export default function routes() {
   const { ACCESS_TOKEN_SECRET } = Service.getInstance().envConfig.getValues();
   const router = express.Router();
+  
+  // Add proxy for payment processor service
+  const paymentProcessorUrl = process.env.PAYMENT_PROCESSOR_URL || 'http://paymentprocessor:8001';
+  router.use('/payments', createProxyMiddleware({
+    target: paymentProcessorUrl,
+    pathRewrite: {
+      '^/api/payments/process': '/process-payments'
+    },
+    changeOrigin: true,
+    onError: (err, req, res) => {
+      console.error('Payment processor proxy error:', err);
+      res.status(500).json({ error: 'Payment processor service unavailable' });
+    }
+  }));
+
   router.use(
     // protect the api access by checking the access token
     Middlewares.needAccessToken(ACCESS_TOKEN_SECRET),

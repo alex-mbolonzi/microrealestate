@@ -112,7 +112,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
 
   const handleUpload = async () => {
     if (!file) {
-      toast.error(t('Please select a CSV file first'));
+      toast.error(t('Please select a file first'));
       return;
     }
 
@@ -126,28 +126,25 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         throw new Error('Failed to get valid token');
       }
 
-      // Read and parse CSV file
-      const text = await file.text();
-      const lines = text.split('\\n').filter(line => line.trim());
-      const headers = lines[0].split(',');
-      
-      // Parse CSV into array of objects
-      const payments = lines.slice(1).map(line => {
-        const values = line.split(',');
-        return headers.reduce((obj, header, index) => {
-          obj[header.trim()] = values[index]?.trim() || '';
-          return obj;
-        }, {});
-      }).filter(payment => payment.tenant_id && payment.payment_date && payment.amount);
+      // Create form data with the file
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (payments.length === 0) {
-        throw new Error('No valid payments found in CSV');
+      // Send directly to API service
+      const response = await fetch('/api/rents/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to upload payments');
       }
 
-      console.log(`Processing ${payments.length} payments in chunks of ${CHUNK_SIZE}`);
-      
-      // Process payments in chunks
-      const results = await processPaymentsInChunks(payments, token);
+      const results = await response.json();
 
       // Handle results
       if (results.failed && results.failed.length > 0) {
@@ -191,8 +188,9 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ['tenant_id', 'payment_date', 'payment_type', 'payment_reference', 'amount'];
-    const csvContent = headers.join(',');
+    const headers = ['tenant_id', 'payment_date', 'payment_type', 'payment_reference', 'amount', 'description', 'promo_amount', 'promo_note', 'extra_charge', 'extra_charge_note'];
+    const csvContent = headers.join(',') + '\n' + 
+      'T-001,01/15/2024,cash,REF123,1000.00,Rent payment,0,,0,';  // Example row
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');

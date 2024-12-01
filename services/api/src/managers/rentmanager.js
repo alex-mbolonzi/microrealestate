@@ -519,110 +519,50 @@ async function _processBulkPayments(authorizationHeader, locale, realm, payments
 
 export async function uploadBulkPayments(req, res) {
   try {
-    if (!req.body || !req.body.payments) {
-      throw new ServiceError('No payment data provided', 400);
+    if (!req.files || !req.files.file) {
+      throw new ServiceError('No file provided', 400);
     }
 
-    const payments = req.body.payments;
-    console.log(`Processing ${payments.length} payments`);
+    const file = req.files.file;
+    
+    // Create form data for payment processor
+    const formData = new FormData();
+    formData.append('file', file.data, {
+      filename: file.name,
+      contentType: file.mimetype
+    });
 
-    const results = {
-      successful: [],
-      failed: [],
-      failedRecordsCsv: ''
-    };
+    // Send to payment processor
+    const paymentProcessorUrl = process.env.PAYMENT_PROCESSOR_URL || 'http://paymentprocessor:8001';
+    const processorResponse = await fetch(`${paymentProcessorUrl}/process-payments`, {
+      method: 'POST',
+      body: formData
+    });
 
-    // Process each payment sequentially
-    for (const payment of payments) {
-      try {
-        // Validate required fields
-        if (!payment.tenant_id || !payment.payment_date || !payment.amount) {
-          throw new Error('Missing required fields');
-        }
-
-        // Parse and validate payment date
-        const paymentDate = moment(payment.payment_date, 'MM/DD/YYYY');
-        if (!paymentDate.isValid()) {
-          throw new Error('Invalid payment date format');
-        }
-
-        // Validate amount
-        const amount = parseFloat(payment.amount);
-        if (isNaN(amount) || amount <= 0) {
-          throw new Error('Invalid payment amount');
-        }
-
-        // Validate tenant exists
-        const tenant = await Collections.Tenant.findOne({
-          _id: payment.tenant_id,
-          realm: req.realm
-        });
-
-        if (!tenant) {
-          throw new Error('Tenant not found');
-        }
-
-        // Create payment record
-        const paymentRecord = {
-          tenant: tenant._id,
-          payment_date: paymentDate.toDate(),
-          amount: amount,
-          type: payment.payment_type || 'cash',
-          reference: payment.payment_reference || '',
-          description: `Bulk upload payment for ${tenant.name}`,
-          status: 'completed',
-          realm: req.realm
-        };
-
-        // Save payment
-        const savedPayment = await Collections.Payment.create(paymentRecord);
-        console.log(`Payment saved for tenant ${tenant._id}: ${savedPayment._id}`);
-
-        results.successful.push({
-          ...payment,
-          status: 'success',
-          payment_id: savedPayment._id
-        });
-
-      } catch (error) {
-        console.error('Payment processing error:', error);
-        results.failed.push({
-          ...payment,
-          error: error.message,
-          status: 'failed'
-        });
-      }
-
-      // Small delay between payments to prevent overwhelming the database
-      await new Promise(resolve => setTimeout(resolve, 100));
+    if (!processorResponse.ok) {
+      const error = await processorResponse.json();
+      throw new ServiceError(error.detail || 'Failed to process payments', processorResponse.status);
     }
 
-    // Generate CSV for failed records if any
-    if (results.failed.length > 0) {
-      const failedCsvRows = results.failed.map(record => {
-        return [
-          record.tenant_id,
-          record.payment_date,
-          record.payment_type,
-          record.payment_reference,
-          record.amount,
-          record.error
-        ].join(',');
-      });
-
-      results.failedRecordsCsv = [
-        'tenant_id,payment_date,payment_type,payment_reference,amount,error',
-        ...failedCsvRows
-      ].join('\\n');
+    const processedPayments = await processorResponse.json();
+    
+    if (!processedPayments || processedPayments.length === 0) {
+      throw new ServiceError('No valid payments found in CSV', 400);
     }
+
+    console.log(`Processing ${processedPayments.length} payments`);
+
+    // Process the validated payments
+    const results = await _processBulkPayments(
+      req.headers.authorization,
+      req.locale,
+      req.realm,
+      processedPayments
+    );
 
     res.json(results);
   } catch (error) {
-    console.error('Bulk payment upload error:', error);
-    if (error instanceof ServiceError) {
-      res.status(error.status).json({ error: error.message });
-    } else {
-      res.status(500).json({ error: error.message || 'Failed to process bulk payments' });
-    }
+    console.error('Upload error:', error);
+    throw new ServiceError(error.message || 'Failed to process payments', error.status || 500);
   }
 }
