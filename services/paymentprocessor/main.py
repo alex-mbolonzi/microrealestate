@@ -8,6 +8,7 @@ from datetime import datetime
 import logging
 import httpx
 import os
+import asyncio
 
 # Configure logging
 logging.basicConfig(
@@ -66,7 +67,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
     """Process a single payment by calling the rent API endpoint"""
     try:
         # First, look up the tenant by reference number
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:  # 30 second timeout for each request
             headers = {
                 "Content-Type": "application/json",
                 "Accept": "application/json",
@@ -114,9 +115,8 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     details={"status_code": 404}
                 )
 
-        # Now use the tenant's actual MongoDB ID for the payment
+        # Now construct the payment request
         payment_data = {
-            "_id": str(matching_tenant["_id"]),  # Use the actual MongoDB ID
             "date": payment.payment_date,
             "type": payment.payment_type,
             "reference": payment.reference,
@@ -135,12 +135,18 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         logger.info(f"Making API request with headers: {headers}")
         logger.info(f"Payment data: {payment_data}")
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{matching_tenant['_id']}/{term}"
+            logger.info(f"Making payment request to: {payment_url}")
+            
             response = await client.patch(
-                f"{API_BASE_URL}/api/v2/rents/payment/{matching_tenant['_id']}/{term}",
+                payment_url,
                 json=payment_data,
                 headers=headers
             )
+            
+            logger.info(f"Payment response status: {response.status_code}")
+            logger.info(f"Payment response: {response.text}")
             
             if response.status_code == 200:
                 return PaymentResult(
@@ -221,42 +227,60 @@ async def process_payments(
             logger.error(error_msg)
             raise HTTPException(status_code=400, detail=error_msg)
         
-        # Process and validate each row
+        # Process payments in chunks to avoid timeouts
+        chunk_size = 5  # Process 5 payments at a time
         results = []
-        for idx, row in df.iterrows():
-            try:
-                # Validate date format
-                payment_date = datetime.strptime(row['payment_date'], '%m/%d/%Y')
-                
-                # Validate amount
-                amount = float(row['amount'])
-                if amount <= 0:
-                    raise ValueError(f"Invalid amount {amount} at row {idx + 2}")
-                
-                # Pad the tenant_id with leading zeros
-                tenant_id = pad_tenant_id(row['tenant_id'])
-                
-                payment = Payment(
-                    tenant_reference=tenant_id,
-                    payment_date=payment_date.strftime('%Y-%m-%d'),
-                    payment_type=str(row['payment_type']).strip().lower() if pd.notna(row['payment_type']) else 'cash',
-                    reference=str(row['payment_reference']).strip() if pd.notna(row['payment_reference']) else '',
-                    amount=amount
-                )
-                
-                # Process the payment through the rent API
-                result = await process_single_payment(payment, term, organization_id, auth_token)
-                results.append(result)
-                logger.info(f"Processed payment for tenant {payment.tenant_reference}: {result.success}")
-                
-            except Exception as e:
-                error_msg = f"Error processing row {idx + 2}: {str(e)}"
-                logger.error(error_msg)
-                results.append(PaymentResult(
-                    success=False,
-                    tenant_id=str(row.get('tenant_id', '')).strip(),
-                    message=error_msg
-                ))
+        
+        for i in range(0, len(df), chunk_size):
+            chunk = df[i:i + chunk_size]
+            chunk_tasks = []
+            
+            for idx, row in chunk.iterrows():
+                try:
+                    # Validate date format
+                    payment_date = datetime.strptime(row['payment_date'], '%m/%d/%Y')
+                    
+                    # Validate amount
+                    amount = float(row['amount'])
+                    if amount <= 0:
+                        raise ValueError(f"Invalid amount {amount} at row {idx + 2}")
+                    
+                    # Pad the tenant_id with leading zeros
+                    tenant_id = pad_tenant_id(row['tenant_id'])
+                    
+                    payment = Payment(
+                        tenant_reference=tenant_id,
+                        payment_date=payment_date.strftime('%Y-%m-%d'),
+                        payment_type=str(row['payment_type']).strip().lower() if pd.notna(row['payment_type']) else 'cash',
+                        reference=str(row['payment_reference']).strip() if pd.notna(row['payment_reference']) else '',
+                        amount=amount
+                    )
+                    
+                    # Add task to chunk
+                    chunk_tasks.append(process_single_payment(payment, term, organization_id, auth_token))
+                    
+                except Exception as e:
+                    error_msg = f"Error processing row {idx + 2}: {str(e)}"
+                    logger.error(error_msg)
+                    results.append(PaymentResult(
+                        success=False,
+                        tenant_id=str(row.get('tenant_id', '')).strip(),
+                        message=error_msg
+                    ))
+            
+            # Process chunk of payments concurrently
+            if chunk_tasks:
+                chunk_results = await asyncio.gather(*chunk_tasks, return_exceptions=True)
+                for result in chunk_results:
+                    if isinstance(result, Exception):
+                        logger.error(f"Payment processing error: {str(result)}")
+                        results.append(PaymentResult(
+                            success=False,
+                            tenant_id="unknown",
+                            message=f"Payment processing error: {str(result)}"
+                        ))
+                    else:
+                        results.append(result)
         
         successful = len([r for r in results if r.success])
         failed = len([r for r in results if not r.success])
