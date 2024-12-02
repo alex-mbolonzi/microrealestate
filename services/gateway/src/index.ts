@@ -164,11 +164,11 @@ function exposeServices(application: Express.Application) {
       logger.info(`Processing ${req.method} request to ${req.url}`);
       try {
         paymentProcessorProxy(req, res, next);
-      } catch (error) {
-        logger.error(`Error in payment processor middleware: ${error}`);
+      } catch (error: any) {
+        logger.error(`Error in payment processor middleware: ${error.message || String(error)}`);
         res.status(500).json({
           error: 'Internal server error in payment processor middleware',
-          details: error.message
+          details: error.message || String(error)
         });
       }
     });

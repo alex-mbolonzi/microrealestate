@@ -26,6 +26,7 @@ export type EnvironmentValues = {
   CORS_ENABLED?: boolean;
   TENANTAPI_URL?: string;
   EMAILER_URL?: string;
+  PAYMENTPROCESSOR_URL?: string; // Added payment processor URL
   DATA_DIRECTORY?: string;
   TEMPLATES_DIRECTORY?: string;
   TEMPORARY_DIRECTORY?: string;
