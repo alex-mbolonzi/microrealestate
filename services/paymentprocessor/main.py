@@ -10,7 +10,10 @@ import httpx
 import os
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # API configuration
@@ -114,12 +117,17 @@ async def process_payments(
     file: UploadFile = File(...),
     term: str = Form(...)
 ):
+    logger.info(f"Received payment processing request for term: {term}")
+    logger.info(f"Headers: {dict(request.headers)}")
+    
     if not file.filename.endswith('.csv'):
+        logger.error(f"Invalid file type: {file.filename}")
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
     
     # Get organization ID from header
     organization_id = request.headers.get('organizationid')
     if not organization_id:
+        logger.error("Missing organization ID in headers")
         raise HTTPException(status_code=400, detail="Organization ID is required in headers")
     
     try:
@@ -127,16 +135,19 @@ async def process_payments(
         contents = await file.read()
         csv_data = StringIO(contents.decode())
         
+        # Log file details
+        logger.info(f"Processing CSV file: {file.filename}, size: {len(contents)} bytes")
+        
         # Read CSV with pandas
         df = pd.read_csv(csv_data)
         required_columns = ['tenant_id', 'payment_date', 'payment_type', 'payment_reference', 'amount']
         
         # Validate columns
-        if not all(col in df.columns for col in required_columns):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Missing required columns. Required: {required_columns}"
-            )
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            error_msg = f"Missing required columns: {missing_columns}"
+            logger.error(error_msg)
+            raise HTTPException(status_code=400, detail=error_msg)
         
         # Process and validate each row
         results = []
@@ -161,21 +172,26 @@ async def process_payments(
                 # Process the payment through the rent API
                 result = await process_single_payment(payment, term, organization_id)
                 results.append(result)
+                logger.info(f"Processed payment for tenant {payment.tenant_reference}: {result.success}")
                 
             except Exception as e:
-                logger.error(f"Error processing row {idx + 2}: {str(e)}")
+                error_msg = f"Error processing row {idx + 2}: {str(e)}"
+                logger.error(error_msg)
                 results.append(PaymentResult(
                     success=False,
                     tenant_id=str(row.get('tenant_id', '')).strip(),
-                    message=f"Error in row {idx + 2}: {str(e)}"
+                    message=error_msg
                 ))
         
-        logger.info(f"Processed {len(results)} payments")
+        successful = len([r for r in results if r.success])
+        failed = len([r for r in results if not r.success])
+        logger.info(f"Completed processing {len(results)} payments: {successful} successful, {failed} failed")
         return {"results": results}
         
     except Exception as e:
-        logger.error(f"Error processing CSV: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        error_msg = f"Error processing CSV: {str(e)}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=400, detail=error_msg)
 
 if __name__ == "__main__":
     import uvicorn

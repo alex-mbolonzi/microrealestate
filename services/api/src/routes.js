@@ -35,44 +35,53 @@ export default function routes() {
   
   // Add proxy for payment processor service
   const paymentProcessorUrl = process.env.PAYMENTPROCESSOR_URL || 'http://paymentprocessor:8001';
-  router.post('/paymentprocessor/upload', 
+  router.post('/paymentprocessor/process-payments', 
     upload.single('file'),
     (req, res, next) => {
       if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
+      }
+      if (!req.body.term) {
+        return res.status(400).json({ error: 'Term is required' });
       }
       next();
     },
     createProxyMiddleware({
       target: paymentProcessorUrl,
       pathRewrite: {
-        '^/api/paymentprocessor/upload': '/process-payments'
+        '^/api/paymentprocessor/process-payments': '/process-payments'
       },
       changeOrigin: true,
       onProxyReq: (proxyReq, req, res) => {
         try {
-          // Handle the file buffer
-          if (req.file) {
-            const formData = new FormData();
-            formData.append('file', req.file.buffer, {
-              filename: req.file.originalname,
-              contentType: 'text/csv'
-            });
-            
-            // Set the correct headers for multipart/form-data
-            const contentType = `multipart/form-data; boundary=${formData.getBoundary()}`;
-            proxyReq.setHeader('Content-Type', contentType);
-            
-            // Get the content length synchronously
-            const contentLength = formData.getLengthSync();
-            proxyReq.setHeader('Content-Length', contentLength);
-            
-            // Pipe the form data to the proxy request
-            formData.pipe(proxyReq);
-          }
+          // Create a new form data instance
+          const formData = new FormData();
+          
+          // Add the file
+          formData.append('file', req.file.buffer, {
+            filename: req.file.originalname,
+            contentType: 'text/csv'
+          });
+          
+          // Add the term
+          formData.append('term', req.body.term);
+          
+          // Forward the organization ID header
+          proxyReq.setHeader('organizationid', req.headers.organizationid);
+          
+          // Set form data headers
+          const contentType = `multipart/form-data; boundary=${formData.getBoundary()}`;
+          proxyReq.setHeader('Content-Type', contentType);
+          proxyReq.setHeader('Content-Length', formData.getLengthSync());
+          
+          // Pipe the form data to the proxy request
+          formData.pipe(proxyReq);
         } catch (error) {
           console.error('Error in onProxyReq:', error);
-          res.status(500).json({ error: 'Error processing file upload' });
+          res.status(500).json({ 
+            error: 'Error processing file upload',
+            details: error.message
+          });
         }
       },
       onProxyRes: (proxyRes, req, res) => {
