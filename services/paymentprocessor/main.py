@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, Form, File
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 from io import StringIO
@@ -71,9 +71,14 @@ async def process_single_payment(payment: Payment, term: str) -> PaymentResult:
         }
 
         async with httpx.AsyncClient() as client:
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
             response = await client.patch(
                 f"{API_BASE_URL}/rents/payment/{payment.tenant_reference}/{term}",
-                json=payment_data
+                json=payment_data,
+                headers=headers
             )
             
             if response.status_code == 200:
@@ -98,8 +103,11 @@ async def process_single_payment(payment: Payment, term: str) -> PaymentResult:
             message=f"Error processing payment: {str(e)}"
         )
 
-@app.post("/process-payments/", response_model=List[PaymentResult])
-async def process_payments(file: UploadFile, term: str):
+@app.post("/process-payments/")
+async def process_payments(
+    file: UploadFile = File(...),
+    term: str = Form(...)
+):
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
     
@@ -152,7 +160,7 @@ async def process_payments(file: UploadFile, term: str):
                 ))
         
         logger.info(f"Processed {len(results)} payments")
-        return results
+        return {"results": results}
         
     except Exception as e:
         logger.error(f"Error processing CSV: {str(e)}")
