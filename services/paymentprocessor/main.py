@@ -74,10 +74,15 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 headers["Authorization"] = auth_token
 
             # Get tenant by reference number
+            tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={payment.tenant_reference}"
+            logger.info(f"Looking up tenant with URL: {tenant_url}")
             response = await client.get(
-                f"{API_BASE_URL}/api/v2/tenants",
+                tenant_url,
                 headers=headers
             )
+            
+            logger.info(f"Tenant lookup response status: {response.status_code}")
+            logger.info(f"Tenant lookup response: {response.text}")
             
             if response.status_code != 200:
                 return PaymentResult(
