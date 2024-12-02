@@ -1,6 +1,6 @@
 import * as Contract from './contract.js';
 import * as FD from './frontdata.js';
-import * as BL from './businesslogic.js';
+import * as BL from '../businesslogic/index.js';
 import {
   Collections,
   logger,
