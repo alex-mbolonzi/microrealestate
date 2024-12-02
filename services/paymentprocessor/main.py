@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, HTTPException, Form, File
+from fastapi import FastAPI, UploadFile, HTTPException, Form, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 from io import StringIO
@@ -14,20 +14,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # API configuration
-API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:8080/api')
+API_BASE_URL = os.getenv('API_BASE_URL', 'http://api:8200')
 
 app = FastAPI(title="Payment Processor Service")
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080",  # Development frontend
-        "http://localhost:3000",  # Alternative development port
-        "http://localhost:8081",  # Production frontend
-    ],
+    allow_origins=["*"],  # In production, this should be configured via environment variable
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"]
 )
@@ -50,7 +46,7 @@ class PaymentResult(BaseModel):
     message: str
     details: Dict = {}
 
-async def process_single_payment(payment: Payment, term: str) -> PaymentResult:
+async def process_single_payment(payment: Payment, term: str, organization_id: str) -> PaymentResult:
     """Process a single payment by calling the rent API endpoint"""
     try:
         payment_data = {
@@ -73,10 +69,11 @@ async def process_single_payment(payment: Payment, term: str) -> PaymentResult:
         async with httpx.AsyncClient() as client:
             headers = {
                 "Content-Type": "application/json",
-                "Accept": "application/json"
+                "Accept": "application/json",
+                "organizationId": organization_id
             }
             response = await client.patch(
-                f"{API_BASE_URL}/rents/payment/{payment.tenant_reference}/{term}",
+                f"{API_BASE_URL}/api/v2/rents/payment/{payment.tenant_reference}/{term}",
                 json=payment_data,
                 headers=headers
             )
@@ -94,6 +91,8 @@ async def process_single_payment(payment: Payment, term: str) -> PaymentResult:
                     error_msg = error_data.get('error', error_msg)
                 except:
                     pass
+                
+                logger.error(f"API Error: {error_msg}")
                 return PaymentResult(
                     success=False,
                     tenant_id=payment.tenant_reference,
@@ -109,13 +108,19 @@ async def process_single_payment(payment: Payment, term: str) -> PaymentResult:
             message=f"Error processing payment: {str(e)}"
         )
 
-@app.post("/process-payments/")
+@app.post("/process-payments")  # Remove trailing slash
 async def process_payments(
+    request: Request,  # Add request parameter to access headers
     file: UploadFile = File(...),
     term: str = Form(...)
 ):
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
+    
+    # Get organization ID from header
+    organization_id = request.headers.get('organizationid')
+    if not organization_id:
+        raise HTTPException(status_code=400, detail="Organization ID is required in headers")
     
     try:
         # Read the file content
@@ -154,7 +159,7 @@ async def process_payments(
                 )
                 
                 # Process the payment through the rent API
-                result = await process_single_payment(payment, term)
+                result = await process_single_payment(payment, term, organization_id)
                 results.append(result)
                 
             except Exception as e:

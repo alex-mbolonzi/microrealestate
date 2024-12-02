@@ -71,21 +71,22 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       formData.append('term', currentTerm);
 
       // Send through the gateway service
-      const response = await fetch(`${config.BASE_PATH}/paymentprocessor/upload`, {
+      const response = await fetch(`${config.BASE_PATH}/api/paymentprocessor/process-payments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'organizationid': store.organization?.selected?._id // Add organization ID header
+          'organizationid': store.organization?.selected?._id
         },
         body: formData
       });
 
-      const responseData = await response.json();
-      
       if (!response.ok) {
+        const responseData = await response.json();
         throw new Error(responseData.error || responseData.detail || 'Failed to process payments');
       }
 
+      const responseData = await response.json();
+      
       const successful = responseData.results?.length || 0;
       const failed = responseData.results?.filter(r => !r.success).length || 0;
 
