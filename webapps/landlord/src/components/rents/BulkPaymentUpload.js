@@ -138,7 +138,19 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       if (failed > 0) {
         const failedRecords = responseData.results
           .filter(r => !r.success)
-          .map(r => `\n• Tenant ${r.tenant_id}: ${r.message}`)
+          .map(r => {
+            // Parse error message if it's a JSON string
+            let errorMessage = r.message;
+            try {
+              const parsedError = JSON.parse(r.message.match(/\{.*\}/)?.[0] || '{}');
+              if (parsedError.message) {
+                errorMessage = parsedError.message;
+              }
+            } catch (e) {
+              // Keep original message if parsing fails
+            }
+            return `\n• Tenant ${r.tenant_id}: ${errorMessage}`;
+          })
           .join('');
         errorDetails = `\n\nFailed records:${failedRecords}`;
       }

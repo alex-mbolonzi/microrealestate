@@ -115,60 +115,64 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     details={"status_code": 404}
                 )
 
-        # Now construct the payment request
-        payment_data = {
-            "date": payment.payment_date,
-            "type": payment.payment_type,
-            "reference": payment.reference,
-            "amount": payment.amount,
-            "description": payment.description,
-            "promo": {
-                "amount": payment.promo_amount,
-                "description": payment.promo_note
-            },
-            "extraCharge": {
-                "amount": payment.extra_charge,
-                "description": payment.extra_charge_note
-            }
-        }
+            # Extract contract frequency from tenant data
+            tenant_frequency = matching_tenant.get('frequency', 'months')  # Default to 'months' if not specified
 
-        logger.info(f"Making API request with headers: {headers}")
-        logger.info(f"Payment data: {payment_data}")
-        
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{matching_tenant['_id']}/{term}"
-            logger.info(f"Making payment request to: {payment_url}")
+            # Now construct the payment request with frequency
+            payment_data = {
+                "date": payment.payment_date,
+                "type": payment.payment_type,
+                "reference": payment.reference,
+                "amount": payment.amount,
+                "description": payment.description,
+                "promo": {
+                    "amount": payment.promo_amount,
+                    "description": payment.promo_note
+                },
+                "extraCharge": {
+                    "amount": payment.extra_charge,
+                    "description": payment.extra_charge_note
+                },
+                "frequency": tenant_frequency  # Add frequency to payment data
+            }
+
+            logger.info(f"Making API request with headers: {headers}")
+            logger.info(f"Payment data: {payment_data}")
             
-            response = await client.patch(
-                payment_url,
-                json=payment_data,
-                headers=headers
-            )
-            
-            logger.info(f"Payment response status: {response.status_code}")
-            logger.info(f"Payment response: {response.text}")
-            
-            if response.status_code == 200:
-                return PaymentResult(
-                    success=True,
-                    tenant_id=payment.tenant_reference,
-                    message="Payment processed successfully"
-                )
-            else:
-                error_msg = response.text
-                try:
-                    error_data = response.json()
-                    error_msg = error_data.get('error', error_msg)
-                except:
-                    pass
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{matching_tenant['_id']}/{term}"
+                logger.info(f"Making payment request to: {payment_url}")
                 
-                logger.error(f"API Error: {error_msg}")
-                return PaymentResult(
-                    success=False,
-                    tenant_id=payment.tenant_reference,
-                    message=f"Failed to process payment: {error_msg}",
-                    details={"status_code": response.status_code}
+                response = await client.patch(
+                    payment_url,
+                    json=payment_data,
+                    headers=headers
                 )
+                
+                logger.info(f"Payment response status: {response.status_code}")
+                logger.info(f"Payment response: {response.text}")
+                
+                if response.status_code == 200:
+                    return PaymentResult(
+                        success=True,
+                        tenant_id=payment.tenant_reference,
+                        message="Payment processed successfully"
+                    )
+                else:
+                    error_msg = response.text
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get('error', error_msg)
+                    except:
+                        pass
+                    
+                    logger.error(f"API Error: {error_msg}")
+                    return PaymentResult(
+                        success=False,
+                        tenant_id=payment.tenant_reference,
+                        message=f"Failed to process payment: {error_msg}",
+                        details={"status_code": response.status_code}
+                    )
 
     except Exception as e:
         logger.error(f"Error processing payment for tenant {payment.tenant_reference}: {str(e)}")
