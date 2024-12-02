@@ -60,6 +60,8 @@ spec:
               value: "/tenant"
             - name: TENANTAPI_URL
               value: "http://tenantapi:8250/tenantapi"
+            - name: PAYMENTPROCESSOR_URL
+              value: "http://paymentprocessor:8001"
             - name: NODE_ENV
               value: "production"
             # - key: RESETSERVICE_URL

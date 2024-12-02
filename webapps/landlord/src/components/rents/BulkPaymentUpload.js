@@ -70,11 +70,12 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const currentTerm = store.rent.periodAsString;
       formData.append('term', currentTerm);
 
-      // Send directly to payment processor through API service
-      const response = await fetch('/api/paymentprocessor/upload', {
+      // Send through the gateway service
+      const response = await fetch(`${config.BASE_PATH}/paymentprocessor/upload`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'organizationid': store.organization?.selected?._id // Add organization ID header
         },
         body: formData
       });

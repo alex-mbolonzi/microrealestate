@@ -34,7 +34,7 @@ export default function routes() {
   );
   
   // Add proxy for payment processor service
-  const paymentProcessorUrl = process.env.PAYMENT_PROCESSOR_URL || 'http://paymentprocessor:8001';
+  const paymentProcessorUrl = process.env.PAYMENTPROCESSOR_URL || 'http://paymentprocessor:8001';
   router.post('/paymentprocessor/upload', 
     upload.single('file'),
     (req, res, next) => {
