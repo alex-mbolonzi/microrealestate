@@ -1,11 +1,20 @@
 {
   "name": "microrealestate",
   "private": true,
-  "workspaces": [
-    "types",
-    "services/*",
-    "webapps/*"
-  ],
+  "workspaces": {
+    "packages": [
+      "types",
+      "services/api",
+      "services/authenticator",
+      "services/common",
+      "services/emailer",
+      "services/gateway",
+      "services/pdfgenerator",
+      "services/resetservice",
+      "services/tenantapi",
+      "webapps/*"
+    ]
+  },
   "scripts": {
     "build": "yarn workspaces foreach -ptv run build",
     "lint": "yarn workspaces foreach -ptv run lint",
