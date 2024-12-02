@@ -75,19 +75,18 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
-          // Don't set Content-Type, let the browser set it with the boundary
         },
         body: formData
       });
 
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to process payments');
+        throw new Error(responseData.error || responseData.detail || 'Failed to process payments');
       }
 
-      const result = await response.json();
-      const successful = result.results?.length || 0;
-      const failed = result.results?.filter(r => !r.success).length || 0;
+      const successful = responseData.results?.length || 0;
+      const failed = responseData.results?.filter(r => !r.success).length || 0;
 
       // Show summary
       toast.success(
