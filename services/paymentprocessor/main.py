@@ -2,14 +2,19 @@ from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 from io import StringIO
-from typing import List
+from typing import List, Dict
 from pydantic import BaseModel
 from datetime import datetime
 import logging
+import httpx
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# API configuration
+API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:8080/api')
 
 app = FastAPI(title="Payment Processor Service")
 
@@ -39,8 +44,62 @@ class Payment(BaseModel):
     extra_charge: float = 0
     extra_charge_note: str = ""
 
-@app.post("/process-payments/", response_model=List[Payment])
-async def process_payments(file: UploadFile):
+class PaymentResult(BaseModel):
+    success: bool
+    tenant_id: str
+    message: str
+    details: Dict = {}
+
+async def process_single_payment(payment: Payment, term: str) -> PaymentResult:
+    """Process a single payment by calling the rent API endpoint"""
+    try:
+        payment_data = {
+            "_id": payment.tenant_reference,  # tenant ID
+            "date": payment.payment_date,
+            "type": payment.payment_type,
+            "reference": payment.reference,
+            "amount": payment.amount,
+            "description": payment.description,
+            "promo": {
+                "amount": payment.promo_amount,
+                "description": payment.promo_note
+            },
+            "extraCharge": {
+                "amount": payment.extra_charge,
+                "description": payment.extra_charge_note
+            }
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.patch(
+                f"{API_BASE_URL}/rents/payment/{payment.tenant_reference}/{term}",
+                json=payment_data
+            )
+            
+            if response.status_code == 200:
+                return PaymentResult(
+                    success=True,
+                    tenant_id=payment.tenant_reference,
+                    message="Payment processed successfully"
+                )
+            else:
+                return PaymentResult(
+                    success=False,
+                    tenant_id=payment.tenant_reference,
+                    message=f"Failed to process payment: {response.text}",
+                    details={"status_code": response.status_code}
+                )
+
+    except Exception as e:
+        logger.error(f"Error processing payment for tenant {payment.tenant_reference}: {str(e)}")
+        return PaymentResult(
+            success=False,
+            tenant_id=payment.tenant_reference,
+            message=f"Error processing payment: {str(e)}"
+        )
+
+@app.post("/process-payments/", response_model=List[PaymentResult])
+async def process_payments(file: UploadFile, term: str):
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
     
@@ -61,7 +120,7 @@ async def process_payments(file: UploadFile):
             )
         
         # Process and validate each row
-        payments = []
+        results = []
         for idx, row in df.iterrows():
             try:
                 # Validate date format
@@ -79,17 +138,21 @@ async def process_payments(file: UploadFile):
                     reference=str(row['payment_reference']).strip() if pd.notna(row['payment_reference']) else '',
                     amount=amount
                 )
-                payments.append(payment)
+                
+                # Process the payment through the rent API
+                result = await process_single_payment(payment, term)
+                results.append(result)
                 
             except Exception as e:
                 logger.error(f"Error processing row {idx + 2}: {str(e)}")
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Error in row {idx + 2}: {str(e)}"
-                )
+                results.append(PaymentResult(
+                    success=False,
+                    tenant_id=str(row.get('tenant_id', '')).strip(),
+                    message=f"Error in row {idx + 2}: {str(e)}"
+                ))
         
-        logger.info(f"Successfully processed {len(payments)} payments")
-        return payments
+        logger.info(f"Processed {len(results)} payments")
+        return results
         
     except Exception as e:
         logger.error(f"Error processing CSV: {str(e)}")
