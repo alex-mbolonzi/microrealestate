@@ -118,6 +118,8 @@ function exposeServices(application: Express.Application) {
       pathRewrite: {
         '^/api/paymentprocessor': ''  // Remove the /api/paymentprocessor prefix
       },
+      proxyTimeout: 120000, // 2 minutes timeout
+      timeout: 120000, // 2 minutes timeout
       onProxyReq: (proxyReq, req, res) => {
         // Log the original request
         logger.info(`Incoming request: ${req.method} ${req.url}`);
