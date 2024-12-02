@@ -58,6 +58,10 @@ class PaymentResult(BaseModel):
     message: str
     details: Dict = {}
 
+def pad_tenant_id(tenant_id: str) -> str:
+    """Pad tenant_id with leading zeros to ensure it's six digits"""
+    return str(tenant_id).strip().zfill(6)
+
 async def process_single_payment(payment: Payment, term: str, organization_id: str, auth_token: str = None) -> PaymentResult:
     """Process a single payment by calling the rent API endpoint"""
     try:
@@ -73,8 +77,11 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             if auth_token:
                 headers["Authorization"] = auth_token
 
+            # Pad the tenant reference with leading zeros
+            padded_reference = pad_tenant_id(payment.tenant_reference)
+            
             # Get tenant by reference number
-            tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={payment.tenant_reference}"
+            tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={padded_reference}"
             logger.info(f"Looking up tenant with URL: {tenant_url}")
             response = await client.get(
                 tenant_url,
@@ -226,8 +233,11 @@ async def process_payments(
                 if amount <= 0:
                     raise ValueError(f"Invalid amount {amount} at row {idx + 2}")
                 
+                # Pad the tenant_id with leading zeros
+                tenant_id = pad_tenant_id(row['tenant_id'])
+                
                 payment = Payment(
-                    tenant_reference=str(row['tenant_id']).strip(),
+                    tenant_reference=tenant_id,
                     payment_date=payment_date.strftime('%Y-%m-%d'),
                     payment_type=str(row['payment_type']).strip().lower() if pd.notna(row['payment_type']) else 'cash',
                     reference=str(row['payment_reference']).strip() if pd.notna(row['payment_reference']) else '',
