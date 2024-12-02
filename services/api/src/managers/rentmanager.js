@@ -1,5 +1,6 @@
 import * as Contract from './contract.js';
 import * as FD from './frontdata.js';
+import * as BL from './businesslogic.js';
 import {
   Collections,
   logger,
@@ -227,17 +228,85 @@ async function all(req, res) {
   let currentDate = moment().startOf('month');
   if (req.params.year && req.params.month) {
     currentDate = moment(`${req.params.month}/${req.params.year}`, 'MM/YYYY');
+    
+    // Validate that the requested date is not in the future
+    const now = moment().endOf('month');
+    if (currentDate.isAfter(now)) {
+      return res.status(400).json({
+        error: 'Cannot retrieve or create rents for future months'
+      });
+    }
   }
 
-  res.json(
-    await _getRentsDataByTerm(
+  try {
+    // First try to find existing rents
+    let result = await _getRentsDataByTerm(
       req.headers.authorization,
       req.headers['accept-language'],
       realm,
       currentDate,
       'months'
-    )
-  );
+    );
+
+    // If no rents exist for this period, create them for active tenants
+    if (!result.rents.length) {
+      const tenants = await Collections.Tenant.find({
+        realmId: realm._id,
+        'rents.0': { $exists: true }, // Has at least one rent
+        $or: [
+          { endDate: { $gte: currentDate.toDate() } },
+          { terminationDate: { $gte: currentDate.toDate() } }
+        ]
+      }).lean();
+
+      for (const tenant of tenants) {
+        const contract = {
+          begin: tenant.beginDate,
+          end: tenant.terminationDate || tenant.endDate,
+          frequency: tenant.frequency || 'months',
+          properties: tenant.properties,
+          vatRate: tenant.vatRatio,
+          discount: tenant.discount,
+          rents: tenant.rents || []
+        };
+
+        // Create rent for the current period if within contract dates
+        const momentBegin = moment(contract.begin);
+        const momentEnd = moment(contract.end);
+        
+        if (currentDate.isBetween(momentBegin, momentEnd, 'month', '[]')) {
+          const rent = BL.computeRent(
+            contract,
+            currentDate.format('DD/MM/YYYY HH:mm'),
+            tenant.rents[tenant.rents.length - 1]
+          );
+          
+          // Save the new rent
+          await Collections.Tenant.updateOne(
+            { _id: tenant._id },
+            { $push: { rents: rent } }
+          );
+        }
+      }
+
+      // Fetch the newly created rents
+      result = await _getRentsDataByTerm(
+        req.headers.authorization,
+        req.headers['accept-language'],
+        realm,
+        currentDate,
+        'months'
+      );
+    }
+
+    res.json(result);
+  } catch (error) {
+    logger.error(error);
+    res.status(500).json({
+      error: 'Failed to retrieve or create rents',
+      details: error.message
+    });
+  }
 }
 
 async function _updateByTerm(
