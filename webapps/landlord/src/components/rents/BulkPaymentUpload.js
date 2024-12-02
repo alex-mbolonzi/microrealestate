@@ -70,16 +70,55 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const currentTerm = store.rent.periodAsString;
       formData.append('term', currentTerm);
 
-      // Send through the gateway service
-      const response = await fetch(`${config.BASE_PATH}/api/paymentprocessor/process-payments`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'organizationid': store.organization?.selected?._id
-        },
-        body: formData
-      });
+      // Create a promise that wraps XMLHttpRequest to track progress
+      const uploadWithProgress = () => {
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const percentComplete = (event.loaded / event.total) * 100;
+              setProgress(percentComplete);
+            }
+          });
 
+          xhr.addEventListener('load', async () => {
+            console.log('Response status:', xhr.status);
+            console.log('Response headers:', xhr.getAllResponseHeaders());
+            
+            const responseText = xhr.responseText;
+            console.log('Response text:', responseText);
+            
+            try {
+              const responseData = JSON.parse(responseText);
+              if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(responseData);
+              } else {
+                reject(new Error(responseData.error || responseData.detail || 'Failed to process payments'));
+              }
+            } catch (e) {
+              console.error('Failed to parse response as JSON:', e);
+              reject(new Error('Invalid response from server'));
+            }
+          });
+
+          xhr.addEventListener('error', () => {
+            reject(new Error('Network error occurred'));
+          });
+
+          xhr.addEventListener('abort', () => {
+            reject(new Error('Upload aborted'));
+          });
+
+          // Open and send the request
+          xhr.open('POST', `${config.BASE_PATH}/api/paymentprocessor/process-payments`);
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          xhr.setRequestHeader('organizationid', store.organization?.selected?._id);
+          xhr.send(formData);
+        });
+      };
+
+      // Execute the upload
       console.log('Request details:', {
         url: `${config.BASE_PATH}/api/paymentprocessor/process-payments`,
         organizationId: store.organization?.selected?._id,
@@ -87,34 +126,39 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         fileName: file.name
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      const responseData = await uploadWithProgress();
       
-      const responseText = await response.text();
-      console.log('Response text:', responseText);
-      
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        console.error('Failed to parse response as JSON:', e);
-        throw new Error('Invalid response from server');
+      // Calculate statistics
+      const total = responseData.summary?.total || 0;
+      const successful = responseData.summary?.successful || 0;
+      const failed = responseData.summary?.failed || 0;
+
+      // Create detailed error message for failed records
+      let errorDetails = '';
+      if (failed > 0) {
+        const failedRecords = responseData.results
+          .filter(r => !r.success)
+          .map(r => `\n• Tenant ${r.tenant_id}: ${r.message}`)
+          .join('');
+        errorDetails = `\n\nFailed records:${failedRecords}`;
       }
 
-      if (!response.ok) {
-        throw new Error(responseData.error || responseData.detail || 'Failed to process payments');
+      // Show summary with details
+      if (failed > 0) {
+        toast.error(
+          t('Upload completed with errors: {{successful}} successful, {{failed}} failed.{{details}}', {
+            successful,
+            failed,
+            details: errorDetails
+          })
+        );
+      } else {
+        toast.success(
+          t('Upload completed successfully: {{total}} payments processed', {
+            total
+          })
+        );
       }
-      
-      const successful = responseData.results?.length || 0;
-      const failed = responseData.results?.filter(r => !r.success).length || 0;
-
-      // Show summary
-      toast.success(
-        t('Upload Summary: {{successful}} payments processed successfully, {{failed}} failed', {
-          successful,
-          failed
-        })
-      );
 
       onSuccess?.();
       onClose();
