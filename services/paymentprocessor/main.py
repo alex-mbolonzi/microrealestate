@@ -58,7 +58,7 @@ class PaymentResult(BaseModel):
     message: str
     details: Dict = {}
 
-async def process_single_payment(payment: Payment, term: str, organization_id: str) -> PaymentResult:
+async def process_single_payment(payment: Payment, term: str, organization_id: str, auth_token: str = None) -> PaymentResult:
     """Process a single payment by calling the rent API endpoint"""
     try:
         payment_data = {
@@ -84,6 +84,12 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 "Accept": "application/json",
                 "organizationId": organization_id
             }
+            
+            # Add authorization header if token is provided
+            if auth_token:
+                headers["Authorization"] = auth_token
+
+            logger.info(f"Making API request with headers: {headers}")
             response = await client.patch(
                 f"{API_BASE_URL}/api/v2/rents/payment/{payment.tenant_reference}/{term}",
                 json=payment_data,
@@ -138,11 +144,17 @@ async def process_payments(
         logger.error(f"Invalid file type: {file.filename}")
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
     
-    # Get organization ID from header
+    # Get organization ID and auth token from headers
     organization_id = request.headers.get('organizationid')
+    auth_token = request.headers.get('authorization')
+    
     if not organization_id:
         logger.error("Missing organization ID in headers")
         raise HTTPException(status_code=400, detail="Organization ID is required in headers")
+        
+    if not auth_token:
+        logger.error("Missing authorization token in headers")
+        raise HTTPException(status_code=401, detail="Authorization token is required")
     
     try:
         # Read the file content
@@ -184,7 +196,7 @@ async def process_payments(
                 )
                 
                 # Process the payment through the rent API
-                result = await process_single_payment(payment, term, organization_id)
+                result = await process_single_payment(payment, term, organization_id, auth_token)
                 results.append(result)
                 logger.info(f"Processed payment for tenant {payment.tenant_reference}: {result.success}")
                 
