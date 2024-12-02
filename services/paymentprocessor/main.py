@@ -61,8 +61,50 @@ class PaymentResult(BaseModel):
 async def process_single_payment(payment: Payment, term: str, organization_id: str, auth_token: str = None) -> PaymentResult:
     """Process a single payment by calling the rent API endpoint"""
     try:
+        # First, look up the tenant by reference number
+        async with httpx.AsyncClient() as client:
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "organizationId": organization_id
+            }
+            
+            # Add authorization header if token is provided
+            if auth_token:
+                headers["Authorization"] = auth_token
+
+            # Get tenant by reference number
+            response = await client.get(
+                f"{API_BASE_URL}/api/v2/tenants",
+                headers=headers
+            )
+            
+            if response.status_code != 200:
+                return PaymentResult(
+                    success=False,
+                    tenant_id=payment.tenant_reference,
+                    message=f"Failed to fetch tenants: {response.text}",
+                    details={"status_code": response.status_code}
+                )
+                
+            tenants = response.json()
+            matching_tenant = next(
+                (tenant for tenant in tenants 
+                 if str(tenant.get("reference", "")).strip() == str(payment.tenant_reference).strip()),
+                None
+            )
+            
+            if not matching_tenant:
+                return PaymentResult(
+                    success=False,
+                    tenant_id=payment.tenant_reference,
+                    message=f"No tenant found with reference number {payment.tenant_reference}",
+                    details={"status_code": 404}
+                )
+
+        # Now use the tenant's actual MongoDB ID for the payment
         payment_data = {
-            "_id": payment.tenant_reference,  # tenant ID
+            "_id": str(matching_tenant["_id"]),  # Use the actual MongoDB ID
             "date": payment.payment_date,
             "type": payment.payment_type,
             "reference": payment.reference,
@@ -78,20 +120,12 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             }
         }
 
+        logger.info(f"Making API request with headers: {headers}")
+        logger.info(f"Payment data: {payment_data}")
+        
         async with httpx.AsyncClient() as client:
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "organizationId": organization_id
-            }
-            
-            # Add authorization header if token is provided
-            if auth_token:
-                headers["Authorization"] = auth_token
-
-            logger.info(f"Making API request with headers: {headers}")
             response = await client.patch(
-                f"{API_BASE_URL}/api/v2/rents/payment/{payment.tenant_reference}/{term}",
+                f"{API_BASE_URL}/api/v2/rents/payment/{matching_tenant['_id']}/{term}",
                 json=payment_data,
                 headers=headers
             )
