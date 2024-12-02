@@ -17,6 +17,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const store = useContext(StoreContext);
 
@@ -76,20 +77,13 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         body: formData
       });
 
-      let responseData;
-      try {
-        responseData = await response.json();
-      } catch (parseError) {
-        console.error('Response parsing error:', parseError);
-        throw new Error('Invalid response format from server');
-      }
-
       if (!response.ok) {
-        throw new Error(responseData.detail || responseData.error || responseData.message || 'Failed to upload payments');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to process payments');
       }
 
-      // Handle successful response
-      const successful = responseData.length || 0;
+      const result = await response.json();
+      const successful = result.length || 0;
       const failed = 0; // Python service currently doesn't return failed records
 
       // Show summary

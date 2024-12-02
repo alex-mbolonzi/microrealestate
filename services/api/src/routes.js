@@ -37,6 +37,12 @@ export default function routes() {
   const paymentProcessorUrl = process.env.PAYMENT_PROCESSOR_URL || 'http://paymentprocessor:8001';
   router.post('/paymentprocessor/upload', 
     upload.single('file'),
+    (req, res, next) => {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+      next();
+    },
     createProxyMiddleware({
       target: paymentProcessorUrl,
       pathRewrite: {
@@ -44,28 +50,44 @@ export default function routes() {
       },
       changeOrigin: true,
       onProxyReq: (proxyReq, req, res) => {
-        // Handle the file buffer
-        if (req.file) {
-          const formData = new FormData();
-          formData.append('file', req.file.buffer, {
-            filename: req.file.originalname,
-            contentType: 'text/csv'
-          });
-          // Set the correct headers for multipart/form-data
-          const contentType = `multipart/form-data; boundary=${formData.getBoundary()}`;
-          proxyReq.setHeader('Content-Type', contentType);
-          
-          // Get the content length synchronously
-          const contentLength = formData.getLengthSync();
-          proxyReq.setHeader('Content-Length', contentLength);
-          
-          // Pipe the form data to the proxy request
-          formData.pipe(proxyReq);
+        try {
+          // Handle the file buffer
+          if (req.file) {
+            const formData = new FormData();
+            formData.append('file', req.file.buffer, {
+              filename: req.file.originalname,
+              contentType: 'text/csv'
+            });
+            
+            // Set the correct headers for multipart/form-data
+            const contentType = `multipart/form-data; boundary=${formData.getBoundary()}`;
+            proxyReq.setHeader('Content-Type', contentType);
+            
+            // Get the content length synchronously
+            const contentLength = formData.getLengthSync();
+            proxyReq.setHeader('Content-Length', contentLength);
+            
+            // Pipe the form data to the proxy request
+            formData.pipe(proxyReq);
+          }
+        } catch (error) {
+          console.error('Error in onProxyReq:', error);
+          res.status(500).json({ error: 'Error processing file upload' });
         }
+      },
+      onProxyRes: (proxyRes, req, res) => {
+        // Log the response status and headers for debugging
+        console.log('Payment processor response:', {
+          status: proxyRes.statusCode,
+          headers: proxyRes.headers
+        });
       },
       onError: (err, req, res) => {
         console.error('Payment processor proxy error:', err);
-        res.status(500).json({ error: 'Payment processor service unavailable' });
+        res.status(502).json({ 
+          error: 'Payment processor service unavailable',
+          details: err.message 
+        });
       }
     })
   );
