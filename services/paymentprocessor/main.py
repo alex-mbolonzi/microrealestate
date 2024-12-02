@@ -120,14 +120,19 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             message=f"Error processing payment: {str(e)}"
         )
 
-@app.post("/process-payments")  # Remove trailing slash
+@app.post("/process-payments")
 async def process_payments(
-    request: Request,  # Add request parameter to access headers
+    request: Request,
     file: UploadFile = File(...),
     term: str = Form(...)
 ):
-    logger.info(f"Received payment processing request for term: {term}")
+    """
+    Process bulk payments from a CSV file
+    """
+    logger.info(f"Received payment processing request")
     logger.info(f"Headers: {dict(request.headers)}")
+    logger.info(f"File: {file.filename}, Content-Type: {file.content_type}")
+    logger.info(f"Term: {term}")
     
     if not file.filename.endswith('.csv'):
         logger.error(f"Invalid file type: {file.filename}")
@@ -195,7 +200,17 @@ async def process_payments(
         successful = len([r for r in results if r.success])
         failed = len([r for r in results if not r.success])
         logger.info(f"Completed processing {len(results)} payments: {successful} successful, {failed} failed")
-        return {"results": results}
+        
+        return {
+            "status": "success",
+            "message": f"Processed {len(results)} payments",
+            "results": [result.dict() for result in results],
+            "summary": {
+                "total": len(results),
+                "successful": successful,
+                "failed": failed
+            }
+        }
         
     except Exception as e:
         error_msg = f"Error processing CSV: {str(e)}"
