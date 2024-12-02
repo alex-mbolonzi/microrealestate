@@ -39,7 +39,8 @@ async function Main() {
         DOMAIN_URL: process.env.DOMAIN_URL || 'http://localhost', // deprecated
         APP_DOMAIN: process.env.APP_DOMAIN,
         CORS_ENABLED: process.env.CORS_ENABLED === 'true',
-        TENANTAPI_URL: process.env.TENANTAPI_URL
+        TENANTAPI_URL: process.env.TENANTAPI_URL,
+        PAYMENTPROCESSOR_URL: process.env.PAYMENTPROCESSOR_URL
       })
     );
     await service.init({
@@ -105,6 +106,77 @@ function exposeFrontends(application: Express.Application) {
 
 function exposeServices(application: Express.Application) {
   const config = Service.getInstance().envConfig.getValues();
+
+  // Configure payment processor route first, before other routes
+  if (config.PAYMENTPROCESSOR_URL) {
+    logger.info(`Configuring payment processor route to ${config.PAYMENTPROCESSOR_URL}`);
+    const paymentProcessorProxy = createProxyMiddleware({
+      target: config.PAYMENTPROCESSOR_URL,
+      changeOrigin: true,
+      ws: true, // Enable WebSocket proxying
+      secure: false, // Don't verify SSL certificates
+      pathRewrite: {
+        '^/api/paymentprocessor': ''  // Remove the /api/paymentprocessor prefix
+      },
+      onProxyReq: (proxyReq, req, res) => {
+        // Log the original request
+        logger.info(`Incoming request: ${req.method} ${req.url}`);
+        logger.info(`Headers: ${JSON.stringify(req.headers)}`);
+        
+        // Log where we're sending it
+        const targetUrl = `${config.PAYMENTPROCESSOR_URL}${req.url.replace('/api/paymentprocessor', '')}`;
+        logger.info(`Proxying to: ${targetUrl}`);
+        
+        // Preserve the original headers
+        if (req.headers.authorization) {
+          proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+        if (req.headers.organizationid) {
+          proxyReq.setHeader('organizationid', req.headers.organizationid);
+        }
+
+        // Don't modify content-type for multipart/form-data
+        if (req.headers['content-type']?.includes('multipart/form-data')) {
+          // Preserve the original content-type with boundary
+          proxyReq.setHeader('content-type', req.headers['content-type']);
+        } else {
+          proxyReq.setHeader('content-type', 'application/json');
+        }
+      },
+      onProxyRes: (proxyRes, req, res) => {
+        logger.info(`Received response from payment processor: ${proxyRes.statusCode}`);
+        // Log response headers for debugging
+        logger.info(`Response headers: ${JSON.stringify(proxyRes.headers)}`);
+      },
+      onError: (err, req, res) => {
+        logger.error(`Payment processor proxy error: ${err.message}`);
+        logger.error(`Error stack: ${err.stack}`);
+        res.status(502).json({
+          error: 'Payment processor service unavailable',
+          details: err.message,
+          target: config.PAYMENTPROCESSOR_URL
+        });
+      }
+    });
+
+    // Apply the proxy middleware with error handling
+    application.use('/api/paymentprocessor', (req, res, next) => {
+      logger.info(`Processing ${req.method} request to ${req.url}`);
+      try {
+        paymentProcessorProxy(req, res, next);
+      } catch (error) {
+        logger.error(`Error in payment processor middleware: ${error}`);
+        res.status(500).json({
+          error: 'Internal server error in payment processor middleware',
+          details: error.message
+        });
+      }
+    });
+    logger.info('Payment processor route configured successfully');
+  } else {
+    logger.warn('PAYMENTPROCESSOR_URL not configured');
+  }
+
   application.use(
     '/api/v2/authenticator',
     createProxyMiddleware({
