@@ -63,9 +63,12 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         throw new Error('Failed to get valid token');
       }
 
-      // Create form data with the file
+      // Create form data with the file and term
       const formData = new FormData();
       formData.append('file', file);
+      // Get current term from store or URL
+      const currentTerm = store.rent.periodAsString;
+      formData.append('term', currentTerm);
 
       // Send directly to payment processor through API service
       const response = await fetch('/api/paymentprocessor/upload', {
@@ -83,13 +86,14 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       }
 
       const result = await response.json();
-      const successful = result.length || 0;
-      const failed = 0; // Python service currently doesn't return failed records
+      const successful = result.results?.length || 0;
+      const failed = result.results?.filter(r => !r.success).length || 0;
 
       // Show summary
       toast.success(
-        t('Upload Summary: {{successful}} payments processed successfully', {
-          successful
+        t('Upload Summary: {{successful}} payments processed successfully, {{failed}} failed', {
+          successful,
+          failed
         })
       );
 

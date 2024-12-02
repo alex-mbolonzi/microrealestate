@@ -88,10 +88,16 @@ async def process_single_payment(payment: Payment, term: str) -> PaymentResult:
                     message="Payment processed successfully"
                 )
             else:
+                error_msg = response.text
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get('error', error_msg)
+                except:
+                    pass
                 return PaymentResult(
                     success=False,
                     tenant_id=payment.tenant_reference,
-                    message=f"Failed to process payment: {response.text}",
+                    message=f"Failed to process payment: {error_msg}",
                     details={"status_code": response.status_code}
                 )
 
