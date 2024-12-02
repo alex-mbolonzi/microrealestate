@@ -115,8 +115,10 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     details={"status_code": 404}
                 )
 
-            # Extract contract frequency from tenant data
-            tenant_frequency = matching_tenant.get('frequency', 'months')  # Default to 'months' if not specified
+            # Set default frequency to 'months' since it's not directly available in tenant data
+            tenant_frequency = 'months'  # Default frequency
+            
+            logger.info(f"Using default frequency: {tenant_frequency}")
 
             # Now construct the payment request with frequency
             payment_data = {
