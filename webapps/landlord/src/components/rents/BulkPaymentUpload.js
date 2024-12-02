@@ -80,12 +80,30 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         body: formData
       });
 
-      if (!response.ok) {
-        const responseData = await response.json();
-        throw new Error(responseData.error || responseData.detail || 'Failed to process payments');
+      console.log('Request details:', {
+        url: `${config.BASE_PATH}/api/paymentprocessor/process-payments`,
+        organizationId: store.organization?.selected?._id,
+        fileSize: file.size,
+        fileName: file.name
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', e);
+        throw new Error('Invalid response from server');
       }
 
-      const responseData = await response.json();
+      if (!response.ok) {
+        throw new Error(responseData.error || responseData.detail || 'Failed to process payments');
+      }
       
       const successful = responseData.results?.length || 0;
       const failed = responseData.results?.filter(r => !r.success).length || 0;
