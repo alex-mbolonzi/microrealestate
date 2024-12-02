@@ -62,6 +62,8 @@ spec:
               value: "http://tenantapi:8250/tenantapi"
             - name: PAYMENTPROCESSOR_URL
               value: "http://paymentprocessor:8001"
+            - name: DEBUG
+              value: "express:*,http-proxy-middleware:*"
             - name: NODE_ENV
               value: "production"
           image: ghcr.io/alex-mbolonzi/microrealestate/gateway:latest
