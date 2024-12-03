@@ -154,26 +154,26 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
             # Now construct the payment request with frequency
             payment_data = {
+                "_id": tenant_id,  # Use _id as expected by the API
                 "payments": [{
                     "date": parse_payment_date(payment.payment_date),  # Parse and format the date
                     "type": payment.payment_type,
                     "reference": payment.reference,
                     "amount": payment.amount
                 }],
-                "description": payment.description or "",
-                "promo": payment.promo_amount or 0,
-                "notepromo": payment.promo_note or "",
-                "extracharge": payment.extra_charge or 0,
-                "noteextracharge": payment.extra_charge_note or "",
-                "frequency": PAYMENT_FREQUENCY
+                "description": payment.description,
+                "promo": payment.promo_amount,
+                "notepromo": payment.promo_note if payment.promo_amount > 0 else None,
+                "extracharge": payment.extra_charge,
+                "noteextracharge": payment.extra_charge_note if payment.extra_charge > 0 else None,
+                "frequency": PAYMENT_FREQUENCY  # Add frequency to payment data
             }
 
             logger.info(f"Making API request with headers: {headers}")
             logger.info(f"Payment data: {payment_data}")
             
             async with httpx.AsyncClient(timeout=30.0) as client:
-                # Include tenant ID as query parameter
-                payment_url = f"{API_BASE_URL}/api/v2/rents/payment?tenantId={tenant_id}&term={term}"
+                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{term}"
                 logger.info(f"Making payment request to: {payment_url}")
                 
                 try:
