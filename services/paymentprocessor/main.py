@@ -10,6 +10,7 @@ import httpx
 import os
 import asyncio
 import json
+from dateutil import parser
 
 # Configure logging
 logging.basicConfig(
@@ -75,6 +76,20 @@ class PaymentResult(BaseModel):
 def pad_tenant_id(tenant_id: str) -> str:
     """Pad tenant_id with leading zeros to ensure it's six digits"""
     return str(tenant_id).strip().zfill(6)
+
+def parse_payment_date(date_str: str) -> str:
+    """
+    Parse payment date from various formats and return in YYYY-MM-DD format.
+    Handles common formats like DD/MM/YYYY, MM/DD/YYYY, etc.
+    """
+    try:
+        # Parse the date string
+        parsed_date = parser.parse(date_str, dayfirst=True)  # Assume DD/MM/YYYY format if ambiguous
+        # Return in YYYY-MM-DD format
+        return parsed_date.strftime('%Y-%m-%d')
+    except (ValueError, TypeError) as e:
+        logger.error(f"Error parsing date {date_str}: {str(e)}")
+        raise ValueError(f"Invalid date format: {date_str}. Please use DD/MM/YYYY format.")
 
 # Constants for frequency
 PAYMENT_FREQUENCY = 'months'  # Monthly payments are standard for rental contracts
@@ -151,7 +166,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             payment_data = {
                 "_id": matching_tenant["_id"],  # Add tenant ID to payment data
                 "payments": [{
-                    "date": payment.payment_date,
+                    "date": parse_payment_date(payment.payment_date),  # Parse and format the date
                     "type": payment.payment_type,
                     "reference": payment.reference,
                     "amount": payment.amount
