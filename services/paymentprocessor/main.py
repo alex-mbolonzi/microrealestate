@@ -135,115 +135,71 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     message=error_msg
                 )
 
-            # Validate contract dates - handle MongoDB ISODate objects
-            begin_date = tenant.get('beginDate', {}).get('$date', {}).get('$numberLong') if isinstance(tenant.get('beginDate'), dict) else tenant.get('beginDate')
-            end_date = tenant.get('endDate', {}).get('$date', {}).get('$numberLong') if isinstance(tenant.get('endDate'), dict) else tenant.get('endDate')
-
-            if not begin_date or not end_date:
-                return PaymentResult(
-                    success=False,
-                    tenant_id=payment.tenant_reference,
-                    message=f"Tenant {payment.tenant_reference} is missing required contract dates",
-                    details={"status_code": 400}
-                )
-
-            # Always use monthly frequency for rent payments
-            tenant_frequency = PAYMENT_FREQUENCY
-            logger.info(f"Using monthly frequency for tenant {payment.tenant_reference}")
-
             # Now construct the payment request with frequency
             payment_data = {
-                "_id": tenant["_id"],  # Add tenant ID to payment data
                 "payments": [{
                     "date": payment.payment_date,
                     "type": payment.payment_type,
                     "reference": payment.reference,
                     "amount": payment.amount
                 }],
-                "description": payment.description,
-                "promo": payment.promo_amount,
-                "notepromo": payment.promo_note if payment.promo_amount > 0 else None,
-                "extracharge": payment.extra_charge,
-                "noteextracharge": payment.extra_charge_note if payment.extra_charge > 0 else None,
-                "frequency": tenant_frequency  # Add frequency to payment data
+                "description": payment.description or "",
+                "promo": payment.promo_amount or 0,
+                "notepromo": payment.promo_note or "",
+                "extracharge": payment.extra_charge or 0,
+                "noteextracharge": payment.extra_charge_note or "",
+                "frequency": PAYMENT_FREQUENCY
             }
 
             logger.info(f"Making API request with headers: {headers}")
             logger.info(f"Payment data: {payment_data}")
             
             async with httpx.AsyncClient(timeout=30.0) as client:
-                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant['_id']}/{term}"
+                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{term}"
                 logger.info(f"Making payment request to: {payment_url}")
                 
                 try:
                     response = await client.patch(
                         payment_url,
-                        json=payment_data,
-                        headers=headers
+                        headers=headers,
+                        json=payment_data
                     )
                     
                     logger.info(f"Payment response status: {response.status_code}")
                     logger.info(f"Payment response text: {response.text}")
                     
-                    if response.status_code == 200:
-                        try:
-                            response_data = response.json() if response.text else {}
-                            return PaymentResult(
-                                success=True,
-                                tenant_id=payment.tenant_reference,
-                                message="Payment processed successfully",
-                                details=response_data
-                            )
-                        except json.JSONDecodeError as je:
-                            logger.error(f"Failed to parse success response: {str(je)}")
-                            return PaymentResult(
-                                success=True,
-                                tenant_id=payment.tenant_reference,
-                                message="Payment processed successfully but response parsing failed",
-                                details={"response_text": response.text}
-                            )
-                    else:
-                        error_msg = "Unknown error"
-                        try:
-                            if response.text and response.text.strip():
-                                error_data = response.json()
-                                error_msg = error_data.get('error', error_data.get('message', response.text))
-                            else:
-                                error_msg = f"Empty response with status {response.status_code}"
-                        except json.JSONDecodeError as je:
-                            error_msg = response.text or str(je)
-                        except Exception as e:
-                            error_msg = str(e)
-                        
-                        logger.error(f"API Error: {error_msg}")
+                    if response.status_code >= 400:
+                        error_msg = f"API Error: {response.json().get('error', 'Unknown error')}"
+                        logger.error(error_msg)
                         return PaymentResult(
                             success=False,
                             tenant_id=payment.tenant_reference,
-                            message=f"Failed to process payment: {error_msg}",
-                            details={"status_code": response.status_code, "response_text": response.text}
+                            message=error_msg,
+                            details=response.json()
                         )
-                except httpx.RequestError as e:
-                    logger.error(f"Request failed: {str(e)}")
+                    
                     return PaymentResult(
-                        success=False,
+                        success=True,
                         tenant_id=payment.tenant_reference,
-                        message=f"Request failed: {str(e)}",
-                        details={"error": str(e)}
+                        message="Payment processed successfully"
                     )
+                    
                 except Exception as e:
-                    logger.error(f"Error processing payment for tenant {payment.tenant_reference}: {str(e)}")
+                    error_msg = f"Error making payment request: {str(e)}"
+                    logger.error(error_msg)
                     return PaymentResult(
                         success=False,
                         tenant_id=payment.tenant_reference,
-                        message=f"Error processing payment: {str(e)}"
+                        message=error_msg
                     )
-
+                
     except Exception as e:
-        logger.error(f"Error processing payment for tenant {payment.tenant_reference}: {str(e)}")
+        error_msg = f"Error processing payment: {str(e)}"
+        logger.error(error_msg)
         return PaymentResult(
             success=False,
             tenant_id=payment.tenant_reference,
-            message=f"Error processing payment: {str(e)}"
+            message=error_msg
         )
 
 @app.post("/process-payments")
@@ -282,17 +238,17 @@ async def process_payments(
         for index, row in df.iterrows():
             logger.info(f"Processing payment {index + 1}/{len(df)}")
             try:
-                # Get tenant reference from tenant_id column
+                # Get tenant reference from tenant_id column and ensure it's a string
                 tenant_reference = str(row['tenant_id']).strip()
                 
-                # Convert row to Payment object
+                # Ensure all required fields are present and properly formatted
                 payment = Payment(
-                    tenant_reference=tenant_reference,  # This will be used to lookup tenant by reference
-                    payment_date=row['payment_date'],
-                    payment_type=row['payment_type'],
-                    reference=row['payment_reference'],
+                    tenant_reference=tenant_reference,
+                    payment_date=str(row['payment_date']).strip(),
+                    payment_type=str(row['payment_type']).strip(),
+                    reference=str(row['payment_reference']).strip(),
                     amount=float(row['amount']),
-                    description="",  # Optional fields
+                    description="",
                     promo_amount=0,
                     promo_note="",
                     extra_charge=0,
