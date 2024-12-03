@@ -332,7 +332,7 @@ async function _updateByTerm(
   }).lean();
 
   const contract = {
-    frequency: occupant.frequency || 'months',
+    frequency: 'months',  // Always use monthly frequency for payments
     begin: occupant.beginDate,
     end: occupant.endDate,
     discount: occupant.discount || 0,
