@@ -317,8 +317,26 @@ async function _updateByTerm(
   paymentData
 ) {
   if (!paymentData || !paymentData._id) {
-    throw new Error(`Invalid payment data: missing tenant ID`);
+    throw new ServiceError(`Invalid payment data: missing tenant ID`);
   }
+
+  // Validate payments array
+  if (!Array.isArray(paymentData.payments)) {
+    throw new ServiceError(`Invalid payment data: payments must be an array`);
+  }
+
+  // Validate each payment in the array
+  paymentData.payments.forEach((payment, index) => {
+    if (!payment.date || !payment.type || !payment.amount) {
+      throw new ServiceError(`Invalid payment at index ${index}: missing required fields (date, type, amount)`);
+    }
+    if (typeof payment.amount !== 'number') {
+      payment.amount = Number(payment.amount);
+      if (isNaN(payment.amount)) {
+        throw new ServiceError(`Invalid payment at index ${index}: amount must be a number`);
+      }
+    }
+  });
 
   const occupant = await Collections.Tenant.findOne({
     _id: paymentData._id,
@@ -326,7 +344,7 @@ async function _updateByTerm(
   }).lean();
 
   if (!occupant) {
-    throw new Error(`Tenant not found with ID ${paymentData._id}`);
+    throw new ServiceError(`Tenant not found with ID ${paymentData._id}`);
   }
 
   // Ensure all payment data fields are properly formatted
@@ -344,7 +362,7 @@ async function _updateByTerm(
   const endDate = occupant.endDate instanceof Date ? occupant.endDate : new Date(occupant.endDate);
 
   if (!beginDate || isNaN(beginDate.getTime()) || !endDate || isNaN(endDate.getTime())) {
-    throw new Error(`Tenant ${paymentData._id} has invalid contract dates (beginDate: ${occupant.beginDate}, endDate: ${occupant.endDate})`);
+    throw new ServiceError(`Tenant ${paymentData._id} has invalid contract dates (beginDate: ${occupant.beginDate}, endDate: ${occupant.endDate})`);
   }
 
   const contract = {

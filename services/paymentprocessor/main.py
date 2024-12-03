@@ -138,19 +138,17 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             # Now construct the payment request with frequency
             payment_data = {
                 "_id": matching_tenant["_id"],  # Add tenant ID to payment data
-                "date": payment.payment_date,
-                "type": payment.payment_type,
-                "reference": payment.reference,
-                "amount": payment.amount,
+                "payments": [{
+                    "date": payment.payment_date,
+                    "type": payment.payment_type,
+                    "reference": payment.reference,
+                    "amount": payment.amount
+                }],
                 "description": payment.description,
-                "promo": {
-                    "amount": payment.promo_amount,
-                    "description": payment.promo_note
-                },
-                "extraCharge": {
-                    "amount": payment.extra_charge,
-                    "description": payment.extra_charge_note
-                },
+                "promo": payment.promo_amount,
+                "notepromo": payment.promo_note if payment.promo_amount > 0 else None,
+                "extracharge": payment.extra_charge,
+                "noteextracharge": payment.extra_charge_note if payment.extra_charge > 0 else None,
                 "frequency": tenant_frequency  # Add frequency to payment data
             }
 
