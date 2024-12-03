@@ -161,69 +161,37 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             formatted_term = f"{year}{month:02}0100"  # Set day to 01 and hour to 00
 
             # Now construct the payment request with frequency
-            payment_data = {
-                "_id": tenant_id,  # Use _id as expected by the API
-                "payments": [{
-                    "date": parse_payment_date(payment.payment_date),  # Parse and format the date
-                    "type": payment.payment_type.lower() if payment.payment_type else "cash",  # Ensure lowercase type
-                    "reference": payment.reference,
-                    "amount": float(payment.amount)  # Ensure amount is float
-                }],
-                "description": payment.description or "",  # Ensure empty string if None
-                "promo": float(payment.promo_amount or 0),  # Ensure float and default to 0
-                "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
-                "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
-                "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
-                "term": formatted_term,  # Add formatted term to payment data
-                "frequency": PAYMENT_FREQUENCY
-            }
+            payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"
+            logger.debug(f"Payment URL: {payment_url}")
 
-            logger.info(f"Making API request with headers: {headers}")
-            logger.info(f"Payment data: {payment_data}")
+            payment_data = {
+                "payment": {
+                    "type": payment.payment_type.lower() if payment.payment_type else "cash",
+                    "date": parse_payment_date(payment.payment_date),
+                    "reference": payment.reference
+                }
+            }
+            logger.debug(f"Payment data: {json.dumps(payment_data, indent=2)}")
+
+            payment_response = await client.patch(payment_url, headers=headers, json=payment_data)
+            logger.debug(f"Payment response status: {payment_response.status_code}")
+            logger.debug(f"Payment response body: {payment_response.text}")
+
+            if payment_response.status_code != 200:
+                error_msg = f"Failed to process payment for tenant {tenant_id}: {payment_response.text}"
+                logger.error(error_msg)
+                return PaymentResult(
+                    success=False,
+                    tenant_id=tenant_id,
+                    message=error_msg
+                )
+
+            return PaymentResult(
+                success=True,
+                tenant_id=tenant_id,
+                message=f"Successfully processed payment for tenant {tenant_id}"
+            )
             
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"  # Use formatted_term here
-                logger.info(f"Making payment request to: {payment_url}")
-                
-                try:
-                    response = await client.patch(
-                        payment_url,
-                        headers=headers,
-                        json=payment_data
-                    )
-                    
-                    logger.info(f"Payment response status: {response.status_code}")
-                    logger.info(f"Payment response text: {response.text}")
-                    
-                    if response.status_code >= 400:
-                        error_msg = f"API Error: {response.json().get('error', 'Unknown error')}"
-                        logger.error(error_msg)
-                        return PaymentResult(
-                            success=False,
-                            tenant_id=payment.tenant_id,
-                            message=error_msg,
-                            details=response.json() if response.text else {}
-                        )
-                    
-                    # Parse response data if available
-                    response_data = response.json() if response.text else {}
-                    
-                    return PaymentResult(
-                        success=True,
-                        tenant_id=payment.tenant_id,
-                        message="Payment processed successfully",
-                        details=response_data
-                    )
-                    
-                except Exception as e:
-                    error_msg = f"Error making payment request: {str(e)}"
-                    logger.error(error_msg)
-                    return PaymentResult(
-                        success=False,
-                        tenant_id=payment.tenant_id,
-                        message=error_msg
-                    )
-                
     except Exception as e:
         error_msg = f"Error processing payment: {str(e)}"
         logger.error(error_msg)
