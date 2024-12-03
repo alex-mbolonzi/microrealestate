@@ -118,6 +118,18 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     details={"status_code": 404}
                 )
 
+            # Validate contract dates - handle MongoDB ISODate objects
+            begin_date = matching_tenant.get('beginDate', {}).get('$date', {}).get('$numberLong') if isinstance(matching_tenant.get('beginDate'), dict) else matching_tenant.get('beginDate')
+            end_date = matching_tenant.get('endDate', {}).get('$date', {}).get('$numberLong') if isinstance(matching_tenant.get('endDate'), dict) else matching_tenant.get('endDate')
+
+            if not begin_date or not end_date:
+                return PaymentResult(
+                    success=False,
+                    tenant_id=payment.tenant_reference,
+                    message=f"Tenant {payment.tenant_reference} is missing required contract dates",
+                    details={"status_code": 400}
+                )
+
             # Always use monthly frequency for rent payments
             tenant_frequency = PAYMENT_FREQUENCY
             logger.info(f"Using monthly frequency for tenant {payment.tenant_reference}")

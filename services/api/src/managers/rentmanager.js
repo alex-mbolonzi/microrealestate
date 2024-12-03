@@ -331,10 +331,21 @@ async function _updateByTerm(
     realmId: realm._id
   }).lean();
 
+  if (!occupant) {
+    throw new Error(`Tenant not found with ID ${paymentData._id}`);
+  }
+
+  const beginDate = occupant.beginDate instanceof Date ? occupant.beginDate : new Date(occupant.beginDate);
+  const endDate = occupant.endDate instanceof Date ? occupant.endDate : new Date(occupant.endDate);
+
+  if (!beginDate || isNaN(beginDate.getTime()) || !endDate || isNaN(endDate.getTime())) {
+    throw new Error(`Tenant ${paymentData._id} has invalid contract dates (beginDate: ${occupant.beginDate}, endDate: ${occupant.endDate})`);
+  }
+
   const contract = {
     frequency: 'months',  // Always use monthly frequency for payments
-    begin: occupant.beginDate,
-    end: occupant.endDate,
+    begin: beginDate,
+    end: endDate,
     discount: occupant.discount || 0,
     vatRate: occupant.vatRatio,
     properties: occupant.properties,
