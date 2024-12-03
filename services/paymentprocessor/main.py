@@ -152,12 +152,16 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     message=error_msg
                 )
 
+            # Parse the term string (YYYY.MM) into the correct format (YYYYMMDDHH)
+            year, month = term.split('.')
+            formatted_term = f"{year}{month:02}0100"  # Set day to 01 and hour to 00
+
             # Now construct the payment request with frequency
             payment_data = {
                 "_id": tenant_id,  # Use _id as expected by the API
                 "payments": [{
                     "date": parse_payment_date(payment.payment_date),  # Parse and format the date
-                    "type": payment.payment_type,
+                    "type": payment.payment_type.lower() if payment.payment_type else "cash",  # Ensure lowercase type
                     "reference": payment.reference,
                     "amount": float(payment.amount)  # Ensure amount is float
                 }],
@@ -166,7 +170,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
                 "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
                 "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
-                "term": term,  # Add term to payment data
+                "term": formatted_term,  # Add formatted term to payment data
                 "frequency": PAYMENT_FREQUENCY
             }
 
@@ -174,7 +178,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             logger.info(f"Payment data: {payment_data}")
             
             async with httpx.AsyncClient(timeout=30.0) as client:
-                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{term}"
+                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"
                 logger.info(f"Making payment request to: {payment_url}")
                 
                 try:
