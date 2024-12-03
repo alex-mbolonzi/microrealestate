@@ -115,8 +115,9 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={padded_reference}"
         logger.info(f"Looking up tenant with reference {padded_reference} at URL: {tenant_url}")
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            tenant_response = await client.get(tenant_url, headers=headers)
+        # Use a separate client for tenant lookup
+        async with httpx.AsyncClient(timeout=30.0) as lookup_client:
+            tenant_response = await lookup_client.get(tenant_url, headers=headers)
             logger.info(f"Tenant lookup response status: {tenant_response.status_code}")
             
             if tenant_response.status_code != 200:
@@ -156,35 +157,37 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 )
 
             logger.info(f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}")
-            
-            # Parse the term string (YYYY.MM) into the correct format (YYYYMMDDHH)
-            year, month = term.split('.')
-            formatted_term = f"{year}{month:02}0100"  # Set day to 01 and hour to 00
 
-            # Now construct the payment request with frequency
-            payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"
-            logger.info(f"Sending payment request to URL: {payment_url}")
+        # Parse the term string (YYYY.MM) into the correct format (YYYYMMDDHH)
+        year, month = term.split('.')
+        formatted_term = f"{year}{month:02}0100"  # Set day to 01 and hour to 00
 
-            formatted_date = parse_payment_date(payment.payment_date)
+        # Now construct the payment request with frequency
+        payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"
+        logger.info(f"Sending payment request to URL: {payment_url}")
 
-            payment_data = {
-                "_id": tenant_id,  # Include tenant ID in payment data
-                "payments": [{  # Put payment in an array as required by the API
-                    "type": payment.payment_type.lower() if payment.payment_type else "cash",
-                    "date": formatted_date,
-                    "reference": payment.reference,
-                    "amount": float(payment.amount)  # Ensure amount is float
-                }],
-                "description": payment.description or "",  # Ensure empty string if None
-                "promo": float(payment.promo_amount or 0),  # Ensure float and default to 0
-                "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
-                "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
-                "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
-                "term": formatted_term  # Add formatted term to payment data
-            }
-            logger.info(f"Payment data for tenant {tenant_id}: {json.dumps(payment_data, indent=2)}")
+        formatted_date = parse_payment_date(payment.payment_date)
 
-            payment_response = await client.patch(payment_url, headers=headers, json=payment_data)
+        payment_data = {
+            "_id": tenant_id,  # Include tenant ID in payment data
+            "payments": [{  # Put payment in an array as required by the API
+                "type": payment.payment_type.lower() if payment.payment_type else "cash",
+                "date": formatted_date,
+                "reference": payment.reference,
+                "amount": float(payment.amount)  # Ensure amount is float
+            }],
+            "description": payment.description or "",  # Ensure empty string if None
+            "promo": float(payment.promo_amount or 0),  # Ensure float and default to 0
+            "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
+            "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
+            "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
+            "term": formatted_term  # Add formatted term to payment data
+        }
+        logger.info(f"Payment data for tenant {tenant_id}: {json.dumps(payment_data, indent=2)}")
+
+        # Use a separate client for payment request
+        async with httpx.AsyncClient(timeout=30.0) as payment_client:
+            payment_response = await payment_client.patch(payment_url, headers=headers, json=payment_data)
             logger.info(f"Payment response for tenant {tenant_id} - Status: {payment_response.status_code}")
             logger.info(f"Payment response body: {payment_response.text}")
 
