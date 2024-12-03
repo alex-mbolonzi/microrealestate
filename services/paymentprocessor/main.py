@@ -113,11 +113,11 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
         # Get tenant by reference number using the reference field
         tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={padded_reference}"
-        logger.debug(f"Tenant lookup URL: {tenant_url}")
+        logger.info(f"Looking up tenant with reference {padded_reference} at URL: {tenant_url}")
         
         async with httpx.AsyncClient(timeout=30.0) as client:
             tenant_response = await client.get(tenant_url, headers=headers)
-            logger.debug(f"Tenant lookup response status: {tenant_response.status_code}")
+            logger.info(f"Tenant lookup response status: {tenant_response.status_code}")
             
             if tenant_response.status_code != 200:
                 error_msg = f"Failed to find tenant with reference {padded_reference}: {tenant_response.text}"
@@ -129,21 +129,23 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 )
             
             tenant_data = tenant_response.json()
-            logger.debug(f"Tenant lookup response: {json.dumps(tenant_data, indent=2)}")
+            logger.info(f"Raw tenant data: {json.dumps(tenant_data, indent=2)}")
             
-            if not tenant_data or len(tenant_data) == 0:
-                error_msg = f"No tenant found with reference {padded_reference}"
-                logger.error(error_msg)
-                return PaymentResult(
-                    success=False,
-                    tenant_id=payment.tenant_id,
-                    message=error_msg
-                )
+            # Handle both list and single object responses
+            if isinstance(tenant_data, list):
+                if not tenant_data:
+                    error_msg = f"No tenant found with reference {padded_reference}"
+                    logger.error(error_msg)
+                    return PaymentResult(
+                        success=False,
+                        tenant_id=payment.tenant_id,
+                        message=error_msg
+                    )
+                tenant = tenant_data[0]  # Get first tenant from list
+            else:
+                tenant = tenant_data  # Single tenant object
             
-            # Get the first tenant that matches the reference
-            tenant = tenant_data[0] if isinstance(tenant_data, list) else tenant_data
             tenant_id = tenant.get('_id')
-            
             if not tenant_id:
                 error_msg = f"Tenant data missing _id field for reference {padded_reference}"
                 logger.error(error_msg)
@@ -153,7 +155,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     message=error_msg
                 )
 
-            logger.debug(f"Found tenant ID {tenant_id} for reference {padded_reference}")
+            logger.info(f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}")
             
             # Parse the term string (YYYY.MM) into the correct format (YYYYMMDDHH)
             year, month = term.split('.')
@@ -161,18 +163,18 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
             # Now construct the payment request with frequency
             payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"
-            logger.debug(f"Payment URL: {payment_url}")
+            logger.info(f"Sending payment request to URL: {payment_url}")
 
             formatted_date = parse_payment_date(payment.payment_date)
 
             payment_data = {
                 "_id": tenant_id,  # Include tenant ID in payment data
-                "payment": {
+                "payments": [{  # Put payment in an array as required by the API
                     "type": payment.payment_type.lower() if payment.payment_type else "cash",
                     "date": formatted_date,
                     "reference": payment.reference,
                     "amount": float(payment.amount)  # Ensure amount is float
-                },
+                }],
                 "description": payment.description or "",  # Ensure empty string if None
                 "promo": float(payment.promo_amount or 0),  # Ensure float and default to 0
                 "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
@@ -180,13 +182,11 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
                 "term": formatted_term  # Add formatted term to payment data
             }
-            logger.debug(f"Payment data: {json.dumps(payment_data, indent=2)}")
+            logger.info(f"Payment data for tenant {tenant_id}: {json.dumps(payment_data, indent=2)}")
 
-        # Create a new client for the payment request
-        async with httpx.AsyncClient(timeout=30.0) as client:
             payment_response = await client.patch(payment_url, headers=headers, json=payment_data)
-            logger.debug(f"Payment response status: {payment_response.status_code}")
-            logger.debug(f"Payment response body: {payment_response.text}")
+            logger.info(f"Payment response for tenant {tenant_id} - Status: {payment_response.status_code}")
+            logger.info(f"Payment response body: {payment_response.text}")
 
             if payment_response.status_code != 200:
                 error_msg = f"Failed to process payment for tenant {tenant_id}: {payment_response.text}"
@@ -197,6 +197,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     message=error_msg
                 )
 
+            logger.info(f"Successfully processed payment for tenant {tenant_id}")
             return PaymentResult(
                 success=True,
                 tenant_id=tenant_id,
