@@ -114,6 +114,8 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 )
             
             tenant_data = tenant_response.json()
+            logger.debug(f"Tenant lookup response: {json.dumps(tenant_data, indent=2)}")
+            
             if not tenant_data:
                 error_msg = f"No tenant found with reference {padded_reference}"
                 logger.error(error_msg)
@@ -155,7 +157,8 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             logger.info(f"Payment data: {payment_data}")
             
             async with httpx.AsyncClient(timeout=30.0) as client:
-                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{term}"
+                # Include tenant ID as query parameter
+                payment_url = f"{API_BASE_URL}/api/v2/rents/payment?tenantId={tenant_id}&term={term}"
                 logger.info(f"Making payment request to: {payment_url}")
                 
                 try:
