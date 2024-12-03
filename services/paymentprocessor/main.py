@@ -63,6 +63,9 @@ def pad_tenant_id(tenant_id: str) -> str:
     """Pad tenant_id with leading zeros to ensure it's six digits"""
     return str(tenant_id).strip().zfill(6)
 
+# Constants for frequency
+PAYMENT_FREQUENCY = 'months'  # Monthly payments are standard for rental contracts
+
 async def process_single_payment(payment: Payment, term: str, organization_id: str, auth_token: str = None) -> PaymentResult:
     """Process a single payment by calling the rent API endpoint"""
     try:
@@ -115,10 +118,9 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     details={"status_code": 404}
                 )
 
-            # Set default frequency to 'months' since it's not directly available in tenant data
-            tenant_frequency = 'months'  # Default frequency
-            
-            logger.info(f"Using default frequency: {tenant_frequency}")
+            # Always use monthly frequency for rent payments
+            tenant_frequency = PAYMENT_FREQUENCY
+            logger.info(f"Using monthly frequency for tenant {payment.tenant_reference}")
 
             # Now construct the payment request with frequency
             payment_data = {
