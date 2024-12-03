@@ -137,7 +137,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
             # Now construct the payment request with frequency
             payment_data = {
-                "tenant": tenant_id,  # Add tenant ID to payment data
+                "tenantId": tenant_id,  # Changed from 'tenant' to 'tenantId'
                 "payments": [{
                     "date": payment.payment_date,
                     "type": payment.payment_type,
