@@ -164,9 +164,18 @@ async function update(req, res) {
   const paymentData = req.body;
   const term = `${paymentData.year}${paymentData.month}0100`;
 
-  res.json(
-    await _updateByTerm(authorizationHeader, locale, realm, term, paymentData)
-  );
+  try {
+    const result = await _updateByTerm(authorizationHeader, locale, realm, term, paymentData);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in update:', error);
+    const statusCode = error instanceof ServiceError ? 400 : 500;
+    const errorResponse = {
+      error: error instanceof ServiceError ? error.message : 'Internal server error',
+      details: error.details || error.message
+    };
+    res.status(statusCode).json(errorResponse);
+  }
 }
 
 async function updateByTerm(req, res) {
@@ -176,9 +185,18 @@ async function updateByTerm(req, res) {
   const locale = req.headers['accept-language'];
   const paymentData = req.body;
 
-  res.json(
-    await _updateByTerm(authorizationHeader, locale, realm, term, paymentData)
-  );
+  try {
+    const result = await _updateByTerm(authorizationHeader, locale, realm, term, paymentData);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in updateByTerm:', error);
+    const statusCode = error instanceof ServiceError ? 400 : 500;
+    const errorResponse = {
+      error: error instanceof ServiceError ? error.message : 'Internal server error',
+      details: error.details || error.message
+    };
+    res.status(statusCode).json(errorResponse);
+  }
 }
 
 async function rentsOfOccupant(req, res) {
@@ -211,15 +229,24 @@ async function rentOfOccupantByTerm(req, res) {
   const realm = req.realm;
   const { id, term } = req.params;
 
-  res.json(
-    await _rentOfOccupant(
+  try {
+    const result = await _rentOfOccupant(
       req.headers.authorization,
       req.headers['accept-language'],
       realm,
       id,
       term
-    )
-  );
+    );
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in rentOfOccupantByTerm:', error);
+    const statusCode = error instanceof ServiceError ? 400 : 500;
+    const errorResponse = {
+      error: error instanceof ServiceError ? error.message : 'Internal server error',
+      details: error.details || error.message
+    };
+    res.status(statusCode).json(errorResponse);
+  }
 }
 
 async function all(req, res) {

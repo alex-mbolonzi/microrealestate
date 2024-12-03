@@ -13,13 +13,25 @@ import json
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.DEBUG,  # Set to DEBUG for more detailed logs
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S'
 )
 logger = logging.getLogger(__name__)
 
+# Add console handler to ensure logs are printed to stdout
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+# Log startup message
+logger.info("Payment Processor Service starting up...")
+
 # API configuration
 API_BASE_URL = os.getenv('API_BASE_URL', 'http://api:8200')
+logger.info(f"API Base URL: {API_BASE_URL}")
 
 app = FastAPI(title="Payment Processor Service")
 
@@ -167,25 +179,36 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     )
                     
                     logger.info(f"Payment response status: {response.status_code}")
-                    logger.info(f"Payment response: {response.text}")
+                    logger.info(f"Payment response text: {response.text}")
                     
                     if response.status_code == 200:
-                        return PaymentResult(
-                            success=True,
-                            tenant_id=payment.tenant_reference,
-                            message="Payment processed successfully"
-                        )
+                        try:
+                            response_data = response.json() if response.text else {}
+                            return PaymentResult(
+                                success=True,
+                                tenant_id=payment.tenant_reference,
+                                message="Payment processed successfully",
+                                details=response_data
+                            )
+                        except json.JSONDecodeError as je:
+                            logger.error(f"Failed to parse success response: {str(je)}")
+                            return PaymentResult(
+                                success=True,
+                                tenant_id=payment.tenant_reference,
+                                message="Payment processed successfully but response parsing failed",
+                                details={"response_text": response.text}
+                            )
                     else:
-                        error_msg = response.text
+                        error_msg = "Unknown error"
                         try:
                             if response.text and response.text.strip():
                                 error_data = response.json()
-                                error_msg = error_data.get('error', error_msg)
+                                error_msg = error_data.get('error', error_data.get('message', response.text))
+                            else:
+                                error_msg = f"Empty response with status {response.status_code}"
                         except json.JSONDecodeError as je:
-                            logger.error(f"Failed to parse error response: {str(je)}")
                             error_msg = response.text or str(je)
                         except Exception as e:
-                            logger.error(f"Error handling response: {str(e)}")
                             error_msg = str(e)
                         
                         logger.error(f"API Error: {error_msg}")
@@ -193,15 +216,22 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                             success=False,
                             tenant_id=payment.tenant_reference,
                             message=f"Failed to process payment: {error_msg}",
-                            details={"status_code": response.status_code}
+                            details={"status_code": response.status_code, "response_text": response.text}
                         )
-                except Exception as e:
-                    logger.error(f"Request error: {str(e)}")
+                except httpx.RequestError as e:
+                    logger.error(f"Request failed: {str(e)}")
                     return PaymentResult(
                         success=False,
                         tenant_id=payment.tenant_reference,
                         message=f"Request failed: {str(e)}",
                         details={"error": str(e)}
+                    )
+                except Exception as e:
+                    logger.error(f"Error processing payment for tenant {payment.tenant_reference}: {str(e)}")
+                    return PaymentResult(
+                        success=False,
+                        tenant_id=payment.tenant_reference,
+                        message=f"Error processing payment: {str(e)}"
                     )
 
     except Exception as e:
@@ -218,123 +248,82 @@ async def process_payments(
     file: UploadFile = File(...),
     term: str = Form(...)
 ):
-    """
-    Process bulk payments from a CSV file
-    """
-    logger.info(f"Received payment processing request")
-    logger.info(f"Headers: {dict(request.headers)}")
-    logger.info(f"File: {file.filename}, Content-Type: {file.content_type}")
-    logger.info(f"Term: {term}")
-    
-    if not file.filename.endswith('.csv'):
-        logger.error(f"Invalid file type: {file.filename}")
-        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
-    
-    # Get organization ID and auth token from headers
-    organization_id = request.headers.get('organizationid')
-    auth_token = request.headers.get('authorization')
-    
-    if not organization_id:
-        logger.error("Missing organization ID in headers")
-        raise HTTPException(status_code=400, detail="Organization ID is required in headers")
-        
-    if not auth_token:
-        logger.error("Missing authorization token in headers")
-        raise HTTPException(status_code=401, detail="Authorization token is required")
-    
+    """Process bulk payments from a CSV file"""
     try:
-        # Read the file content
-        contents = await file.read()
-        csv_data = StringIO(contents.decode())
+        logger.info(f"Starting bulk payment processing for term: {term}")
+        logger.info(f"Reading CSV file: {file.filename}")
         
-        # Log file details
-        logger.info(f"Processing CSV file: {file.filename}, size: {len(contents)} bytes")
+        # Get organization ID from headers
+        organization_id = request.headers.get('organizationid')
+        if not organization_id:
+            logger.error("No organization ID found in headers")
+            raise HTTPException(status_code=400, detail="Organization ID is required")
         
-        # Read CSV with pandas
-        df = pd.read_csv(csv_data)
-        required_columns = ['tenant_id', 'payment_date', 'payment_type', 'payment_reference', 'amount']
+        logger.info(f"Processing payments for organization: {organization_id}")
         
-        # Validate columns
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            error_msg = f"Missing required columns: {missing_columns}"
-            logger.error(error_msg)
-            raise HTTPException(status_code=400, detail=error_msg)
+        # Read CSV content
+        content = await file.read()
+        try:
+            text_content = content.decode('utf-8')
+        except UnicodeDecodeError:
+            logger.error("Failed to decode CSV file as UTF-8")
+            raise HTTPException(status_code=400, detail="Invalid CSV file encoding")
         
-        # Process payments in chunks to avoid timeouts
-        chunk_size = 5  # Process 5 payments at a time
+        logger.debug(f"CSV content: {text_content[:200]}...")  # Log first 200 chars
+        
+        # Parse CSV
+        try:
+            df = pd.read_csv(StringIO(text_content))
+            logger.info(f"Successfully parsed CSV with {len(df)} rows")
+            logger.debug(f"CSV columns: {df.columns.tolist()}")
+        except Exception as e:
+            logger.error(f"Failed to parse CSV: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Invalid CSV format: {str(e)}")
+        
+        # Process each payment
         results = []
+        for index, row in df.iterrows():
+            logger.info(f"Processing payment {index + 1}/{len(df)}")
+            try:
+                payment = Payment(
+                    tenant_reference=str(row['tenant_reference']),
+                    payment_date=row['payment_date'],
+                    payment_type=row['payment_type'],
+                    reference=str(row['reference']),
+                    amount=float(row['amount']),
+                    description=str(row.get('description', '')),
+                    promo_amount=float(row.get('promo_amount', 0)),
+                    promo_note=str(row.get('promo_note', '')),
+                    extra_charge=float(row.get('extra_charge', 0)),
+                    extra_charge_note=str(row.get('extra_charge_note', ''))
+                )
+                logger.debug(f"Created payment object: {payment}")
+                
+                result = await process_single_payment(
+                    payment=payment,
+                    term=term,
+                    organization_id=organization_id,
+                    auth_token=request.headers.get('authorization')
+                )
+                results.append(result)
+                logger.info(f"Payment {index + 1} result: {result}")
+            except Exception as e:
+                logger.error(f"Error processing payment {index + 1}: {str(e)}")
+                results.append(PaymentResult(
+                    success=False,
+                    tenant_id=str(row.get('tenant_reference', 'unknown')),
+                    message=f"Failed to process payment: {str(e)}"
+                ))
         
-        for i in range(0, len(df), chunk_size):
-            chunk = df[i:i + chunk_size]
-            chunk_tasks = []
-            
-            for idx, row in chunk.iterrows():
-                try:
-                    # Validate date format
-                    payment_date = datetime.strptime(row['payment_date'], '%m/%d/%Y')
-                    
-                    # Validate amount
-                    amount = float(row['amount'])
-                    if amount <= 0:
-                        raise ValueError(f"Invalid amount {amount} at row {idx + 2}")
-                    
-                    # Pad the tenant_id with leading zeros
-                    tenant_id = pad_tenant_id(row['tenant_id'])
-                    
-                    payment = Payment(
-                        tenant_reference=tenant_id,
-                        payment_date=payment_date.strftime('%Y-%m-%d'),
-                        payment_type=str(row['payment_type']).strip().lower() if pd.notna(row['payment_type']) else 'cash',
-                        reference=str(row['payment_reference']).strip() if pd.notna(row['payment_reference']) else '',
-                        amount=amount
-                    )
-                    
-                    # Add task to chunk
-                    chunk_tasks.append(process_single_payment(payment, term, organization_id, auth_token))
-                    
-                except Exception as e:
-                    error_msg = f"Error processing row {idx + 2}: {str(e)}"
-                    logger.error(error_msg)
-                    results.append(PaymentResult(
-                        success=False,
-                        tenant_id=str(row.get('tenant_id', '')).strip(),
-                        message=error_msg
-                    ))
-            
-            # Process chunk of payments concurrently
-            if chunk_tasks:
-                chunk_results = await asyncio.gather(*chunk_tasks, return_exceptions=True)
-                for result in chunk_results:
-                    if isinstance(result, Exception):
-                        logger.error(f"Payment processing error: {str(result)}")
-                        results.append(PaymentResult(
-                            success=False,
-                            tenant_id="unknown",
-                            message=f"Payment processing error: {str(result)}"
-                        ))
-                    else:
-                        results.append(result)
+        # Summarize results
+        success_count = sum(1 for r in results if r.success)
+        logger.info(f"Bulk payment processing complete. {success_count}/{len(results)} successful")
         
-        successful = len([r for r in results if r.success])
-        failed = len([r for r in results if not r.success])
-        logger.info(f"Completed processing {len(results)} payments: {successful} successful, {failed} failed")
-        
-        return {
-            "status": "success",
-            "message": f"Processed {len(results)} payments",
-            "results": [result.dict() for result in results],
-            "summary": {
-                "total": len(results),
-                "successful": successful,
-                "failed": failed
-            }
-        }
+        return results
         
     except Exception as e:
-        error_msg = f"Error processing CSV: {str(e)}"
-        logger.error(error_msg)
-        raise HTTPException(status_code=400, detail=error_msg)
+        logger.error(f"Error in bulk payment processing: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
