@@ -178,7 +178,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             logger.info(f"Payment data: {payment_data}")
             
             async with httpx.AsyncClient(timeout=30.0) as client:
-                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"
+                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"  # Use formatted_term here
                 logger.info(f"Making payment request to: {payment_url}")
                 
                 try:
