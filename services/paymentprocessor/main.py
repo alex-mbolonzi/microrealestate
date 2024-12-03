@@ -159,14 +159,15 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     "date": parse_payment_date(payment.payment_date),  # Parse and format the date
                     "type": payment.payment_type,
                     "reference": payment.reference,
-                    "amount": payment.amount
+                    "amount": float(payment.amount)  # Ensure amount is float
                 }],
-                "description": payment.description,
-                "promo": payment.promo_amount,
-                "notepromo": payment.promo_note if payment.promo_amount > 0 else None,
-                "extracharge": payment.extra_charge,
-                "noteextracharge": payment.extra_charge_note if payment.extra_charge > 0 else None,
-                "frequency": PAYMENT_FREQUENCY  # Add frequency to payment data
+                "description": payment.description or "",  # Ensure empty string if None
+                "promo": float(payment.promo_amount or 0),  # Ensure float and default to 0
+                "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
+                "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
+                "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
+                "term": term,  # Add term to payment data
+                "frequency": PAYMENT_FREQUENCY
             }
 
             logger.info(f"Making API request with headers: {headers}")
