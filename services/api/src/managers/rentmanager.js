@@ -316,14 +316,8 @@ async function _updateByTerm(
   term,
   paymentData
 ) {
-  if (!paymentData.promo && paymentData.promo <= 0) {
-    paymentData.promo = 0;
-    paymentData.notepromo = null;
-  }
-
-  if (!paymentData.extracharge && paymentData.extracharge <= 0) {
-    paymentData.extracharge = 0;
-    paymentData.noteextracharge = null;
+  if (!paymentData || !paymentData._id) {
+    throw new Error(`Invalid payment data: missing tenant ID`);
   }
 
   const occupant = await Collections.Tenant.findOne({
@@ -333,6 +327,16 @@ async function _updateByTerm(
 
   if (!occupant) {
     throw new Error(`Tenant not found with ID ${paymentData._id}`);
+  }
+
+  if (!paymentData.promo && paymentData.promo <= 0) {
+    paymentData.promo = 0;
+    paymentData.notepromo = null;
+  }
+
+  if (!paymentData.extracharge && paymentData.extracharge <= 0) {
+    paymentData.extracharge = 0;
+    paymentData.noteextracharge = null;
   }
 
   const beginDate = occupant.beginDate instanceof Date ? occupant.beginDate : new Date(occupant.beginDate);
