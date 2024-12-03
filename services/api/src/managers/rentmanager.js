@@ -329,15 +329,16 @@ async function _updateByTerm(
     throw new Error(`Tenant not found with ID ${paymentData._id}`);
   }
 
-  if (!paymentData.promo && paymentData.promo <= 0) {
-    paymentData.promo = 0;
-    paymentData.notepromo = null;
-  }
-
-  if (!paymentData.extracharge && paymentData.extracharge <= 0) {
-    paymentData.extracharge = 0;
-    paymentData.noteextracharge = null;
-  }
+  // Ensure all payment data fields are properly formatted
+  const formattedPaymentData = {
+    promo: Number(paymentData.promo) || 0,
+    notepromo: paymentData.promo > 0 ? (paymentData.notepromo || null) : null,
+    extracharge: Number(paymentData.extracharge) || 0,
+    noteextracharge: paymentData.extracharge > 0 ? (paymentData.noteextracharge || null) : null,
+    description: paymentData.description || '',
+    payments: Array.isArray(paymentData.payments) ? paymentData.payments : [],
+    _id: paymentData._id
+  };
 
   const beginDate = occupant.beginDate instanceof Date ? occupant.beginDate : new Date(occupant.beginDate);
   const endDate = occupant.endDate instanceof Date ? occupant.endDate : new Date(occupant.endDate);
@@ -351,53 +352,31 @@ async function _updateByTerm(
     begin: beginDate,
     end: endDate,
     discount: occupant.discount || 0,
-    vatRate: occupant.vatRatio,
-    properties: occupant.properties,
-    rents: occupant.rents
+    vatRate: occupant.vatRatio || 0,
+    properties: occupant.properties || [],
+    rents: occupant.rents || []
   };
 
   const settlements = {
-    payments: [],
+    payments: formattedPaymentData.payments,
     debts: [],
     discounts: [],
-    description: ''
+    description: formattedPaymentData.description
   };
 
-  if (paymentData) {
-    if (paymentData.payments && paymentData.payments.length) {
-      settlements.payments = paymentData.payments
-        .filter(({ amount }) => amount && Number(amount) > 0)
-        .map((payment) => ({
-          date: payment.date || '',
-          amount: Number(payment.amount),
-          type: payment.type || '',
-          reference: payment.reference || '',
-          description: payment.description || ''
-        }));
-    }
+  if (formattedPaymentData.promo > 0) {
+    settlements.discounts.push({
+      origin: 'settlement',
+      description: formattedPaymentData.notepromo || '',
+      amount: formattedPaymentData.promo * (contract.vatRate ? 1 / (1 + contract.vatRate) : 1)
+    });
+  }
 
-    if (paymentData.promo) {
-      settlements.discounts.push({
-        origin: 'settlement',
-        description: paymentData.notepromo || '',
-        amount:
-          paymentData.promo *
-          (contract.vatRate ? 1 / (1 + contract.vatRate) : 1)
-      });
-    }
-
-    if (paymentData.extracharge) {
-      settlements.debts.push({
-        description: paymentData.noteextracharge || '',
-        amount:
-          paymentData.extracharge *
-          (contract.vatRate ? 1 / (1 + contract.vatRate) : 1)
-      });
-    }
-
-    if (paymentData.description) {
-      settlements.description = paymentData.description;
-    }
+  if (formattedPaymentData.extracharge > 0) {
+    settlements.debts.push({
+      description: formattedPaymentData.noteextracharge || '',
+      amount: formattedPaymentData.extracharge * (contract.vatRate ? 1 / (1 + contract.vatRate) : 1)
+    });
   }
 
   occupant.rents = Contract.payTerm(contract, term, settlements).rents;

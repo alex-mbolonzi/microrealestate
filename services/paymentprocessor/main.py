@@ -9,6 +9,7 @@ import logging
 import httpx
 import os
 import asyncio
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -160,35 +161,49 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{matching_tenant['_id']}/{term}"
                 logger.info(f"Making payment request to: {payment_url}")
                 
-                response = await client.patch(
-                    payment_url,
-                    json=payment_data,
-                    headers=headers
-                )
-                
-                logger.info(f"Payment response status: {response.status_code}")
-                logger.info(f"Payment response: {response.text}")
-                
-                if response.status_code == 200:
-                    return PaymentResult(
-                        success=True,
-                        tenant_id=payment.tenant_reference,
-                        message="Payment processed successfully"
+                try:
+                    response = await client.patch(
+                        payment_url,
+                        json=payment_data,
+                        headers=headers
                     )
-                else:
-                    error_msg = response.text
-                    try:
-                        error_data = response.json()
-                        error_msg = error_data.get('error', error_msg)
-                    except:
-                        pass
                     
-                    logger.error(f"API Error: {error_msg}")
+                    logger.info(f"Payment response status: {response.status_code}")
+                    logger.info(f"Payment response: {response.text}")
+                    
+                    if response.status_code == 200:
+                        return PaymentResult(
+                            success=True,
+                            tenant_id=payment.tenant_reference,
+                            message="Payment processed successfully"
+                        )
+                    else:
+                        error_msg = response.text
+                        try:
+                            if response.text and response.text.strip():
+                                error_data = response.json()
+                                error_msg = error_data.get('error', error_msg)
+                        except json.JSONDecodeError as je:
+                            logger.error(f"Failed to parse error response: {str(je)}")
+                            error_msg = response.text or str(je)
+                        except Exception as e:
+                            logger.error(f"Error handling response: {str(e)}")
+                            error_msg = str(e)
+                        
+                        logger.error(f"API Error: {error_msg}")
+                        return PaymentResult(
+                            success=False,
+                            tenant_id=payment.tenant_reference,
+                            message=f"Failed to process payment: {error_msg}",
+                            details={"status_code": response.status_code}
+                        )
+                except Exception as e:
+                    logger.error(f"Request error: {str(e)}")
                     return PaymentResult(
                         success=False,
                         tenant_id=payment.tenant_reference,
-                        message=f"Failed to process payment: {error_msg}",
-                        details={"status_code": response.status_code}
+                        message=f"Request failed: {str(e)}",
+                        details={"error": str(e)}
                     )
 
     except Exception as e:
