@@ -96,44 +96,48 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
             # Pad the tenant reference with leading zeros
             padded_reference = pad_tenant_id(payment.tenant_reference)
+            logger.debug(f"Looking up tenant with reference: {padded_reference}")
             
-            # Get tenant by reference number
+            # Get tenant by reference number using the reference field
             tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={padded_reference}"
-            logger.info(f"Looking up tenant with URL: {tenant_url}")
-            response = await client.get(
-                tenant_url,
-                headers=headers
-            )
+            logger.debug(f"Tenant lookup URL: {tenant_url}")
             
-            logger.info(f"Tenant lookup response status: {response.status_code}")
-            logger.info(f"Tenant lookup response: {response.text}")
+            tenant_response = await client.get(tenant_url, headers=headers)
             
-            if response.status_code != 200:
+            if tenant_response.status_code != 200:
+                error_msg = f"Failed to find tenant with reference {padded_reference}: {tenant_response.text}"
+                logger.error(error_msg)
                 return PaymentResult(
                     success=False,
                     tenant_id=payment.tenant_reference,
-                    message=f"Failed to fetch tenants: {response.text}",
-                    details={"status_code": response.status_code}
+                    message=error_msg
                 )
-                
-            tenants = response.json()
-            matching_tenant = next(
-                (tenant for tenant in tenants 
-                 if str(tenant.get("reference", "")).strip() == str(payment.tenant_reference).strip()),
-                None
-            )
             
-            if not matching_tenant:
+            tenant_data = tenant_response.json()
+            if not tenant_data:
+                error_msg = f"No tenant found with reference {padded_reference}"
+                logger.error(error_msg)
                 return PaymentResult(
                     success=False,
                     tenant_id=payment.tenant_reference,
-                    message=f"No tenant found with reference number {payment.tenant_reference}",
-                    details={"status_code": 404}
+                    message=error_msg
+                )
+            
+            tenant = tenant_data[0] if isinstance(tenant_data, list) else tenant_data
+            tenant_id = tenant.get('_id')
+            
+            if not tenant_id:
+                error_msg = "Tenant data missing _id field"
+                logger.error(error_msg)
+                return PaymentResult(
+                    success=False,
+                    tenant_id=payment.tenant_reference,
+                    message=error_msg
                 )
 
             # Validate contract dates - handle MongoDB ISODate objects
-            begin_date = matching_tenant.get('beginDate', {}).get('$date', {}).get('$numberLong') if isinstance(matching_tenant.get('beginDate'), dict) else matching_tenant.get('beginDate')
-            end_date = matching_tenant.get('endDate', {}).get('$date', {}).get('$numberLong') if isinstance(matching_tenant.get('endDate'), dict) else matching_tenant.get('endDate')
+            begin_date = tenant.get('beginDate', {}).get('$date', {}).get('$numberLong') if isinstance(tenant.get('beginDate'), dict) else tenant.get('beginDate')
+            end_date = tenant.get('endDate', {}).get('$date', {}).get('$numberLong') if isinstance(tenant.get('endDate'), dict) else tenant.get('endDate')
 
             if not begin_date or not end_date:
                 return PaymentResult(
@@ -149,7 +153,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
             # Now construct the payment request with frequency
             payment_data = {
-                "_id": matching_tenant["_id"],  # Add tenant ID to payment data
+                "_id": tenant["_id"],  # Add tenant ID to payment data
                 "payments": [{
                     "date": payment.payment_date,
                     "type": payment.payment_type,
@@ -168,7 +172,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             logger.info(f"Payment data: {payment_data}")
             
             async with httpx.AsyncClient(timeout=30.0) as client:
-                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{matching_tenant['_id']}/{term}"
+                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant['_id']}/{term}"
                 logger.info(f"Making payment request to: {payment_url}")
                 
                 try:
@@ -251,99 +255,71 @@ async def process_payments(
     """Process bulk payments from a CSV file"""
     try:
         logger.info(f"Starting bulk payment processing for term: {term}")
+        
+        # Read the CSV file content
+        content = await file.read()
+        csv_content = content.decode()
         logger.info(f"Reading CSV file: {file.filename}")
         
         # Get organization ID from headers
         organization_id = request.headers.get('organizationid')
-        if not organization_id:
-            logger.error("No organization ID found in headers")
-            raise HTTPException(status_code=400, detail="Organization ID is required")
-        
+        auth_token = request.headers.get('authorization')
         logger.info(f"Processing payments for organization: {organization_id}")
         
-        # Read CSV content
-        content = await file.read()
-        try:
-            text_content = content.decode('utf-8')
-        except UnicodeDecodeError:
-            logger.error("Failed to decode CSV file as UTF-8")
-            raise HTTPException(status_code=400, detail="Invalid CSV file encoding")
+        # Log CSV content for debugging
+        logger.debug(f"CSV content: {csv_content[:200]}...")
         
-        logger.debug(f"CSV content: {text_content[:200]}...")  # Log first 200 chars
+        # Read CSV into pandas DataFrame
+        df = pd.read_csv(StringIO(csv_content))
+        logger.info(f"Successfully parsed CSV with {len(df)} rows")
+        logger.debug(f"CSV columns: {list(df.columns)}")
         
-        # Parse CSV
-        try:
-            df = pd.read_csv(StringIO(text_content))
-            logger.info(f"Successfully parsed CSV with {len(df)} rows")
-            logger.debug(f"CSV columns: {df.columns.tolist()}")
-        except Exception as e:
-            logger.error(f"Failed to parse CSV: {str(e)}")
-            raise HTTPException(status_code=400, detail=f"Invalid CSV format: {str(e)}")
+        # Initialize results list
+        results = []
+        successful_payments = 0
         
         # Process each payment
-        results = []
         for index, row in df.iterrows():
             logger.info(f"Processing payment {index + 1}/{len(df)}")
             try:
-                # Parse and format the date
-                try:
-                    # Try different date formats
-                    date_formats = ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y']
-                    payment_date = None
-                    date_str = str(row['payment_date']).strip()
-                    
-                    for fmt in date_formats:
-                        try:
-                            payment_date = datetime.strptime(date_str, fmt)
-                            break
-                        except ValueError:
-                            continue
-                    
-                    if payment_date is None:
-                        raise ValueError(f"Could not parse date: {date_str}")
-                    
-                    # Format date as DD/MM/YYYY for the API
-                    formatted_date = payment_date.strftime('%d/%m/%Y')
-                    logger.debug(f"Parsed date {date_str} as {formatted_date}")
-                except Exception as e:
-                    logger.error(f"Date parsing error for row {index + 1}: {str(e)}")
-                    raise ValueError(f"Invalid date format in row {index + 1}: {date_str}. Expected format: DD/MM/YYYY")
+                # Get tenant reference from tenant_id column
+                tenant_reference = str(row['tenant_id']).strip()
                 
+                # Convert row to Payment object
                 payment = Payment(
-                    tenant_reference=str(row['tenant_reference']),
-                    payment_date=formatted_date,  # Use the formatted date
+                    tenant_reference=tenant_reference,  # This will be used to lookup tenant by reference
+                    payment_date=row['payment_date'],
                     payment_type=row['payment_type'],
-                    reference=str(row['reference']),
+                    reference=row['payment_reference'],
                     amount=float(row['amount']),
-                    description=str(row.get('description', '')),
-                    promo_amount=float(row.get('promo_amount', 0)),
-                    promo_note=str(row.get('promo_note', '')),
-                    extra_charge=float(row.get('extra_charge', 0)),
-                    extra_charge_note=str(row.get('extra_charge_note', ''))
+                    description="",  # Optional fields
+                    promo_amount=0,
+                    promo_note="",
+                    extra_charge=0,
+                    extra_charge_note=""
                 )
-                logger.debug(f"Created payment object: {payment}")
                 
-                result = await process_single_payment(
-                    payment=payment,
-                    term=term,
-                    organization_id=organization_id,
-                    auth_token=request.headers.get('authorization')
-                )
+                # Process the payment
+                result = await process_single_payment(payment, term, organization_id, auth_token)
+                if result.success:
+                    successful_payments += 1
                 results.append(result)
-                logger.info(f"Payment {index + 1} result: {result}")
+                
             except Exception as e:
                 logger.error(f"Error processing payment {index + 1}: {str(e)}")
                 results.append(PaymentResult(
                     success=False,
-                    tenant_id=str(row.get('tenant_reference', 'unknown')),
-                    message=f"Failed to process payment: {str(e)}"
+                    tenant_id=str(row.get('tenant_id', '')),
+                    message=f"Failed to process payment: {str(e)}",
+                    details={"error": str(e)}
                 ))
         
-        # Summarize results
-        success_count = sum(1 for r in results if r.success)
-        logger.info(f"Bulk payment processing complete. {success_count}/{len(results)} successful")
-        
-        return results
+        logger.info(f"Bulk payment processing complete. {successful_payments}/{len(df)} successful")
+        return {
+            "success": True,
+            "message": f"Processed {len(df)} payments. {successful_payments} successful.",
+            "results": [result.dict() for result in results]
+        }
         
     except Exception as e:
         logger.error(f"Error in bulk payment processing: {str(e)}")
