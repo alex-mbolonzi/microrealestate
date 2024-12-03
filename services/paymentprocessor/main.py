@@ -97,26 +97,25 @@ PAYMENT_FREQUENCY = 'months'  # Monthly payments are standard for rental contrac
 async def process_single_payment(payment: Payment, term: str, organization_id: str, auth_token: str = None) -> PaymentResult:
     """Process a single payment by calling the rent API endpoint"""
     try:
-        # First, look up the tenant by reference number
-        async with httpx.AsyncClient(timeout=30.0) as client:  # 30 second timeout for each request
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "organizationId": organization_id
-            }
-            
-            # Add authorization header if token is provided
-            if auth_token:
-                headers["Authorization"] = auth_token
+        # Pad the tenant reference with leading zeros
+        padded_reference = pad_tenant_id(payment.tenant_id)
+        logger.debug(f"Looking up tenant with reference: {padded_reference}")
 
-            # Pad the tenant reference with leading zeros
-            padded_reference = pad_tenant_id(payment.tenant_id)
-            logger.debug(f"Looking up tenant with reference: {padded_reference}")
-            
-            # Get tenant by reference number using the reference field
-            tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={padded_reference}"
-            logger.debug(f"Tenant lookup URL: {tenant_url}")
-            
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "organizationId": organization_id
+        }
+        
+        # Add authorization header if token is provided
+        if auth_token:
+            headers["Authorization"] = auth_token
+
+        # Get tenant by reference number using the reference field
+        tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={padded_reference}"
+        logger.debug(f"Tenant lookup URL: {tenant_url}")
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
             tenant_response = await client.get(tenant_url, headers=headers)
             logger.debug(f"Tenant lookup response status: {tenant_response.status_code}")
             
@@ -164,15 +163,27 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"
             logger.debug(f"Payment URL: {payment_url}")
 
+            formatted_date = parse_payment_date(payment.payment_date)
+
             payment_data = {
+                "_id": tenant_id,  # Include tenant ID in payment data
                 "payment": {
                     "type": payment.payment_type.lower() if payment.payment_type else "cash",
-                    "date": parse_payment_date(payment.payment_date),
-                    "reference": payment.reference
-                }
+                    "date": formatted_date,
+                    "reference": payment.reference,
+                    "amount": float(payment.amount)  # Ensure amount is float
+                },
+                "description": payment.description or "",  # Ensure empty string if None
+                "promo": float(payment.promo_amount or 0),  # Ensure float and default to 0
+                "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
+                "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
+                "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
+                "term": formatted_term  # Add formatted term to payment data
             }
             logger.debug(f"Payment data: {json.dumps(payment_data, indent=2)}")
 
+        # Create a new client for the payment request
+        async with httpx.AsyncClient(timeout=30.0) as client:
             payment_response = await client.patch(payment_url, headers=headers, json=payment_data)
             logger.debug(f"Payment response status: {payment_response.status_code}")
             logger.debug(f"Payment response body: {payment_response.text}")
