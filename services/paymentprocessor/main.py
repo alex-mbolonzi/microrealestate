@@ -118,6 +118,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             logger.debug(f"Tenant lookup URL: {tenant_url}")
             
             tenant_response = await client.get(tenant_url, headers=headers)
+            logger.debug(f"Tenant lookup response status: {tenant_response.status_code}")
             
             if tenant_response.status_code != 200:
                 error_msg = f"Failed to find tenant with reference {padded_reference}: {tenant_response.text}"
@@ -131,7 +132,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             tenant_data = tenant_response.json()
             logger.debug(f"Tenant lookup response: {json.dumps(tenant_data, indent=2)}")
             
-            if not tenant_data:
+            if not tenant_data or len(tenant_data) == 0:
                 error_msg = f"No tenant found with reference {padded_reference}"
                 logger.error(error_msg)
                 return PaymentResult(
@@ -140,11 +141,12 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     message=error_msg
                 )
             
+            # Get the first tenant that matches the reference
             tenant = tenant_data[0] if isinstance(tenant_data, list) else tenant_data
             tenant_id = tenant.get('_id')
             
             if not tenant_id:
-                error_msg = "Tenant data missing _id field"
+                error_msg = f"Tenant data missing _id field for reference {padded_reference}"
                 logger.error(error_msg)
                 return PaymentResult(
                     success=False,
@@ -152,6 +154,8 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     message=error_msg
                 )
 
+            logger.debug(f"Found tenant ID {tenant_id} for reference {padded_reference}")
+            
             # Parse the term string (YYYY.MM) into the correct format (YYYYMMDDHH)
             year, month = term.split('.')
             formatted_term = f"{year}{month:02}0100"  # Set day to 01 and hour to 00
