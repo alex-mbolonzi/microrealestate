@@ -285,9 +285,33 @@ async def process_payments(
         for index, row in df.iterrows():
             logger.info(f"Processing payment {index + 1}/{len(df)}")
             try:
+                # Parse and format the date
+                try:
+                    # Try different date formats
+                    date_formats = ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y']
+                    payment_date = None
+                    date_str = str(row['payment_date']).strip()
+                    
+                    for fmt in date_formats:
+                        try:
+                            payment_date = datetime.strptime(date_str, fmt)
+                            break
+                        except ValueError:
+                            continue
+                    
+                    if payment_date is None:
+                        raise ValueError(f"Could not parse date: {date_str}")
+                    
+                    # Format date as DD/MM/YYYY for the API
+                    formatted_date = payment_date.strftime('%d/%m/%Y')
+                    logger.debug(f"Parsed date {date_str} as {formatted_date}")
+                except Exception as e:
+                    logger.error(f"Date parsing error for row {index + 1}: {str(e)}")
+                    raise ValueError(f"Invalid date format in row {index + 1}: {date_str}. Expected format: DD/MM/YYYY")
+                
                 payment = Payment(
                     tenant_reference=str(row['tenant_reference']),
-                    payment_date=row['payment_date'],
+                    payment_date=formatted_date,  # Use the formatted date
                     payment_type=row['payment_type'],
                     reference=str(row['reference']),
                     amount=float(row['amount']),
