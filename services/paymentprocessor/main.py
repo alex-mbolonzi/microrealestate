@@ -55,7 +55,7 @@ async def log_requests(request: Request, call_next):
     return response
 
 class Payment(BaseModel):
-    tenant_reference: str
+    tenant_id: str
     payment_date: str
     payment_type: str
     reference: str
@@ -95,7 +95,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 headers["Authorization"] = auth_token
 
             # Pad the tenant reference with leading zeros
-            padded_reference = pad_tenant_id(payment.tenant_reference)
+            padded_reference = pad_tenant_id(payment.tenant_id)
             logger.debug(f"Looking up tenant with reference: {padded_reference}")
             
             # Get tenant by reference number using the reference field
@@ -109,7 +109,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 logger.error(error_msg)
                 return PaymentResult(
                     success=False,
-                    tenant_id=payment.tenant_reference,
+                    tenant_id=payment.tenant_id,
                     message=error_msg
                 )
             
@@ -119,7 +119,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 logger.error(error_msg)
                 return PaymentResult(
                     success=False,
-                    tenant_id=payment.tenant_reference,
+                    tenant_id=payment.tenant_id,
                     message=error_msg
                 )
             
@@ -131,12 +131,13 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 logger.error(error_msg)
                 return PaymentResult(
                     success=False,
-                    tenant_id=payment.tenant_reference,
+                    tenant_id=payment.tenant_id,
                     message=error_msg
                 )
 
             # Now construct the payment request with frequency
             payment_data = {
+                "tenant": tenant_id,  # Add tenant ID to payment data
                 "payments": [{
                     "date": payment.payment_date,
                     "type": payment.payment_type,
@@ -173,14 +174,14 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                         logger.error(error_msg)
                         return PaymentResult(
                             success=False,
-                            tenant_id=payment.tenant_reference,
+                            tenant_id=payment.tenant_id,
                             message=error_msg,
                             details=response.json()
                         )
                     
                     return PaymentResult(
                         success=True,
-                        tenant_id=payment.tenant_reference,
+                        tenant_id=payment.tenant_id,
                         message="Payment processed successfully"
                     )
                     
@@ -189,7 +190,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     logger.error(error_msg)
                     return PaymentResult(
                         success=False,
-                        tenant_id=payment.tenant_reference,
+                        tenant_id=payment.tenant_id,
                         message=error_msg
                     )
                 
@@ -198,7 +199,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         logger.error(error_msg)
         return PaymentResult(
             success=False,
-            tenant_id=payment.tenant_reference,
+            tenant_id=payment.tenant_id,
             message=error_msg
         )
 
@@ -239,20 +240,20 @@ async def process_payments(
             logger.info(f"Processing payment {index + 1}/{len(df)}")
             try:
                 # Get tenant reference from tenant_id column and ensure it's a string
-                tenant_reference = str(row['tenant_id']).strip()
+                tenant_id = str(row['tenant_id']).strip()
                 
                 # Ensure all required fields are present and properly formatted
                 payment = Payment(
-                    tenant_reference=tenant_reference,
+                    tenant_id=tenant_id,
                     payment_date=str(row['payment_date']).strip(),
                     payment_type=str(row['payment_type']).strip(),
                     reference=str(row['payment_reference']).strip(),
                     amount=float(row['amount']),
-                    description="",
-                    promo_amount=0,
-                    promo_note="",
-                    extra_charge=0,
-                    extra_charge_note=""
+                    description=str(row.get('description', '')).strip(),
+                    promo_amount=float(row.get('promo_amount', 0)),
+                    promo_note=str(row.get('promo_note', '')).strip(),
+                    extra_charge=float(row.get('extra_charge', 0)),
+                    extra_charge_note=str(row.get('extra_charge_note', '')).strip()
                 )
                 
                 # Process the payment
