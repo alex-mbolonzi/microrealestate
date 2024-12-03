@@ -79,17 +79,17 @@ def pad_tenant_id(tenant_id: str) -> str:
 
 def parse_payment_date(date_str: str) -> str:
     """
-    Parse payment date from various formats and return in DD/MM/YYYY format.
+    Parse payment date from various formats and return in MM/DD/YYYY format.
     Handles common formats like DD/MM/YYYY, MM/DD/YYYY, etc.
     """
     try:
         # Parse the date string
         parsed_date = parser.parse(date_str, dayfirst=True)  # Assume DD/MM/YYYY format if ambiguous
-        # Return in DD/MM/YYYY format
-        return parsed_date.strftime('%d/%m/%Y')
+        # Return in MM/DD/YYYY format
+        return parsed_date.strftime('%m/%d/%Y')
     except (ValueError, TypeError) as e:
         logger.error(f"Error parsing date {date_str}: {str(e)}")
-        raise ValueError(f"Invalid date format: {date_str}. Please use DD/MM/YYYY format.")
+        raise ValueError(f"Invalid date format: {date_str}. Please use MM/DD/YYYY format.")
 
 # Constants for frequency
 PAYMENT_FREQUENCY = 'months'  # Monthly payments are standard for rental contracts
@@ -198,13 +198,17 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                             success=False,
                             tenant_id=payment.tenant_id,
                             message=error_msg,
-                            details=response.json()
+                            details=response.json() if response.text else {}
                         )
+                    
+                    # Parse response data if available
+                    response_data = response.json() if response.text else {}
                     
                     return PaymentResult(
                         success=True,
                         tenant_id=payment.tenant_id,
-                        message="Payment processed successfully"
+                        message="Payment processed successfully",
+                        details=response_data
                     )
                     
                 except Exception as e:
