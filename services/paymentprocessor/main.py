@@ -56,7 +56,7 @@ async def log_requests(request: Request, call_next):
     return response
 
 class Payment(BaseModel):
-    tenant_reference: str
+    tenant_id: str
     payment_date: str
     payment_type: str
     reference: str
@@ -110,151 +110,114 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 headers["Authorization"] = auth_token
 
             # Pad the tenant reference with leading zeros
-            padded_reference = pad_tenant_id(payment.tenant_reference)
+            padded_reference = pad_tenant_id(payment.tenant_id)
+            logger.debug(f"Looking up tenant with reference: {padded_reference}")
             
-            # Get tenant by reference number
+            # Get tenant by reference number using the reference field
             tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={padded_reference}"
-            logger.info(f"Looking up tenant with URL: {tenant_url}")
-            response = await client.get(
-                tenant_url,
-                headers=headers
-            )
+            logger.debug(f"Tenant lookup URL: {tenant_url}")
             
-            logger.info(f"Tenant lookup response status: {response.status_code}")
-            logger.info(f"Tenant lookup response: {response.text}")
+            tenant_response = await client.get(tenant_url, headers=headers)
             
-            if response.status_code != 200:
+            if tenant_response.status_code != 200:
+                error_msg = f"Failed to find tenant with reference {padded_reference}: {tenant_response.text}"
+                logger.error(error_msg)
                 return PaymentResult(
                     success=False,
-                    tenant_id=payment.tenant_reference,
-                    message=f"Failed to fetch tenants: {response.text}",
-                    details={"status_code": response.status_code}
+                    tenant_id=payment.tenant_id,
+                    message=error_msg
                 )
-                
-            tenants = response.json()
-            matching_tenant = next(
-                (tenant for tenant in tenants 
-                 if str(tenant.get("reference", "")).strip() == str(payment.tenant_reference).strip()),
-                None
-            )
             
-            if not matching_tenant:
+            tenant_data = tenant_response.json()
+            logger.debug(f"Tenant lookup response: {json.dumps(tenant_data, indent=2)}")
+            
+            if not tenant_data:
+                error_msg = f"No tenant found with reference {padded_reference}"
+                logger.error(error_msg)
                 return PaymentResult(
                     success=False,
-                    tenant_id=payment.tenant_reference,
-                    message=f"No tenant found with reference number {payment.tenant_reference}",
-                    details={"status_code": 404}
+                    tenant_id=payment.tenant_id,
+                    message=error_msg
                 )
-
-            # Validate contract dates - handle MongoDB ISODate objects
-            begin_date = matching_tenant.get('beginDate', {}).get('$date', {}).get('$numberLong') if isinstance(matching_tenant.get('beginDate'), dict) else matching_tenant.get('beginDate')
-            end_date = matching_tenant.get('endDate', {}).get('$date', {}).get('$numberLong') if isinstance(matching_tenant.get('endDate'), dict) else matching_tenant.get('endDate')
-
-            if not begin_date or not end_date:
+            
+            tenant = tenant_data[0] if isinstance(tenant_data, list) else tenant_data
+            tenant_id = tenant.get('_id')
+            
+            if not tenant_id:
+                error_msg = "Tenant data missing _id field"
+                logger.error(error_msg)
                 return PaymentResult(
                     success=False,
-                    tenant_id=payment.tenant_reference,
-                    message=f"Tenant {payment.tenant_reference} is missing required contract dates",
-                    details={"status_code": 400}
+                    tenant_id=payment.tenant_id,
+                    message=error_msg
                 )
-
-            # Always use monthly frequency for rent payments
-            tenant_frequency = PAYMENT_FREQUENCY
-            logger.info(f"Using monthly frequency for tenant {payment.tenant_reference}")
 
             # Now construct the payment request with frequency
             payment_data = {
-                "_id": matching_tenant["_id"],  # Add tenant ID to payment data
                 "payments": [{
                     "date": parse_payment_date(payment.payment_date),  # Parse and format the date
                     "type": payment.payment_type,
                     "reference": payment.reference,
                     "amount": payment.amount
                 }],
-                "description": payment.description,
-                "promo": payment.promo_amount,
-                "notepromo": payment.promo_note if payment.promo_amount > 0 else None,
-                "extracharge": payment.extra_charge,
-                "noteextracharge": payment.extra_charge_note if payment.extra_charge > 0 else None,
-                "frequency": tenant_frequency  # Add frequency to payment data
+                "description": payment.description or "",
+                "promo": payment.promo_amount or 0,
+                "notepromo": payment.promo_note or "",
+                "extracharge": payment.extra_charge or 0,
+                "noteextracharge": payment.extra_charge_note or "",
+                "frequency": PAYMENT_FREQUENCY
             }
 
             logger.info(f"Making API request with headers: {headers}")
             logger.info(f"Payment data: {payment_data}")
             
             async with httpx.AsyncClient(timeout=30.0) as client:
-                payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{matching_tenant['_id']}/{term}"
+                # Include tenant ID as query parameter
+                payment_url = f"{API_BASE_URL}/api/v2/rents/payment?tenantId={tenant_id}&term={term}"
                 logger.info(f"Making payment request to: {payment_url}")
                 
                 try:
                     response = await client.patch(
                         payment_url,
-                        json=payment_data,
-                        headers=headers
+                        headers=headers,
+                        json=payment_data
                     )
                     
                     logger.info(f"Payment response status: {response.status_code}")
                     logger.info(f"Payment response text: {response.text}")
                     
-                    if response.status_code == 200:
-                        try:
-                            response_data = response.json() if response.text else {}
-                            return PaymentResult(
-                                success=True,
-                                tenant_id=payment.tenant_reference,
-                                message="Payment processed successfully",
-                                details=response_data
-                            )
-                        except json.JSONDecodeError as je:
-                            logger.error(f"Failed to parse success response: {str(je)}")
-                            return PaymentResult(
-                                success=True,
-                                tenant_id=payment.tenant_reference,
-                                message="Payment processed successfully but response parsing failed",
-                                details={"response_text": response.text}
-                            )
-                    else:
-                        error_msg = "Unknown error"
-                        try:
-                            if response.text and response.text.strip():
-                                error_data = response.json()
-                                error_msg = error_data.get('error', error_data.get('message', response.text))
-                            else:
-                                error_msg = f"Empty response with status {response.status_code}"
-                        except json.JSONDecodeError as je:
-                            error_msg = response.text or str(je)
-                        except Exception as e:
-                            error_msg = str(e)
-                        
-                        logger.error(f"API Error: {error_msg}")
+                    if response.status_code >= 400:
+                        error_msg = f"API Error: {response.json().get('error', 'Unknown error')}"
+                        logger.error(error_msg)
                         return PaymentResult(
                             success=False,
-                            tenant_id=payment.tenant_reference,
-                            message=f"Failed to process payment: {error_msg}",
-                            details={"status_code": response.status_code, "response_text": response.text}
+                            tenant_id=payment.tenant_id,
+                            message=error_msg,
+                            details=response.json()
                         )
-                except httpx.RequestError as e:
-                    logger.error(f"Request failed: {str(e)}")
+                    
                     return PaymentResult(
-                        success=False,
-                        tenant_id=payment.tenant_reference,
-                        message=f"Request failed: {str(e)}",
-                        details={"error": str(e)}
+                        success=True,
+                        tenant_id=payment.tenant_id,
+                        message="Payment processed successfully"
                     )
+                    
                 except Exception as e:
-                    logger.error(f"Error processing payment for tenant {payment.tenant_reference}: {str(e)}")
+                    error_msg = f"Error making payment request: {str(e)}"
+                    logger.error(error_msg)
                     return PaymentResult(
                         success=False,
-                        tenant_id=payment.tenant_reference,
-                        message=f"Error processing payment: {str(e)}"
+                        tenant_id=payment.tenant_id,
+                        message=error_msg
                     )
-
+                
     except Exception as e:
-        logger.error(f"Error processing payment for tenant {payment.tenant_reference}: {str(e)}")
+        error_msg = f"Error processing payment: {str(e)}"
+        logger.error(error_msg)
         return PaymentResult(
             success=False,
-            tenant_id=payment.tenant_reference,
-            message=f"Error processing payment: {str(e)}"
+            tenant_id=payment.tenant_id,
+            message=error_msg
         )
 
 @app.post("/process-payments")
@@ -266,75 +229,71 @@ async def process_payments(
     """Process bulk payments from a CSV file"""
     try:
         logger.info(f"Starting bulk payment processing for term: {term}")
+        
+        # Read the CSV file content
+        content = await file.read()
+        csv_content = content.decode()
         logger.info(f"Reading CSV file: {file.filename}")
         
         # Get organization ID from headers
         organization_id = request.headers.get('organizationid')
-        if not organization_id:
-            logger.error("No organization ID found in headers")
-            raise HTTPException(status_code=400, detail="Organization ID is required")
-        
+        auth_token = request.headers.get('authorization')
         logger.info(f"Processing payments for organization: {organization_id}")
         
-        # Read CSV content
-        content = await file.read()
-        try:
-            text_content = content.decode('utf-8')
-        except UnicodeDecodeError:
-            logger.error("Failed to decode CSV file as UTF-8")
-            raise HTTPException(status_code=400, detail="Invalid CSV file encoding")
+        # Log CSV content for debugging
+        logger.debug(f"CSV content: {csv_content[:200]}...")
         
-        logger.debug(f"CSV content: {text_content[:200]}...")  # Log first 200 chars
+        # Read CSV into pandas DataFrame
+        df = pd.read_csv(StringIO(csv_content))
+        logger.info(f"Successfully parsed CSV with {len(df)} rows")
+        logger.debug(f"CSV columns: {list(df.columns)}")
         
-        # Parse CSV
-        try:
-            df = pd.read_csv(StringIO(text_content))
-            logger.info(f"Successfully parsed CSV with {len(df)} rows")
-            logger.debug(f"CSV columns: {df.columns.tolist()}")
-        except Exception as e:
-            logger.error(f"Failed to parse CSV: {str(e)}")
-            raise HTTPException(status_code=400, detail=f"Invalid CSV format: {str(e)}")
+        # Initialize results list
+        results = []
+        successful_payments = 0
         
         # Process each payment
-        results = []
         for index, row in df.iterrows():
             logger.info(f"Processing payment {index + 1}/{len(df)}")
             try:
-                payment = Payment(
-                    tenant_reference=str(row['tenant_reference']),
-                    payment_date=row['payment_date'],
-                    payment_type=row['payment_type'],
-                    reference=str(row['reference']),
-                    amount=float(row['amount']),
-                    description=str(row.get('description', '')),
-                    promo_amount=float(row.get('promo_amount', 0)),
-                    promo_note=str(row.get('promo_note', '')),
-                    extra_charge=float(row.get('extra_charge', 0)),
-                    extra_charge_note=str(row.get('extra_charge_note', ''))
-                )
-                logger.debug(f"Created payment object: {payment}")
+                # Get tenant reference from tenant_id column and ensure it's a string
+                tenant_id = str(row['tenant_id']).strip()
                 
-                result = await process_single_payment(
-                    payment=payment,
-                    term=term,
-                    organization_id=organization_id,
-                    auth_token=request.headers.get('authorization')
+                # Ensure all required fields are present and properly formatted
+                payment = Payment(
+                    tenant_id=tenant_id,
+                    payment_date=str(row['payment_date']).strip(),
+                    payment_type=str(row['payment_type']).strip(),
+                    reference=str(row['payment_reference']).strip(),
+                    amount=float(row['amount']),
+                    description=str(row.get('description', '')).strip(),
+                    promo_amount=float(row.get('promo_amount', 0)),
+                    promo_note=str(row.get('promo_note', '')).strip(),
+                    extra_charge=float(row.get('extra_charge', 0)),
+                    extra_charge_note=str(row.get('extra_charge_note', '')).strip()
                 )
+                
+                # Process the payment
+                result = await process_single_payment(payment, term, organization_id, auth_token)
+                if result.success:
+                    successful_payments += 1
                 results.append(result)
-                logger.info(f"Payment {index + 1} result: {result}")
+                
             except Exception as e:
                 logger.error(f"Error processing payment {index + 1}: {str(e)}")
                 results.append(PaymentResult(
                     success=False,
-                    tenant_id=str(row.get('tenant_reference', 'unknown')),
-                    message=f"Failed to process payment: {str(e)}"
+                    tenant_id=str(row.get('tenant_id', '')),
+                    message=f"Failed to process payment: {str(e)}",
+                    details={"error": str(e)}
                 ))
         
-        # Summarize results
-        success_count = sum(1 for r in results if r.success)
-        logger.info(f"Bulk payment processing complete. {success_count}/{len(results)} successful")
-        
-        return results
+        logger.info(f"Bulk payment processing complete. {successful_payments}/{len(df)} successful")
+        return {
+            "success": True,
+            "message": f"Processed {len(df)} payments. {successful_payments} successful.",
+            "results": [result.dict() for result in results]
+        }
         
     except Exception as e:
         logger.error(f"Error in bulk payment processing: {str(e)}")
