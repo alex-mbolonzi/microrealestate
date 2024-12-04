@@ -235,7 +235,8 @@ export const uploadDocument = async ({
   endpoint,
   documentName,
   file,
-  folder
+  folder,
+  onProgress
 }) => {
   const formData = new FormData();
   if (folder) {
@@ -247,6 +248,14 @@ export const uploadDocument = async ({
     headers: {
       timeout: 30000,
       'Content-Type': 'multipart/form-data'
+    },
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.lengthComputable) {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        );
+        onProgress(percentCompleted);
+      }
     }
   });
 };

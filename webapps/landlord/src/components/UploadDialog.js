@@ -108,44 +108,19 @@ export default function UploadDialog({
         doc.description = doc.template.description;
         doc.mimeType = doc.file.type;
         try {
-          const xhr = new XMLHttpRequest();
-          
-          // Track upload progress
-          xhr.upload.addEventListener('progress', (event) => {
-            if (event.lengthComputable) {
-              const progress = (event.loaded / event.total) * 100;
+          const response = await uploadDocument({
+            endpoint: '/documents/upload',
+            documentName: doc.template.name,
+            file: doc.file,
+            folder: [
+              store.tenant.selected.name.replace(/[/\\]/g, '_'),
+              'contract_scanned_documents'
+            ].join('/'),
+            onProgress: (progress) => {
               setUploadProgress(progress);
             }
           });
 
-          // Create FormData
-          const formData = new FormData();
-          formData.append('file', doc.file);
-          formData.append('documentName', doc.template.name);
-          formData.append('folder', [
-            store.tenant.selected.name.replace(/[/\\]/g, '_'),
-            'contract_scanned_documents'
-          ].join('/'));
-
-          // Create a promise that wraps XMLHttpRequest
-          const uploadPromise = new Promise((resolve, reject) => {
-            xhr.onload = () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  resolve(JSON.parse(xhr.responseText));
-                } catch (e) {
-                  reject(new Error('Invalid response from server'));
-                }
-              } else {
-                reject(new Error('Upload failed'));
-              }
-            };
-            xhr.onerror = () => reject(new Error('Network error'));
-            xhr.open('POST', '/documents/upload');
-            xhr.send(formData);
-          });
-
-          const response = await uploadPromise;
           doc.url = response.data.key;
           doc.versionId = response.data.versionId;
         } catch (error) {
