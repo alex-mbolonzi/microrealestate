@@ -235,17 +235,8 @@ export const uploadDocument = async ({
   endpoint,
   documentName,
   file,
-  folder,
-  onProgress
+  folder
 }) => {
-  console.log('uploadDocument called with:', {
-    endpoint,
-    documentName,
-    fileSize: file?.size,
-    fileName: file?.name,
-    folder
-  });
-
   const formData = new FormData();
   if (folder) {
     formData.append('folder', folder);
@@ -253,23 +244,10 @@ export const uploadDocument = async ({
   formData.append('fileName', documentName);
   formData.append('file', file);
 
-  const config = {
+  return await apiFetcher().post(endpoint, formData, {
     headers: {
       timeout: 30000,
       'Content-Type': 'multipart/form-data'
-    },
-    onUploadProgress: (progressEvent) => {
-      console.log('Raw progress event:', progressEvent);
-      if (onProgress && progressEvent.lengthComputable) {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total
-        );
-        console.log('Calculated progress:', percentCompleted);
-        onProgress(percentCompleted);
-      }
     }
-  };
-
-  console.log('Making upload request with config:', config);
-  return await apiFetcher().post(endpoint, formData, config);
+  });
 };

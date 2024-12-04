@@ -72,7 +72,6 @@ export default function UploadDialog({
   const { t } = useTranslation('common');
   const store = useContext(StoreContext);
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const formRef = useRef();
 
   const templates = useMemo(() => {
@@ -101,25 +100,12 @@ export default function UploadDialog({
 
   const _onSubmit = useCallback(
     async (doc, { resetForm }) => {
-      console.log('Starting upload process...', { doc });
       try {
         setIsLoading(true);
-        setUploadProgress(0);
         doc.name = doc.template.name;
         doc.description = doc.template.description;
         doc.mimeType = doc.file.type;
         try {
-          console.log('Uploading document with:', {
-            endpoint: '/documents/upload',
-            documentName: doc.template.name,
-            fileSize: doc.file.size,
-            fileName: doc.file.name,
-            folder: [
-              store.tenant.selected.name.replace(/[/\\]/g, '_'),
-              'contract_scanned_documents'
-            ].join('/')
-          });
-
           const response = await uploadDocument({
             endpoint: '/documents/upload',
             documentName: doc.template.name,
@@ -127,14 +113,9 @@ export default function UploadDialog({
             folder: [
               store.tenant.selected.name.replace(/[/\\]/g, '_'),
               'contract_scanned_documents'
-            ].join('/'),
-            onProgress: (progress) => {
-              console.log('Upload progress:', progress);
-              setUploadProgress(progress);
-            }
+            ].join('/')
           });
 
-          console.log('Upload response:', response);
           doc.url = response.data.key;
           doc.versionId = response.data.versionId;
         } catch (error) {
@@ -185,11 +166,7 @@ export default function UploadDialog({
                 {values.template?.hasExpiryDate && (
                   <DateField label={t('Expiry date')} name="expiryDate" />
                 )}
-                <UploadField 
-                  name="file"
-                  progress={uploadProgress}
-                  isUploading={isLoading && uploadProgress > 0}
-                />
+                <UploadField name="file" />
               </Form>
             );
           }}
