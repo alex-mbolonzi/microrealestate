@@ -1,16 +1,14 @@
-from fastapi import FastAPI, UploadFile, HTTPException, Form, File, Request
+from fastapi import FastAPI, UploadFile, HTTPException, Form, File, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 from io import StringIO
 from typing import List, Dict
-from pydantic import BaseModel
-from datetime import datetime
-import logging
-import httpx
-import os
-import asyncio
 import json
-from dateutil import parser
+import httpx
+import logging
+from datetime import datetime
+import asyncio
+from starlette.responses import StreamingResponse
 
 # Configure logging
 logging.basicConfig(
@@ -244,78 +242,145 @@ async def process_payments(
     file: UploadFile = File(...),
     term: str = Form(...)
 ):
-    """Process bulk payments from a CSV file"""
-    try:
-        logger.info(f"Starting bulk payment processing for term: {term}")
-        
-        # Read the CSV file content
-        content = await file.read()
-        csv_content = content.decode()
-        logger.info(f"Reading CSV file: {file.filename}")
-        
-        # Get organization ID from headers
-        organization_id = request.headers.get('organizationid')
-        auth_token = request.headers.get('authorization')
-        logger.info(f"Processing payments for organization: {organization_id}")
-        
-        # Log CSV content for debugging
-        logger.debug(f"CSV content: {csv_content[:200]}...")
-        
-        # Read CSV into pandas DataFrame
-        df = pd.read_csv(StringIO(csv_content))
-        logger.info(f"Successfully parsed CSV with {len(df)} rows")
-        logger.debug(f"CSV columns: {list(df.columns)}")
-        
-        # Initialize results list
-        results = []
-        successful_payments = 0
-        
-        # Process each payment
-        for index, row in df.iterrows():
-            logger.info(f"Processing payment {index + 1}/{len(df)}")
-            try:
-                # Get tenant reference from tenant_id column and ensure it's a string
-                tenant_id = str(row['tenant_id']).strip()
+    """Process bulk payments from a CSV file with progress tracking"""
+    async def process_payments_generator():
+        try:
+            logger.info(f"Starting bulk payment processing for term: {term}")
+            
+            # Read the CSV file content in chunks
+            chunk_size = 8192  # 8KB chunks
+            content = bytearray()
+            total_size = 0
+            
+            # First pass: get total size
+            chunk = await file.read(chunk_size)
+            while chunk:
+                total_size += len(chunk)
+                content.extend(chunk)
+                chunk = await file.read(chunk_size)
+            
+            # Reset file pointer
+            await file.seek(0)
+            
+            # Send initial progress
+            yield json.dumps({
+                "status": "uploading",
+                "progress": 0,
+                "message": "Starting file upload..."
+            }) + "\\n"
+            
+            # Second pass: actual processing with progress
+            content = bytearray()
+            bytes_read = 0
+            
+            chunk = await file.read(chunk_size)
+            while chunk:
+                content.extend(chunk)
+                bytes_read += len(chunk)
+                progress = int((bytes_read / total_size) * 100)
                 
-                # Ensure all required fields are present and properly formatted
-                payment = Payment(
-                    tenant_id=tenant_id,
-                    payment_date=str(row['payment_date']).strip(),
-                    payment_type=str(row['payment_type']).strip(),
-                    reference=str(row['payment_reference']).strip(),
-                    amount=float(row['amount']),
-                    description=str(row.get('description', '')).strip(),
-                    promo_amount=float(row.get('promo_amount', 0)),
-                    promo_note=str(row.get('promo_note', '')).strip(),
-                    extra_charge=float(row.get('extra_charge', 0)),
-                    extra_charge_note=str(row.get('extra_charge_note', '')).strip()
-                )
+                yield json.dumps({
+                    "status": "uploading",
+                    "progress": progress,
+                    "message": f"Uploading file... {progress}%"
+                }) + "\\n"
                 
-                # Process the payment
-                result = await process_single_payment(payment, term, organization_id, auth_token)
-                if result.success:
-                    successful_payments += 1
-                results.append(result)
-                
-            except Exception as e:
-                logger.error(f"Error processing payment {index + 1}: {str(e)}")
-                results.append(PaymentResult(
-                    success=False,
-                    tenant_id=str(row.get('tenant_id', '')),
-                    message=f"Failed to process payment: {str(e)}",
-                    details={"error": str(e)}
-                ))
-        
-        logger.info(f"Bulk payment processing complete. {successful_payments}/{len(df)} successful")
-        return {
-            "success": True,
-            "message": f"Processed {len(df)} payments. {successful_payments} successful.",
-            "results": [result.dict() for result in results]
-        }
-        
-    except Exception as e:
-        logger.error(f"Error in bulk payment processing: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+                chunk = await file.read(chunk_size)
+            
+            # File is uploaded, now process it
+            yield json.dumps({
+                "status": "processing",
+                "progress": 0,
+                "message": "Processing CSV file..."
+            }) + "\\n"
+            
+            csv_content = content.decode()
+            
+            # Get organization ID from headers
+            organization_id = request.headers.get('organizationid')
+            auth_token = request.headers.get('authorization')
+            
+            # Read CSV into pandas DataFrame
+            df = pd.read_csv(StringIO(csv_content))
+            total_payments = len(df)
+            
+            # Initialize results list
+            results = []
+            successful_payments = 0
+            
+            # Process each payment with progress updates
+            for index, row in df.iterrows():
+                try:
+                    # Get tenant reference and create payment object
+                    tenant_id = str(row['tenant_id']).strip()
+                    payment = Payment(
+                        tenant_id=tenant_id,
+                        payment_date=str(row['payment_date']).strip(),
+                        payment_type=str(row['payment_type']).strip(),
+                        reference=str(row['payment_reference']).strip(),
+                        amount=float(row['amount']),
+                        description=str(row.get('description', '')).strip(),
+                        promo_amount=float(row.get('promo_amount', 0)),
+                        promo_note=str(row.get('promo_note', '')).strip(),
+                        extra_charge=float(row.get('extra_charge', 0)),
+                        extra_charge_note=str(row.get('extra_charge_note', '')).strip()
+                    )
+                    
+                    # Process the payment
+                    result = await process_single_payment(payment, term, organization_id, auth_token)
+                    if result.success:
+                        successful_payments += 1
+                    results.append(result)
+                    
+                    # Send progress update
+                    progress = int(((index + 1) / total_payments) * 100)
+                    yield json.dumps({
+                        "status": "processing",
+                        "progress": progress,
+                        "message": f"Processing payments... {progress}% ({index + 1}/{total_payments})",
+                        "current_result": result.dict()
+                    }) + "\\n"
+                    
+                except Exception as e:
+                    error_msg = f"Error processing payment {index + 1}: {str(e)}"
+                    logger.error(error_msg)
+                    results.append(PaymentResult(
+                        success=False,
+                        tenant_id=str(row.get('tenant_id', '')),
+                        message=f"Failed to process payment: {str(e)}",
+                        details={"error": str(e)}
+                    ))
+                    
+                    # Send error progress
+                    yield json.dumps({
+                        "status": "error",
+                        "progress": int(((index + 1) / total_payments) * 100),
+                        "message": error_msg,
+                        "error": str(e)
+                    }) + "\\n"
+            
+            # Send final results
+            yield json.dumps({
+                "status": "complete",
+                "progress": 100,
+                "message": f"Processing complete. {successful_payments}/{total_payments} payments successful.",
+                "results": [result.dict() for result in results]
+            }) + "\\n"
+            
+        except Exception as e:
+            error_msg = f"Error in bulk payment processing: {str(e)}"
+            logger.error(error_msg)
+            yield json.dumps({
+                "status": "error",
+                "progress": 0,
+                "message": error_msg,
+                "error": str(e)
+            }) + "\\n"
+    
+    return StreamingResponse(
+        process_payments_generator(),
+        media_type="text/event-stream"
+    )
 
 if __name__ == "__main__":
     import uvicorn
