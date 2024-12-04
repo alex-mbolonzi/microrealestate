@@ -20,6 +20,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
   const [processingProgress, setProcessingProgress] = useState(0);
   const [currentStatus, setCurrentStatus] = useState('');
   const [error, setError] = useState(null);
+  const [statusMessage, setStatusMessage] = useState('');
   const fileInputRef = useRef(null);
   const store = useContext(StoreContext);
   const [lastProcessedIndex, setLastProcessedIndex] = useState(0);
@@ -60,6 +61,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     setUploadProgress(0);
     setProcessingProgress(0);
     setCurrentStatus('uploading');
+    setStatusMessage('');
 
     try {
       // Ensure we have a valid token before starting the upload
@@ -91,93 +93,82 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
             const newResponse = responseText.substring(lastResponseLength);
             lastResponseLength = responseText.length;
             
-            // Debug: Log raw response
-            console.log('New response chunk:', JSON.stringify(newResponse));
-            
             // Add new data to our buffer
             buffer += newResponse;
             
-            // Debug: Log current buffer state
-            console.log('Current buffer:', JSON.stringify(buffer));
+            // Split buffer by newlines and process each line
+            const lines = buffer.split('\n');
+            // Keep the last line in buffer as it might be incomplete
+            buffer = lines.pop() || '';
             
-            // Try to extract complete JSON objects
-            try {
-              // Split buffer by newlines and process each line
-              const lines = buffer.split('\n');
+            // Process complete lines
+            for (const line of lines) {
+              if (!line.trim()) continue;
               
-              // Debug: Log lines before processing
-              console.log('Lines to process:', lines.map(l => JSON.stringify(l)));
-              
-              // Keep the last line in buffer as it might be incomplete
-              buffer = lines.pop() || '';
-              
-              // Process complete lines
-              for (const line of lines) {
-                if (!line.trim()) continue;
+              try {
+                const event = JSON.parse(line);
                 
-                try {
-                  // Debug: Log line being parsed
-                  console.log('Parsing line:', JSON.stringify(line));
-                  
-                  const event = JSON.parse(line);
-                  
-                  // Debug: Log parsed event
-                  console.log('Successfully parsed event:', event);
-                  
-                  // Process the event
-                  if (event.status === 'uploading') {
-                    setCurrentStatus('uploading');
-                    setUploadProgress(event.progress || 0);
-                  } else if (event.status === 'processing') {
-                    setCurrentStatus('processing');
-                    setProcessingProgress(event.progress || 0);
-                  } else if (event.status === 'complete') {
-                    setCurrentStatus('complete');
-                    setProcessingProgress(100);
-                    buffer = ''; // Clear buffer on completion
-                    resolve(event);
-                  } else if (event.status === 'error') {
-                    setCurrentStatus('error');
-                    buffer = ''; // Clear buffer on error
-                    reject(new Error(event.message));
-                  }
-                } catch (parseError) {
-                  console.error('Parse error for line:', JSON.stringify(line));
-                  console.error('Parse error details:', parseError);
+                // Update UI based on event status
+                if (event.status === 'uploading') {
+                  setCurrentStatus('uploading');
+                  setUploadProgress(event.progress || 0);
+                  setStatusMessage(`Uploading... ${event.progress}%`);
+                } else if (event.status === 'processing') {
+                  setCurrentStatus('processing');
+                  setProcessingProgress(event.progress || 0);
+                  setStatusMessage(event.message || `Processing... ${event.progress}%`);
+                } else if (event.status === 'complete') {
+                  setCurrentStatus('complete');
+                  setProcessingProgress(100);
+                  setStatusMessage(event.message || 'Processing complete');
+                  buffer = ''; // Clear buffer on completion
+                  resolve(event);
+                } else if (event.status === 'error') {
+                  setCurrentStatus('error');
+                  setStatusMessage(event.message || 'Error processing file');
+                  buffer = ''; // Clear buffer on error
+                  reject(new Error(event.message));
                 }
+              } catch (parseError) {
+                console.error('Parse error for line:', line);
+                console.error('Parse error details:', parseError);
               }
-            } catch (e) {
-              console.error('Buffer processing error:', e);
-              console.error('Buffer state:', JSON.stringify(buffer));
             }
           });
 
           xhr.addEventListener('load', async () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-              // Final processing will be handled by the progress event
+              // Success - the 'progress' event handler will resolve the promise
             } else {
-              try {
-                const responseData = JSON.parse(xhr.responseText);
-                reject(new Error(responseData.error || responseData.detail || 'Failed to process payments'));
-              } catch (e) {
-                reject(new Error('Invalid response from server'));
-              }
+              setCurrentStatus('error');
+              setStatusMessage('Upload failed');
+              reject(new Error('Upload failed'));
             }
           });
 
           xhr.addEventListener('error', () => {
-            reject(new Error('Network error occurred'));
+            setCurrentStatus('error');
+            setStatusMessage('Network error occurred');
+            reject(new Error('Network error'));
           });
 
           xhr.addEventListener('abort', () => {
-            reject(new Error('Upload aborted'));
+            setCurrentStatus('error');
+            setStatusMessage('Upload cancelled');
+            reject(new Error('Upload cancelled'));
           });
 
-          // Open and send the request
-          xhr.open('POST', `${config.BASE_PATH}/api/paymentprocessor/process-payments`);
-          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-          xhr.setRequestHeader('organizationid', store.organization?.selected?._id);
-          xhr.send(formData);
+          // Send the request
+          try {
+            xhr.open('POST', `${config.BASE_PATH}/api/paymentprocessor/process-payments`);
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            xhr.setRequestHeader('organizationid', store.organization?.selected?._id);
+            xhr.send(formData);
+          } catch (error) {
+            setCurrentStatus('error');
+            setStatusMessage('Failed to start upload');
+            reject(error);
+          }
         });
       };
 
@@ -269,23 +260,28 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     }
   };
 
-  const getProgressText = () => {
-    if (currentStatus === 'uploading') {
-      return t('Uploading file... {{progress}}%', { progress: Math.round(uploadProgress) });
-    } else if (currentStatus === 'processing') {
-      return t('Processing payments... {{progress}}%', { progress: Math.round(processingProgress) });
-    } else {
-      return t('Upload Payments');
-    }
-  };
-
   const getProgressValue = () => {
     if (currentStatus === 'uploading') {
       return uploadProgress;
     } else if (currentStatus === 'processing') {
       return processingProgress;
+    } else if (currentStatus === 'complete') {
+      return 100;
     }
     return 0;
+  };
+
+  const getProgressText = () => {
+    if (currentStatus === 'uploading') {
+      return `Uploading... ${uploadProgress}%`;
+    } else if (currentStatus === 'processing') {
+      return `Processing... ${processingProgress}%`;
+    } else if (currentStatus === 'complete') {
+      return 'Processing complete';
+    } else if (currentStatus === 'error') {
+      return statusMessage || 'Error occurred';
+    }
+    return 'Ready to upload';
   };
 
   return (
@@ -344,7 +340,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                   ></div>
                 </div>
                 <p className="text-sm text-center text-gray-600">
-                  {getProgressText()}
+                  {statusMessage || getProgressText()}
                 </p>
               </div>
             )}
