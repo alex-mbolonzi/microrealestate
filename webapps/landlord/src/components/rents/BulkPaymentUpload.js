@@ -16,7 +16,9 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
   const { t } = useTranslation('common');
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [currentStatus, setCurrentStatus] = useState('');
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const store = useContext(StoreContext);
@@ -54,7 +56,9 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     }
 
     setLoading(true);
-    setProgress(0);
+    setUploadProgress(0);
+    setProcessingProgress(0);
+    setCurrentStatus('uploading');
 
     try {
       // Ensure we have a valid token before starting the upload
@@ -75,30 +79,47 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           
+          // Track upload progress
           xhr.upload.addEventListener('progress', (event) => {
             if (event.lengthComputable) {
               const percentComplete = (event.loaded / event.total) * 100;
-              setProgress(percentComplete);
+              setUploadProgress(percentComplete);
+            }
+          });
+
+          // Handle the SSE response
+          xhr.addEventListener('progress', () => {
+            const lines = xhr.responseText.split('\n');
+            const lastLine = lines[lines.length - 2]; // Last complete line
+            if (lastLine) {
+              try {
+                const event = JSON.parse(lastLine);
+                if (event.status === 'processing') {
+                  setCurrentStatus('processing');
+                  setProcessingProgress(event.progress || 0);
+                } else if (event.status === 'complete') {
+                  setCurrentStatus('complete');
+                  setProcessingProgress(100);
+                  resolve(event);
+                } else if (event.status === 'error') {
+                  reject(new Error(event.message));
+                }
+              } catch (e) {
+                console.error('Failed to parse SSE:', e);
+              }
             }
           });
 
           xhr.addEventListener('load', async () => {
-            console.log('Response status:', xhr.status);
-            console.log('Response headers:', xhr.getAllResponseHeaders());
-            
-            const responseText = xhr.responseText;
-            console.log('Response text:', responseText);
-            
-            try {
-              const responseData = JSON.parse(responseText);
-              if (xhr.status >= 200 && xhr.status < 300) {
-                resolve(responseData);
-              } else {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              // Final processing will be handled by the progress event
+            } else {
+              try {
+                const responseData = JSON.parse(xhr.responseText);
                 reject(new Error(responseData.error || responseData.detail || 'Failed to process payments'));
+              } catch (e) {
+                reject(new Error('Invalid response from server'));
               }
-            } catch (e) {
-              console.error('Failed to parse response as JSON:', e);
-              reject(new Error('Invalid response from server'));
             }
           });
 
@@ -179,7 +200,9 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       toast.error(error.message || t('Failed to upload file'));
     } finally {
       setLoading(false);
-      setProgress(0);
+      setUploadProgress(0);
+      setProcessingProgress(0);
+      setCurrentStatus('');
       setFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = null;
@@ -202,6 +225,25 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       window.location.assign(`${config.BASE_PATH}`);
       return null;
     }
+  };
+
+  const getProgressText = () => {
+    if (currentStatus === 'uploading') {
+      return t('Uploading file... {{progress}}%', { progress: Math.round(uploadProgress) });
+    } else if (currentStatus === 'processing') {
+      return t('Processing payments... {{progress}}%', { progress: Math.round(processingProgress) });
+    } else {
+      return t('Upload Payments');
+    }
+  };
+
+  const getProgressValue = () => {
+    if (currentStatus === 'uploading') {
+      return uploadProgress;
+    } else if (currentStatus === 'processing') {
+      return processingProgress;
+    }
+    return 0;
   };
 
   return (
@@ -251,12 +293,17 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
               </p>
             )}
 
-            {loading && progress > 0 && (
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div
-                  className="bg-blue-600 h-2.5 rounded-full"
-                  style={{ width: `${progress}%` }}
-                ></div>
+            {loading && (getProgressValue() > 0) && (
+              <div className="space-y-2">
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${getProgressValue()}%` }}
+                  ></div>
+                </div>
+                <p className="text-sm text-center text-gray-600">
+                  {getProgressText()}
+                </p>
               </div>
             )}
 
@@ -265,7 +312,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
               disabled={!file || loading}
               className="w-full"
             >
-              {loading ? t('Uploading... {{progress}}%', { progress: Math.round(progress) }) : t('Upload Payments')}
+              {loading ? getProgressText() : t('Upload Payments')}
             </Button>
           </div>
         </div>
