@@ -142,9 +142,31 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                         tenant_id=payment.tenant_id,
                         message=error_msg
                     )
-                tenant = tenant_data[0]  # Get first tenant from list
+                # Find the tenant with matching reference
+                tenant = None
+                for t in tenant_data:
+                    if str(t.get('reference', '')).strip() == padded_reference:
+                        tenant = t
+                        break
+                if not tenant:
+                    error_msg = f"No tenant found with exact reference {padded_reference}"
+                    logger.error(error_msg)
+                    return PaymentResult(
+                        success=False,
+                        tenant_id=payment.tenant_id,
+                        message=error_msg
+                    )
             else:
-                tenant = tenant_data  # Single tenant object
+                # Verify the reference matches
+                if str(tenant_data.get('reference', '')).strip() != padded_reference:
+                    error_msg = f"Tenant reference mismatch. Expected {padded_reference}, got {tenant_data.get('reference', '')}"
+                    logger.error(error_msg)
+                    return PaymentResult(
+                        success=False,
+                        tenant_id=payment.tenant_id,
+                        message=error_msg
+                    )
+                tenant = tenant_data
             
             tenant_id = tenant.get('_id')
             if not tenant_id:
