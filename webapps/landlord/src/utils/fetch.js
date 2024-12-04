@@ -248,6 +248,18 @@ export const uploadDocument = async ({
     headers: {
       timeout: 30000,
       'Content-Type': 'multipart/form-data'
+    },
+    onUploadProgress: (progressEvent) => {
+      const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+      // Dispatch progress event
+      const event = new CustomEvent('upload-progress', {
+        detail: {
+          progress: percentCompleted,
+          loaded: progressEvent.loaded,
+          total: progressEvent.total
+        }
+      });
+      window.dispatchEvent(event);
     }
   });
 };

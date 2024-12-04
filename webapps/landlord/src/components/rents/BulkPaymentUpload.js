@@ -91,13 +91,22 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
             const newResponse = responseText.substring(lastResponseLength);
             lastResponseLength = responseText.length;
             
+            // Debug: Log raw response
+            console.log('New response chunk:', JSON.stringify(newResponse));
+            
             // Add new data to our buffer
             buffer += newResponse;
+            
+            // Debug: Log current buffer state
+            console.log('Current buffer:', JSON.stringify(buffer));
             
             // Try to extract complete JSON objects
             try {
               // Split buffer by newlines and process each line
               const lines = buffer.split('\n');
+              
+              // Debug: Log lines before processing
+              console.log('Lines to process:', lines.map(l => JSON.stringify(l)));
               
               // Keep the last line in buffer as it might be incomplete
               buffer = lines.pop() || '';
@@ -107,7 +116,13 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                 if (!line.trim()) continue;
                 
                 try {
+                  // Debug: Log line being parsed
+                  console.log('Parsing line:', JSON.stringify(line));
+                  
                   const event = JSON.parse(line);
+                  
+                  // Debug: Log parsed event
+                  console.log('Successfully parsed event:', event);
                   
                   // Process the event
                   if (event.status === 'uploading') {
@@ -127,14 +142,13 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                     reject(new Error(event.message));
                   }
                 } catch (parseError) {
-                  // Only log if it looks like a complete JSON object
-                  if (line.trim().startsWith('{') && line.trim().endsWith('}')) {
-                    console.error('Parse error:', parseError, 'Line:', line);
-                  }
+                  console.error('Parse error for line:', JSON.stringify(line));
+                  console.error('Parse error details:', parseError);
                 }
               }
             } catch (e) {
               console.error('Buffer processing error:', e);
+              console.error('Buffer state:', JSON.stringify(buffer));
             }
           });
 

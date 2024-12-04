@@ -5,7 +5,8 @@ import React, {
   useContext,
   useMemo,
   useRef,
-  useState
+  useState,
+  useEffect
 } from 'react';
 import { Button } from './ui/button';
 import { DateField } from '../components/formfields/DateField';
@@ -72,7 +73,17 @@ export default function UploadDialog({
   const { t } = useTranslation('common');
   const store = useContext(StoreContext);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const formRef = useRef();
+
+  useEffect(() => {
+    const handleProgress = (event) => {
+      setUploadProgress(event.detail.progress);
+    };
+    
+    window.addEventListener('upload-progress', handleProgress);
+    return () => window.removeEventListener('upload-progress', handleProgress);
+  }, []);
 
   const templates = useMemo(() => {
     return store.template.items
@@ -168,8 +179,9 @@ export default function UploadDialog({
                 )}
                 <UploadField 
                   name="file" 
-                  hideProgress={true}
-                  showProgress={false}
+                  hideProgress={false}
+                  showProgress={true}
+                  progress={uploadProgress}
                 />
               </Form>
             );
