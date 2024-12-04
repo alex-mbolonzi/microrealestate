@@ -81,6 +81,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
           const xhr = new XMLHttpRequest();
           
           let lastResponseLength = 0;
+          let buffer = '';
           
           // Handle the SSE response
           xhr.addEventListener('progress', () => {
@@ -90,15 +91,25 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
             const newResponse = responseText.substring(lastResponseLength);
             lastResponseLength = responseText.length;
             
-            // If we have new data
-            if (newResponse) {
-              try {
-                // Get the last complete JSON object from the new response
-                const matches = newResponse.match(/{[^}]+}/g);
-                if (matches) {
-                  const lastEvent = matches[matches.length - 1];
-                  const event = JSON.parse(lastEvent);
+            // Add new data to our buffer
+            buffer += newResponse;
+            
+            // Try to extract complete JSON objects
+            try {
+              // Split buffer by newlines and process each line
+              const lines = buffer.split('\n');
+              
+              // Keep the last line in buffer as it might be incomplete
+              buffer = lines.pop() || '';
+              
+              // Process complete lines
+              for (const line of lines) {
+                if (!line.trim()) continue;
+                
+                try {
+                  const event = JSON.parse(line);
                   
+                  // Process the event
                   if (event.status === 'uploading') {
                     setCurrentStatus('uploading');
                     setUploadProgress(event.progress || 0);
@@ -108,18 +119,22 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                   } else if (event.status === 'complete') {
                     setCurrentStatus('complete');
                     setProcessingProgress(100);
+                    buffer = ''; // Clear buffer on completion
                     resolve(event);
                   } else if (event.status === 'error') {
                     setCurrentStatus('error');
+                    buffer = ''; // Clear buffer on error
                     reject(new Error(event.message));
                   }
-                }
-              } catch (e) {
-                // Ignore parse errors from incomplete events
-                if (newResponse.includes('"status":')) {
-                  console.error('Parse error:', e);
+                } catch (parseError) {
+                  // Only log if it looks like a complete JSON object
+                  if (line.trim().startsWith('{') && line.trim().endsWith('}')) {
+                    console.error('Parse error:', parseError, 'Line:', line);
+                  }
                 }
               }
+            } catch (e) {
+              console.error('Buffer processing error:', e);
             }
           });
 
