@@ -381,7 +381,12 @@ async def process_payments(
         process_payments_generator(),
         media_type="text/event-stream"
     )
-
+{
+    "status": "processing",
+    "progress": 60,
+    "message": "Processing payments... 60% (6/10)",
+    "current_result": { ... }
+}
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
