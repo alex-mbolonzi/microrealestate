@@ -264,38 +264,37 @@ async def process_payments(
             
             # Reset file pointer
             await file.seek(0)
+            content.clear()  # Clear content to start fresh
             
             # Send initial progress
-            yield json.dumps({
-                "status": "uploading",
-                "progress": 0,
-                "message": "Starting file upload..."
-            }) + "\\n"
+            yield f"data: {json.dumps({
+                'status': 'uploading',
+                'progress': 0,
+                'message': 'Starting file upload...'
+            })}\n\n"
             
             # Second pass: actual processing with progress
-            content = bytearray()
             bytes_read = 0
-            
             chunk = await file.read(chunk_size)
             while chunk:
                 content.extend(chunk)
                 bytes_read += len(chunk)
                 progress = int((bytes_read / total_size) * 100)
                 
-                yield json.dumps({
-                    "status": "uploading",
-                    "progress": progress,
-                    "message": f"Uploading file... {progress}%"
-                }) + "\\n"
+                yield f"data: {json.dumps({
+                    'status': 'uploading',
+                    'progress': progress,
+                    'message': f'Uploading file... {progress}%'
+                })}\n\n"
                 
                 chunk = await file.read(chunk_size)
             
             # File is uploaded, now process it
-            yield json.dumps({
-                "status": "processing",
-                "progress": 0,
-                "message": "Processing CSV file..."
-            }) + "\\n"
+            yield f"data: {json.dumps({
+                'status': 'processing',
+                'progress': 0,
+                'message': 'Processing CSV file...'
+            })}\n\n"
             
             csv_content = content.decode()
             
@@ -314,10 +313,9 @@ async def process_payments(
             # Process each payment with progress updates
             for index, row in df.iterrows():
                 try:
-                    # Get tenant reference and create payment object
-                    tenant_id = str(row['tenant_id']).strip()
+                    # Create payment object
                     payment = Payment(
-                        tenant_id=tenant_id,
+                        tenant_id=str(row['tenant_id']).strip(),
                         payment_date=str(row['payment_date']).strip(),
                         payment_type=str(row['payment_type']).strip(),
                         reference=str(row['payment_reference']).strip(),
@@ -337,12 +335,12 @@ async def process_payments(
                     
                     # Send progress update
                     progress = int(((index + 1) / total_payments) * 100)
-                    yield json.dumps({
-                        "status": "processing",
-                        "progress": progress,
-                        "message": f"Processing payments... {progress}% ({index + 1}/{total_payments})",
-                        "current_result": result.dict()
-                    }) + "\\n"
+                    yield f"data: {json.dumps({
+                        'status': 'processing',
+                        'progress': progress,
+                        'message': f'Processing payments... {progress}% ({index + 1}/{total_payments})',
+                        'current_result': result.dict()
+                    })}\n\n"
                     
                 except Exception as e:
                     error_msg = f"Error processing payment {index + 1}: {str(e)}"
@@ -354,31 +352,28 @@ async def process_payments(
                         details={"error": str(e)}
                     ))
                     
-                    # Send error progress
-                    yield json.dumps({
-                        "status": "error",
-                        "progress": int(((index + 1) / total_payments) * 100),
-                        "message": error_msg,
-                        "error": str(e)
-                    }) + "\\n"
+                    yield f"data: {json.dumps({
+                        'status': 'error',
+                        'message': error_msg,
+                        'error': str(e)
+                    })}\n\n"
             
             # Send final results
-            yield json.dumps({
-                "status": "complete",
-                "progress": 100,
-                "message": f"Processing complete. {successful_payments}/{total_payments} payments successful.",
-                "results": [result.dict() for result in results]
-            }) + "\\n"
+            yield f"data: {json.dumps({
+                'status': 'complete',
+                'progress': 100,
+                'message': f'Processing complete. {successful_payments}/{total_payments} payments successful.',
+                'results': [result.dict() for result in results]
+            })}\n\n"
             
         except Exception as e:
             error_msg = f"Error in bulk payment processing: {str(e)}"
             logger.error(error_msg)
-            yield json.dumps({
-                "status": "error",
-                "progress": 0,
-                "message": error_msg,
-                "error": str(e)
-            }) + "\\n"
+            yield f"data: {json.dumps({
+                'status': 'error',
+                'message': error_msg,
+                'error': str(e)
+            })}\n\n"
     
     return StreamingResponse(
         process_payments_generator(),
