@@ -81,6 +81,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const uploadWithProgress = () => {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
+          xhr.responseType = 'text';
           
           let lastResponseLength = 0;
           let buffer = '';
@@ -106,73 +107,93 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
             logDebug('Upload Complete', 'File upload finished, waiting for processing');
             setCurrentStatus('processing');
             setStatusMessage('Upload complete. Processing file...');
+            setProcessingProgress(0);
           });
           
           // Handle the SSE response (processing progress)
-          xhr.addEventListener('progress', () => {
-            const responseText = xhr.responseText;
-            logDebug('Response Progress', { newText: responseText.substring(lastResponseLength) });
-            
-            // Get only the new portion of the response
-            const newResponse = responseText.substring(lastResponseLength);
-            lastResponseLength = responseText.length;
-            
-            // Add new data to our buffer
-            buffer += newResponse;
-            
-            // Split buffer by newlines and process each line
-            const lines = buffer.split('\n');
-            // Keep the last line in buffer as it might be incomplete
-            buffer = lines.pop() || '';
-            
-            // Process complete lines
-            for (const line of lines) {
-              if (!line.trim()) continue;
+          xhr.addEventListener('readystatechange', () => {
+            if (xhr.readyState === 3 || xhr.readyState === 4) {
+              const responseText = xhr.responseText;
+              const newResponse = responseText.substring(lastResponseLength);
+              lastResponseLength = responseText.length;
               
-              try {
-                const event = JSON.parse(line);
-                logDebug('Parsed Event', event);
+              if (!newResponse) return;
+              
+              logDebug('Response Progress', { 
+                readyState: xhr.readyState,
+                newText: newResponse,
+                fullResponse: responseText 
+              });
+              
+              // Add new data to our buffer
+              buffer += newResponse;
+              
+              // Split buffer by newlines and process each line
+              const lines = buffer.split('\n');
+              // Keep the last line in buffer as it might be incomplete
+              buffer = lines.pop() || '';
+              
+              // Process complete lines
+              for (const line of lines) {
+                if (!line.trim()) continue;
                 
-                // Update UI based on event status
-                if (event.status === 'processing') {
-                  setCurrentStatus('processing');
-                  setProcessingProgress(event.progress || 0);
-                  setStatusMessage(event.message || `Processing payments... ${event.progress}%`);
-                } else if (event.status === 'complete') {
-                  logDebug('Processing Complete', event);
-                  setCurrentStatus('complete');
-                  setProcessingProgress(100);
-                  setStatusMessage(event.message || 'Processing complete');
-                  buffer = ''; // Clear buffer on completion
+                try {
+                  // Check if line starts with "data: "
+                  const jsonStr = line.startsWith('data: ') ? line.slice(6) : line;
+                  const event = JSON.parse(jsonStr);
+                  logDebug('Parsed Event', event);
                   
-                  // Close dialog after short delay
-                  setTimeout(() => {
-                    onSuccess?.(event);
-                    onClose();
-                  }, 1000);
-                  
-                  resolve(event);
-                } else if (event.status === 'error') {
-                  logDebug('Processing Error', event);
-                  setCurrentStatus('error');
-                  setStatusMessage(event.message || 'Error processing file');
-                  buffer = ''; // Clear buffer on error
-                  reject(new Error(event.message));
+                  // Update UI based on event status
+                  if (event.status === 'processing') {
+                    setCurrentStatus('processing');
+                    const progress = typeof event.progress === 'number' ? event.progress : 0;
+                    setProcessingProgress(progress);
+                    setStatusMessage(event.message || `Processing payments... ${progress}%`);
+                  } else if (event.status === 'complete') {
+                    logDebug('Processing Complete', event);
+                    setCurrentStatus('complete');
+                    setProcessingProgress(100);
+                    setStatusMessage(event.message || 'Processing complete');
+                    buffer = ''; // Clear buffer on completion
+                    
+                    // Close dialog after short delay
+                    setTimeout(() => {
+                      onSuccess?.(event);
+                      onClose();
+                    }, 1000);
+                    
+                    resolve(event);
+                  } else if (event.status === 'error') {
+                    logDebug('Processing Error', event);
+                    setCurrentStatus('error');
+                    setStatusMessage(event.message || 'Error processing file');
+                    buffer = ''; // Clear buffer on error
+                    reject(new Error(event.message));
+                  }
+                } catch (parseError) {
+                  console.error('Parse error for line:', line);
+                  console.error('Parse error details:', parseError);
                 }
-              } catch (parseError) {
-                console.error('Parse error for line:', line);
-                console.error('Parse error details:', parseError);
               }
             }
           });
 
           // Handle request completion
           xhr.addEventListener('load', async () => {
+            logDebug('Request Complete', {
+              status: xhr.status,
+              response: xhr.responseText
+            });
+            
             if (xhr.status >= 200 && xhr.status < 300) {
-              logDebug('Request Complete', 'Request successful');
-              // Success - the 'progress' event handler will resolve the promise
+              // Success - the 'readystatechange' event handler will resolve the promise
+              if (currentStatus !== 'complete') {
+                setStatusMessage('Processing complete');
+                setCurrentStatus('complete');
+                setProcessingProgress(100);
+                resolve();
+              }
             } else {
-              logDebug('Request Error', { status: xhr.status, response: xhr.responseText });
               setCurrentStatus('error');
               setStatusMessage('Upload failed');
               reject(new Error('Upload failed'));
@@ -192,6 +213,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             xhr.setRequestHeader('organizationid', store.organization?.selected?._id);
             xhr.send(formData);
+            
             logDebug('Request Sent', {
               url: `${config.BASE_PATH}/api/paymentprocessor/process-payments`,
               organizationId: store.organization?.selected?._id,
