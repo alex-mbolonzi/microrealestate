@@ -89,12 +89,15 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
 
           // Handle the SSE response
           xhr.addEventListener('progress', () => {
-            const lines = xhr.responseText.split('\n').filter(line => line.trim());
-            const lastLine = lines[lines.length - 1]; // Get the last complete line
+            const lines = xhr.responseText
+              .split('\n')
+              .filter(line => line.trim())
+              .map(line => line.replace(/\n$/, '')); // Remove trailing newlines
             
-            if (lastLine) {
+            // Process each line individually
+            for (const line of lines) {
               try {
-                const event = JSON.parse(lastLine);
+                const event = JSON.parse(line);
                 if (event.status === 'uploading') {
                   setCurrentStatus('uploading');
                   setUploadProgress(event.progress || 0);
@@ -110,7 +113,11 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                   reject(new Error(event.message));
                 }
               } catch (e) {
-                console.error('Failed to parse SSE:', e, 'Line:', lastLine);
+                // Ignore parse errors for partial responses
+                if (!line.includes('"status":')) {
+                  continue;
+                }
+                console.error('Failed to parse SSE:', e, 'Line:', line);
               }
             }
           });
