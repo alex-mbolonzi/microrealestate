@@ -101,6 +101,7 @@ export default function UploadDialog({
 
   const _onSubmit = useCallback(
     async (doc, { resetForm }) => {
+      console.log('Starting upload process...', { doc });
       try {
         setIsLoading(true);
         setUploadProgress(0);
@@ -108,6 +109,17 @@ export default function UploadDialog({
         doc.description = doc.template.description;
         doc.mimeType = doc.file.type;
         try {
+          console.log('Uploading document with:', {
+            endpoint: '/documents/upload',
+            documentName: doc.template.name,
+            fileSize: doc.file.size,
+            fileName: doc.file.name,
+            folder: [
+              store.tenant.selected.name.replace(/[/\\]/g, '_'),
+              'contract_scanned_documents'
+            ].join('/')
+          });
+
           const response = await uploadDocument({
             endpoint: '/documents/upload',
             documentName: doc.template.name,
@@ -117,10 +129,12 @@ export default function UploadDialog({
               'contract_scanned_documents'
             ].join('/'),
             onProgress: (progress) => {
+              console.log('Upload progress:', progress);
               setUploadProgress(progress);
             }
           });
 
+          console.log('Upload response:', response);
           doc.url = response.data.key;
           doc.versionId = response.data.versionId;
         } catch (error) {
@@ -172,6 +186,7 @@ export default function UploadDialog({
                   <DateField label={t('Expiry date')} name="expiryDate" />
                 )}
                 <UploadField name="file" />
+                {console.log('Render state:', { isLoading, uploadProgress })}
                 {isLoading && uploadProgress > 0 && (
                   <div className="space-y-2 mt-4">
                     <div className="w-full bg-gray-200 rounded-full h-2.5">

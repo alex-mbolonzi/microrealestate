@@ -238,24 +238,38 @@ export const uploadDocument = async ({
   folder,
   onProgress
 }) => {
+  console.log('uploadDocument called with:', {
+    endpoint,
+    documentName,
+    fileSize: file?.size,
+    fileName: file?.name,
+    folder
+  });
+
   const formData = new FormData();
   if (folder) {
     formData.append('folder', folder);
   }
   formData.append('fileName', documentName);
   formData.append('file', file);
-  return await apiFetcher().post(endpoint, formData, {
+
+  const config = {
     headers: {
       timeout: 30000,
       'Content-Type': 'multipart/form-data'
     },
     onUploadProgress: (progressEvent) => {
+      console.log('Raw progress event:', progressEvent);
       if (onProgress && progressEvent.lengthComputable) {
         const percentCompleted = Math.round(
           (progressEvent.loaded * 100) / progressEvent.total
         );
+        console.log('Calculated progress:', percentCompleted);
         onProgress(percentCompleted);
       }
     }
-  });
+  };
+
+  console.log('Making upload request with config:', config);
+  return await apiFetcher().post(endpoint, formData, config);
 };
