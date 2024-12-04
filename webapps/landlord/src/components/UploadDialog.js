@@ -166,7 +166,11 @@ export default function UploadDialog({
                 {values.template?.hasExpiryDate && (
                   <DateField label={t('Expiry date')} name="expiryDate" />
                 )}
-                <UploadField name="file" />
+                <UploadField 
+                  name="file" 
+                  hideProgress={true}
+                  showProgress={false}
+                />
               </Form>
             );
           }}
