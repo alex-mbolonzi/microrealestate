@@ -72,6 +72,7 @@ export default function UploadDialog({
   const { t } = useTranslation('common');
   const store = useContext(StoreContext);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const formRef = useRef();
 
   const templates = useMemo(() => {
@@ -102,20 +103,49 @@ export default function UploadDialog({
     async (doc, { resetForm }) => {
       try {
         setIsLoading(true);
+        setUploadProgress(0);
         doc.name = doc.template.name;
         doc.description = doc.template.description;
         doc.mimeType = doc.file.type;
         try {
-          const response = await uploadDocument({
-            endpoint: '/documents/upload',
-            documentName: doc.template.name,
-            file: doc.file,
-            folder: [
-              store.tenant.selected.name.replace(/[/\\]/g, '_'),
-              'contract_scanned_documents'
-            ].join('/')
+          const xhr = new XMLHttpRequest();
+          
+          // Track upload progress
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const progress = (event.loaded / event.total) * 100;
+              setUploadProgress(progress);
+            }
           });
 
+          // Create FormData
+          const formData = new FormData();
+          formData.append('file', doc.file);
+          formData.append('documentName', doc.template.name);
+          formData.append('folder', [
+            store.tenant.selected.name.replace(/[/\\]/g, '_'),
+            'contract_scanned_documents'
+          ].join('/'));
+
+          // Create a promise that wraps XMLHttpRequest
+          const uploadPromise = new Promise((resolve, reject) => {
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                  resolve(JSON.parse(xhr.responseText));
+                } catch (e) {
+                  reject(new Error('Invalid response from server'));
+                }
+              } else {
+                reject(new Error('Upload failed'));
+              }
+            };
+            xhr.onerror = () => reject(new Error('Network error'));
+            xhr.open('POST', '/documents/upload');
+            xhr.send(formData);
+          });
+
+          const response = await uploadPromise;
           doc.url = response.data.key;
           doc.versionId = response.data.versionId;
         } catch (error) {
@@ -167,6 +197,19 @@ export default function UploadDialog({
                   <DateField label={t('Expiry date')} name="expiryDate" />
                 )}
                 <UploadField name="file" />
+                {isLoading && uploadProgress > 0 && (
+                  <div className="space-y-2 mt-4">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-center text-gray-600">
+                      {t('Uploading... {{progress}}%', { progress: Math.round(uploadProgress) })}
+                    </p>
+                  </div>
+                )}
               </Form>
             );
           }}
