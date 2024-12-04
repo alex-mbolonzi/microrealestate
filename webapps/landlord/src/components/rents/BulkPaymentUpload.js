@@ -62,15 +62,10 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     setProcessingProgress(0);
     setCurrentStatus('uploading');
     setStatusMessage('');
+    setError(null);
 
     try {
-      // Ensure we have a valid token before starting the upload
-      const token = await ensureValidToken();
-      if (!token) {
-        throw new Error('Failed to get valid token');
-      }
-
-      // Create form data with the file and term
+      // Create form data with the file
       const formData = new FormData();
       formData.append('file', file);
       // Get current term from store or URL
@@ -81,22 +76,14 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       const uploadWithProgress = () => {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          xhr.responseType = 'text';
           
           let lastResponseLength = 0;
           let buffer = '';
 
-          // Debug logging function
-          const logDebug = (stage, data) => {
-            console.log(`[${stage}]`, data);
-          };
-          
           // Track upload progress
           xhr.upload.addEventListener('progress', (event) => {
             if (event.lengthComputable) {
               const progress = Math.round((event.loaded * 100) / event.total);
-              logDebug('Upload Progress', { progress, loaded: event.loaded, total: event.total });
-              setCurrentStatus('uploading');
               setUploadProgress(progress);
               setStatusMessage(`Uploading... ${progress}%`);
             }
@@ -104,89 +91,83 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
 
           // Handle upload complete
           xhr.upload.addEventListener('load', () => {
-            logDebug('Upload Complete', 'File upload finished, waiting for processing');
-            setCurrentStatus('processing');
             setStatusMessage('Upload complete. Processing file...');
             setProcessingProgress(0);
           });
           
           // Handle the SSE response (processing progress)
           xhr.addEventListener('readystatechange', () => {
-            if (xhr.readyState === 3 || xhr.readyState === 4) {
-              const responseText = xhr.responseText;
-              const newResponse = responseText.substring(lastResponseLength);
-              lastResponseLength = responseText.length;
-              
-              if (!newResponse) return;
-              
-              logDebug('Response Progress', { 
-                readyState: xhr.readyState,
-                newText: newResponse,
-                fullResponse: responseText 
-              });
-              
-              // Add new data to our buffer
-              buffer += newResponse;
-              
-              // Split buffer by newlines and process each line
-              const lines = buffer.split('\n');
-              // Keep the last line in buffer as it might be incomplete
-              buffer = lines.pop() || '';
-              
-              // Process complete lines
-              for (const line of lines) {
-                if (!line.trim()) continue;
+            try {
+              if (xhr.readyState === 3 || xhr.readyState === 4) {
+                const responseText = xhr.responseText;
+                const newResponse = responseText.substring(lastResponseLength);
+                lastResponseLength = responseText.length;
                 
-                try {
-                  // Check if line starts with "data: "
-                  const jsonStr = line.startsWith('data: ') ? line.slice(6) : line;
-                  const event = JSON.parse(jsonStr);
-                  logDebug('Parsed Event', event);
+                if (!newResponse) return;
+                
+                // Add new data to our buffer
+                buffer += newResponse;
+                
+                // Split buffer by newlines and process each line
+                const lines = buffer.split('\n');
+                // Keep the last line in buffer as it might be incomplete
+                buffer = lines.pop() || '';
+                
+                // Process complete lines
+                for (const line of lines) {
+                  if (!line.trim()) continue;
                   
-                  // Update UI based on event status
-                  if (event.status === 'processing') {
-                    setCurrentStatus('processing');
-                    const progress = typeof event.progress === 'number' ? event.progress : 0;
-                    setProcessingProgress(progress);
-                    setStatusMessage(event.message || `Processing payments... ${progress}%`);
-                  } else if (event.status === 'complete') {
-                    logDebug('Processing Complete', event);
-                    setCurrentStatus('complete');
-                    setProcessingProgress(100);
-                    setStatusMessage(event.message || 'Processing complete');
-                    buffer = ''; // Clear buffer on completion
+                  try {
+                    const event = JSON.parse(line);
                     
-                    // Close dialog after short delay
-                    setTimeout(() => {
-                      onSuccess?.(event);
-                      onClose();
-                    }, 1000);
-                    
-                    resolve(event);
-                  } else if (event.status === 'error') {
-                    logDebug('Processing Error', event);
-                    setCurrentStatus('error');
-                    setStatusMessage(event.message || 'Error processing file');
-                    buffer = ''; // Clear buffer on error
-                    reject(new Error(event.message));
+                    if (event.status === 'processing') {
+                      setCurrentStatus('processing');
+                      const progress = typeof event.progress === 'number' ? event.progress : 0;
+                      setProcessingProgress(progress);
+                      setStatusMessage(event.message || `Processing payments... ${progress}%`);
+                    } else if (event.status === 'complete') {
+                      setCurrentStatus('complete');
+                      setProcessingProgress(100);
+                      setStatusMessage(event.message || 'Processing complete');
+                      
+                      // Show success message
+                      toast.success(event.message || 'All payments processed successfully');
+                      
+                      // Close dialog after short delay
+                      setTimeout(() => {
+                        if (onSuccess && typeof onSuccess === 'function') {
+                          onSuccess(event);
+                        }
+                        if (onClose && typeof onClose === 'function') {
+                          onClose();
+                        }
+                      }, 1000);
+                      
+                      resolve(event);
+                    } else if (event.status === 'error') {
+                      setCurrentStatus('error');
+                      const errorMsg = event.message || 'Error processing file';
+                      setStatusMessage(errorMsg);
+                      setError(errorMsg);
+                      toast.error(errorMsg);
+                      reject(new Error(errorMsg));
+                    }
+                  } catch (parseError) {
+                    console.error('Parse error for line:', line);
+                    console.error('Parse error details:', parseError);
                   }
-                } catch (parseError) {
-                  console.error('Parse error for line:', line);
-                  console.error('Parse error details:', parseError);
                 }
               }
+            } catch (error) {
+              console.error('Error processing response:', error);
+              setError('Error processing server response');
+              reject(error);
             }
           });
 
           // Handle request completion
-          xhr.addEventListener('load', async () => {
-            logDebug('Request Complete', {
-              status: xhr.status,
-              response: xhr.responseText
-            });
-            
+          xhr.addEventListener('load', () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-              // Success - the 'readystatechange' event handler will resolve the promise
               if (currentStatus !== 'complete') {
                 setStatusMessage('Processing complete');
                 setCurrentStatus('complete');
@@ -194,17 +175,22 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                 resolve();
               }
             } else {
+              const errorMsg = 'Upload failed';
               setCurrentStatus('error');
-              setStatusMessage('Upload failed');
-              reject(new Error('Upload failed'));
+              setStatusMessage(errorMsg);
+              setError(errorMsg);
+              toast.error(errorMsg);
+              reject(new Error(errorMsg));
             }
           });
 
           xhr.addEventListener('error', () => {
-            logDebug('Network Error', 'Connection failed');
+            const errorMsg = 'Network error occurred';
             setCurrentStatus('error');
-            setStatusMessage('Network error occurred');
-            reject(new Error('Network error'));
+            setStatusMessage(errorMsg);
+            setError(errorMsg);
+            toast.error(errorMsg);
+            reject(new Error(errorMsg));
           });
 
           // Send the request
@@ -213,89 +199,26 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             xhr.setRequestHeader('organizationid', store.organization?.selected?._id);
             xhr.send(formData);
-            
-            logDebug('Request Sent', {
-              url: `${config.BASE_PATH}/api/paymentprocessor/process-payments`,
-              organizationId: store.organization?.selected?._id,
-              fileSize: file.size,
-              fileName: file.name
-            });
           } catch (error) {
-            logDebug('Send Error', error);
+            const errorMsg = 'Failed to start upload';
             setCurrentStatus('error');
-            setStatusMessage('Failed to start upload');
+            setStatusMessage(errorMsg);
+            setError(errorMsg);
+            toast.error(errorMsg);
             reject(error);
           }
         });
       };
 
       // Execute the upload
-      console.log('Request details:', {
-        url: `${config.BASE_PATH}/api/paymentprocessor/process-payments`,
-        organizationId: store.organization?.selected?._id,
-        fileSize: file.size,
-        fileName: file.name
-      });
-
-      const responseData = await uploadWithProgress();
-      
-      // Calculate statistics
-      const total = responseData.summary?.total || 0;
-      const successful = responseData.summary?.successful || 0;
-      const failed = responseData.summary?.failed || 0;
-
-      // Create detailed error message for failed records
-      let errorDetails = '';
-      if (failed > 0) {
-        const failedRecords = responseData.results
-          .filter(r => !r.success)
-          .map(r => {
-            // Parse error message if it's a JSON string
-            let errorMessage = r.message;
-            try {
-              const parsedError = JSON.parse(r.message.match(/\{.*\}/)?.[0] || '{}');
-              if (parsedError.message) {
-                errorMessage = parsedError.message;
-              }
-            } catch (e) {
-              // Keep original message if parsing fails
-            }
-            return `\n• Tenant ${r.tenant_id}: ${errorMessage}`;
-          })
-          .join('');
-        errorDetails = `\n\nFailed records:${failedRecords}`;
-      }
-
-      // Show summary with details
-      if (failed > 0) {
-        toast.error(
-          t('Upload completed with errors: {{successful}} successful, {{failed}} failed.{{details}}', {
-            successful,
-            failed,
-            details: errorDetails
-          })
-        );
-      } else {
-        toast.success(
-          t('Upload completed successfully: {{total}} payments processed', {
-            total
-          })
-        );
-      }
-
-      onSuccess?.();
-      onClose();
+      await uploadWithProgress();
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error(error.message || t('Failed to upload file'));
+      setError(error.message || 'An error occurred during upload');
+      toast.error(error.message || 'An error occurred during upload');
     } finally {
-      setLoading(false);
-      setUploadProgress(0);
-      setProcessingProgress(0);
-      setCurrentStatus('');
-      setFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = null;
+      if (currentStatus !== 'complete') {
+        setLoading(false);
       }
     }
   };
