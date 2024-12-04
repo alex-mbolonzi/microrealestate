@@ -185,21 +185,11 @@ export default function UploadDialog({
                 {values.template?.hasExpiryDate && (
                   <DateField label={t('Expiry date')} name="expiryDate" />
                 )}
-                <UploadField name="file" />
-                {console.log('Render state:', { isLoading, uploadProgress })}
-                {isLoading && uploadProgress > 0 && (
-                  <div className="space-y-2 mt-4">
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-sm text-center text-gray-600">
-                      {t('Uploading... {{progress}}%', { progress: Math.round(uploadProgress) })}
-                    </p>
-                  </div>
-                )}
+                <UploadField 
+                  name="file"
+                  progress={uploadProgress}
+                  isUploading={isLoading && uploadProgress > 0}
+                />
               </Form>
             );
           }}
