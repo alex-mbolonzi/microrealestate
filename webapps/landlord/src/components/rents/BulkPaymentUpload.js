@@ -80,52 +80,47 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           
-          // Track upload progress
-          xhr.upload.addEventListener('progress', (event) => {
-            if (event.lengthComputable) {
-              const percentComplete = (event.loaded / event.total) * 100;
-              setUploadProgress(percentComplete);
-            }
-          });
-
+          let lastResponseLength = 0;
+          
           // Handle the SSE response
           xhr.addEventListener('progress', () => {
-            // Split response into individual JSON objects and process each one
-            const rawEvents = xhr.responseText.split('\n').filter(line => line.trim());
+            const responseText = xhr.responseText;
             
-            // Get only new events since last processing
-            const newEvents = rawEvents.slice(lastProcessedIndex);
+            // Get only the new portion of the response
+            const newResponse = responseText.substring(lastResponseLength);
+            lastResponseLength = responseText.length;
             
-            for (const rawEvent of newEvents) {
+            // If we have new data
+            if (newResponse) {
               try {
-                // Clean the raw event string
-                const cleanEvent = rawEvent.replace(/\n/g, '');
-                const event = JSON.parse(cleanEvent);
-                
-                if (event.status === 'uploading') {
-                  setCurrentStatus('uploading');
-                  setUploadProgress(event.progress || 0);
-                } else if (event.status === 'processing') {
-                  setCurrentStatus('processing');
-                  setProcessingProgress(event.progress || 0);
-                } else if (event.status === 'complete') {
-                  setCurrentStatus('complete');
-                  setProcessingProgress(100);
-                  resolve(event);
-                } else if (event.status === 'error') {
-                  setCurrentStatus('error');
-                  reject(new Error(event.message));
+                // Get the last complete JSON object from the new response
+                const matches = newResponse.match(/{[^}]+}/g);
+                if (matches) {
+                  const lastEvent = matches[matches.length - 1];
+                  const event = JSON.parse(lastEvent);
+                  
+                  if (event.status === 'uploading') {
+                    setCurrentStatus('uploading');
+                    setUploadProgress(event.progress || 0);
+                  } else if (event.status === 'processing') {
+                    setCurrentStatus('processing');
+                    setProcessingProgress(event.progress || 0);
+                  } else if (event.status === 'complete') {
+                    setCurrentStatus('complete');
+                    setProcessingProgress(100);
+                    resolve(event);
+                  } else if (event.status === 'error') {
+                    setCurrentStatus('error');
+                    reject(new Error(event.message));
+                  }
                 }
               } catch (e) {
-                // Only log real parsing errors, not partial responses
-                if (rawEvent.includes('"status":')) {
-                  console.error('Failed to parse event:', rawEvent, e);
+                // Ignore parse errors from incomplete events
+                if (newResponse.includes('"status":')) {
+                  console.error('Parse error:', e);
                 }
               }
             }
-            
-            // Update the last processed index
-            setLastProcessedIndex(rawEvents.length);
           });
 
           xhr.addEventListener('load', async () => {
