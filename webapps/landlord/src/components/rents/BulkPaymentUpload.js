@@ -85,7 +85,17 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
           let lastResponseLength = 0;
           let buffer = '';
           
-          // Handle the SSE response
+          // Track upload progress
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const progress = Math.round((event.loaded * 100) / event.total);
+              setCurrentStatus('uploading');
+              setUploadProgress(progress);
+              setStatusMessage(`Uploading... ${progress}%`);
+            }
+          });
+          
+          // Handle the SSE response (processing progress)
           xhr.addEventListener('progress', () => {
             const responseText = xhr.responseText;
             
@@ -109,11 +119,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                 const event = JSON.parse(line);
                 
                 // Update UI based on event status
-                if (event.status === 'uploading') {
-                  setCurrentStatus('uploading');
-                  setUploadProgress(event.progress || 0);
-                  setStatusMessage(`Uploading... ${event.progress}%`);
-                } else if (event.status === 'processing') {
+                if (event.status === 'processing') {
                   setCurrentStatus('processing');
                   setProcessingProgress(event.progress || 0);
                   setStatusMessage(event.message || `Processing... ${event.progress}%`);
@@ -136,6 +142,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
             }
           });
 
+          // Handle request completion
           xhr.addEventListener('load', async () => {
             if (xhr.status >= 200 && xhr.status < 300) {
               // Success - the 'progress' event handler will resolve the promise

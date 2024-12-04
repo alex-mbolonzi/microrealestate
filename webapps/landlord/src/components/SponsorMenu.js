@@ -9,21 +9,21 @@ function HeartBeating() {
 
 export default function SponsorMenu({ className }) {
   const handleSponsorClicked = () => {
-    window.open(
-      'https://github.com/sponsors/camelaissani',
-      '_blank',
-      'noreferrer'
-    );
+    // window.open(
+    //   'https://github.com/sponsors/camelaissani',
+    //   '_blank',
+    //   'noreferrer'
+    // );
   };
 
-  return (
-    <SideMenuButton
-      item={{
-        Icon: HeartBeating,
-        labelId: 'Sponsor this project'
-      }}
-      onClick={handleSponsorClicked}
-      className={className}
-    />
-  );
+  // return (
+  //   <SideMenuButton
+  //     item={{
+  //       Icon: HeartBeating,
+  //       labelId: 'Sponsor this project'
+  //     }}
+  //     onClick={handleSponsorClicked}
+  //     className={className}
+  //   />
+  // );
 }
