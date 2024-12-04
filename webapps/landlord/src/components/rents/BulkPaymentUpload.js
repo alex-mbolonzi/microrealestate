@@ -84,20 +84,34 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
           
           let lastResponseLength = 0;
           let buffer = '';
+
+          // Debug logging function
+          const logDebug = (stage, data) => {
+            console.log(`[${stage}]`, data);
+          };
           
           // Track upload progress
           xhr.upload.addEventListener('progress', (event) => {
             if (event.lengthComputable) {
               const progress = Math.round((event.loaded * 100) / event.total);
+              logDebug('Upload Progress', { progress, loaded: event.loaded, total: event.total });
               setCurrentStatus('uploading');
               setUploadProgress(progress);
               setStatusMessage(`Uploading... ${progress}%`);
             }
           });
+
+          // Handle upload complete
+          xhr.upload.addEventListener('load', () => {
+            logDebug('Upload Complete', 'File upload finished, waiting for processing');
+            setCurrentStatus('processing');
+            setStatusMessage('Upload complete. Processing file...');
+          });
           
           // Handle the SSE response (processing progress)
           xhr.addEventListener('progress', () => {
             const responseText = xhr.responseText;
+            logDebug('Response Progress', { newText: responseText.substring(lastResponseLength) });
             
             // Get only the new portion of the response
             const newResponse = responseText.substring(lastResponseLength);
@@ -117,19 +131,29 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
               
               try {
                 const event = JSON.parse(line);
+                logDebug('Parsed Event', event);
                 
                 // Update UI based on event status
                 if (event.status === 'processing') {
                   setCurrentStatus('processing');
                   setProcessingProgress(event.progress || 0);
-                  setStatusMessage(event.message || `Processing... ${event.progress}%`);
+                  setStatusMessage(event.message || `Processing payments... ${event.progress}%`);
                 } else if (event.status === 'complete') {
+                  logDebug('Processing Complete', event);
                   setCurrentStatus('complete');
                   setProcessingProgress(100);
                   setStatusMessage(event.message || 'Processing complete');
                   buffer = ''; // Clear buffer on completion
+                  
+                  // Close dialog after short delay
+                  setTimeout(() => {
+                    onSuccess?.(event);
+                    onClose();
+                  }, 1000);
+                  
                   resolve(event);
                 } else if (event.status === 'error') {
+                  logDebug('Processing Error', event);
                   setCurrentStatus('error');
                   setStatusMessage(event.message || 'Error processing file');
                   buffer = ''; // Clear buffer on error
@@ -145,8 +169,10 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
           // Handle request completion
           xhr.addEventListener('load', async () => {
             if (xhr.status >= 200 && xhr.status < 300) {
+              logDebug('Request Complete', 'Request successful');
               // Success - the 'progress' event handler will resolve the promise
             } else {
+              logDebug('Request Error', { status: xhr.status, response: xhr.responseText });
               setCurrentStatus('error');
               setStatusMessage('Upload failed');
               reject(new Error('Upload failed'));
@@ -154,15 +180,10 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
           });
 
           xhr.addEventListener('error', () => {
+            logDebug('Network Error', 'Connection failed');
             setCurrentStatus('error');
             setStatusMessage('Network error occurred');
             reject(new Error('Network error'));
-          });
-
-          xhr.addEventListener('abort', () => {
-            setCurrentStatus('error');
-            setStatusMessage('Upload cancelled');
-            reject(new Error('Upload cancelled'));
           });
 
           // Send the request
@@ -171,7 +192,14 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             xhr.setRequestHeader('organizationid', store.organization?.selected?._id);
             xhr.send(formData);
+            logDebug('Request Sent', {
+              url: `${config.BASE_PATH}/api/paymentprocessor/process-payments`,
+              organizationId: store.organization?.selected?._id,
+              fileSize: file.size,
+              fileName: file.name
+            });
           } catch (error) {
+            logDebug('Send Error', error);
             setCurrentStatus('error');
             setStatusMessage('Failed to start upload');
             reject(error);
@@ -282,7 +310,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     if (currentStatus === 'uploading') {
       return `Uploading... ${uploadProgress}%`;
     } else if (currentStatus === 'processing') {
-      return `Processing... ${processingProgress}%`;
+      return `Processing payments... ${processingProgress}%`;
     } else if (currentStatus === 'complete') {
       return 'Processing complete';
     } else if (currentStatus === 'error') {
