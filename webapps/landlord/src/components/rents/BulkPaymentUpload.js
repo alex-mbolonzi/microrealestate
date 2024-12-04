@@ -22,6 +22,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const store = useContext(StoreContext);
+  const [lastProcessedIndex, setLastProcessedIndex] = useState(0);
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files[0];
@@ -89,15 +90,18 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
 
           // Handle the SSE response
           xhr.addEventListener('progress', () => {
-            const lines = xhr.responseText
-              .split('\n')
-              .filter(line => line.trim())
-              .map(line => line.replace(/\n$/, '')); // Remove trailing newlines
+            // Split response into individual JSON objects and process each one
+            const rawEvents = xhr.responseText.split('\n').filter(line => line.trim());
             
-            // Process each line individually
-            for (const line of lines) {
+            // Get only new events since last processing
+            const newEvents = rawEvents.slice(lastProcessedIndex);
+            
+            for (const rawEvent of newEvents) {
               try {
-                const event = JSON.parse(line);
+                // Clean the raw event string
+                const cleanEvent = rawEvent.replace(/\n/g, '');
+                const event = JSON.parse(cleanEvent);
+                
                 if (event.status === 'uploading') {
                   setCurrentStatus('uploading');
                   setUploadProgress(event.progress || 0);
@@ -113,13 +117,15 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                   reject(new Error(event.message));
                 }
               } catch (e) {
-                // Ignore parse errors for partial responses
-                if (!line.includes('"status":')) {
-                  continue;
+                // Only log real parsing errors, not partial responses
+                if (rawEvent.includes('"status":')) {
+                  console.error('Failed to parse event:', rawEvent, e);
                 }
-                console.error('Failed to parse SSE:', e, 'Line:', line);
               }
             }
+            
+            // Update the last processed index
+            setLastProcessedIndex(rawEvents.length);
           });
 
           xhr.addEventListener('load', async () => {
