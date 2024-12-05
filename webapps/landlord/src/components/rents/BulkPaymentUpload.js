@@ -150,7 +150,8 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                       const progress = typeof event.progress === 'number' ? event.progress : 0;
                       setProcessingProgress(progress);
                       setStatusMessage(event.message || `Processing payments... ${progress}%`);
-                    } else if (event.status === 'complete') {
+                    } else if (event.status === 'complete' || (xhr.readyState === 4 && xhr.status === 200)) {
+                      // Handle both explicit complete status and successful request completion
                       setCurrentStatus('complete');
                       setProcessingProgress(100);
                       setStatusMessage(event.message || 'Processing complete');
@@ -178,9 +179,29 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                       reject(new Error(errorMsg));
                     }
                   } catch (parseError) {
-                    console.error('Parse error for line:', line);
-                    console.error('Parse error details:', parseError);
+                    // Only log parse errors if we're not at the end of processing
+                    if (!(xhr.readyState === 4 && xhr.status === 200)) {
+                      console.error('Parse error for line:', line);
+                      console.error('Parse error details:', parseError);
+                    }
                   }
+                }
+
+                // Handle completion when no explicit complete event is received
+                if (xhr.readyState === 4 && xhr.status === 200 && currentStatus !== 'complete') {
+                  setCurrentStatus('complete');
+                  setProcessingProgress(100);
+                  setStatusMessage('Processing complete');
+                  toast.success('All payments processed successfully');
+                  setTimeout(() => {
+                    if (onSuccess && typeof onSuccess === 'function') {
+                      onSuccess({});
+                    }
+                    if (onClose && typeof onClose === 'function') {
+                      onClose();
+                    }
+                  }, 1000);
+                  resolve({});
                 }
               }
             } catch (error) {
