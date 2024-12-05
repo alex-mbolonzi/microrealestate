@@ -51,6 +51,23 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     document.body.removeChild(a);
   };
 
+  const ensureValidToken = async () => {
+    let refreshResult;
+    try {
+      refreshResult = await store.user.refreshTokens();
+      if (refreshResult.status !== 200) {
+        throw new Error('Token refresh failed: ' + (refreshResult.error?.message || 'Unknown error'));
+      }
+      console.log('Tokens refreshed successfully');
+      return store.user.token;
+    } catch (refreshError) {
+      console.error('Initial token refresh failed:', refreshError);
+      toast.error(t('Authentication error. Please log in again.'));
+      window.location.assign(`${config.BASE_PATH}`);
+      return null;
+    }
+  };
+
   const handleUpload = async () => {
     if (!file) {
       toast.error(t('Please select a file first'));
@@ -65,6 +82,14 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
     setError(null);
 
     try {
+      // Get valid token
+      const validToken = await ensureValidToken();
+      if (!validToken) {
+        setError('Authentication failed');
+        setLoading(false);
+        return;
+      }
+
       // Create form data with the file
       const formData = new FormData();
       formData.append('file', file);
@@ -196,7 +221,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
           // Send the request
           try {
             xhr.open('POST', `${config.BASE_PATH}/api/paymentprocessor/process-payments`);
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            xhr.setRequestHeader('Authorization', `Bearer ${validToken}`);
             xhr.setRequestHeader('organizationid', store.organization?.selected?._id);
             xhr.send(formData);
           } catch (error) {
@@ -220,23 +245,6 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
       if (currentStatus !== 'complete') {
         setLoading(false);
       }
-    }
-  };
-
-  const ensureValidToken = async () => {
-    let refreshResult;
-    try {
-      refreshResult = await store.user.refreshTokens();
-      if (refreshResult.status !== 200) {
-        throw new Error('Token refresh failed: ' + (refreshResult.error?.message || 'Unknown error'));
-      }
-      console.log('Tokens refreshed successfully');
-      return store.user.token;
-    } catch (refreshError) {
-      console.error('Initial token refresh failed:', refreshError);
-      toast.error(t('Authentication error. Please log in again.'));
-      window.location.assign(`${config.BASE_PATH}`);
-      return null;
     }
   };
 
