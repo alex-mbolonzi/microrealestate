@@ -104,6 +104,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
           
           let lastResponseLength = 0;
           let buffer = '';
+          let isCompleted = false;
 
           // Track upload progress
           xhr.upload.addEventListener('progress', (event) => {
@@ -116,6 +117,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
 
           // Handle upload complete
           xhr.upload.addEventListener('load', () => {
+            console.log('File upload completed, waiting for processing...');
             setStatusMessage('Upload complete. Processing file...');
             setProcessingProgress(0);
           });
@@ -130,6 +132,8 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                 
                 if (!newResponse) return;
                 
+                console.log('Received new response chunk:', newResponse);
+                
                 // Add new data to our buffer
                 buffer += newResponse;
                 
@@ -143,15 +147,18 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                   if (!line.trim()) continue;
                   
                   try {
+                    console.log('Processing line:', line);
                     const event = JSON.parse(line);
+                    console.log('Parsed event:', event);
                     
                     if (event.status === 'processing') {
                       setCurrentStatus('processing');
                       const progress = typeof event.progress === 'number' ? event.progress : 0;
                       setProcessingProgress(progress);
                       setStatusMessage(event.message || `Processing payments... ${progress}%`);
-                    } else if (event.status === 'complete' || (xhr.readyState === 4 && xhr.status === 200)) {
-                      // Handle both explicit complete status and successful request completion
+                    } else if (event.status === 'complete') {
+                      console.log('Received completion event');
+                      isCompleted = true;
                       setCurrentStatus('complete');
                       setProcessingProgress(100);
                       setStatusMessage(event.message || 'Processing complete');
@@ -171,6 +178,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                       
                       resolve(event);
                     } else if (event.status === 'error') {
+                      console.error('Received error event:', event);
                       setCurrentStatus('error');
                       const errorMsg = event.message || 'Error processing file';
                       setStatusMessage(errorMsg);
@@ -179,16 +187,17 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                       reject(new Error(errorMsg));
                     }
                   } catch (parseError) {
+                    console.log('Parse error for line:', line, parseError);
                     // Only log parse errors if we're not at the end of processing
                     if (!(xhr.readyState === 4 && xhr.status === 200)) {
-                      console.error('Parse error for line:', line);
                       console.error('Parse error details:', parseError);
                     }
                   }
                 }
 
-                // Handle completion when no explicit complete event is received
-                if (xhr.readyState === 4 && xhr.status === 200 && currentStatus !== 'complete') {
+                // Handle completion when request is done
+                if (xhr.readyState === 4 && xhr.status === 200 && !isCompleted) {
+                  console.log('Request completed without explicit completion event');
                   setCurrentStatus('complete');
                   setProcessingProgress(100);
                   setStatusMessage('Processing complete');
@@ -213,30 +222,32 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
 
           // Handle request completion
           xhr.addEventListener('load', () => {
+            console.log('XHR load event, status:', xhr.status);
             if (xhr.status >= 200 && xhr.status < 300) {
-              if (currentStatus !== 'complete') {
+              if (!isCompleted) {
+                console.log('Request completed successfully without completion event');
                 setStatusMessage('Processing complete');
                 setCurrentStatus('complete');
                 setProcessingProgress(100);
+                setTimeout(() => {
+                  if (onSuccess && typeof onSuccess === 'function') {
+                    onSuccess({});
+                  }
+                  if (onClose && typeof onClose === 'function') {
+                    onClose();
+                  }
+                }, 1000);
                 resolve();
               }
             } else {
               const errorMsg = 'Upload failed';
+              console.error('Upload failed with status:', xhr.status);
               setCurrentStatus('error');
               setStatusMessage(errorMsg);
               setError(errorMsg);
               toast.error(errorMsg);
               reject(new Error(errorMsg));
             }
-          });
-
-          xhr.addEventListener('error', () => {
-            const errorMsg = 'Network error occurred';
-            setCurrentStatus('error');
-            setStatusMessage(errorMsg);
-            setError(errorMsg);
-            toast.error(errorMsg);
-            reject(new Error(errorMsg));
           });
 
           // Send the request
