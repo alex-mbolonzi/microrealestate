@@ -24,25 +24,17 @@ export default function routes() {
     }
   });
 
-  router.use(
-    // protect the api access by checking the access token
-    Middlewares.needAccessToken(ACCESS_TOKEN_SECRET),
-    // update req with the user organizations
-    Middlewares.checkOrganization(),
-    // forbid access to tenant
-    Middlewares.notRoles(['tenant'])
-  );
+  // Essential security middleware
+  router.use(Middlewares.needAccessToken(ACCESS_TOKEN_SECRET));
+  router.use(Middlewares.notRoles(['tenant']));
   
   // Add proxy for payment processor service
   const paymentProcessorUrl = process.env.PAYMENTPROCESSOR_URL || 'http://paymentprocessor:8001';
   router.post('/paymentprocessor/process-payments', 
     upload.single('file'),
     (req, res, next) => {
-      if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-      }
-      if (!req.body.term) {
-        return res.status(400).json({ error: 'Term is required' });
+      if (!req.file || !req.body.term) {
+        return res.status(400).json({ error: 'File and term are required' });
       }
       next();
     },
@@ -53,50 +45,16 @@ export default function routes() {
       },
       changeOrigin: true,
       onProxyReq: (proxyReq, req, res) => {
-        try {
-          // Create a new form data instance
-          const formData = new FormData();
-          
-          // Add the file
-          formData.append('file', req.file.buffer, {
-            filename: req.file.originalname,
-            contentType: 'text/csv'
-          });
-          
-          // Add the term
-          formData.append('term', req.body.term);
-          
-          // Forward the organization ID header
-          proxyReq.setHeader('organizationid', req.headers.organizationid);
-          
-          // Set form data headers
-          const contentType = `multipart/form-data; boundary=${formData.getBoundary()}`;
-          proxyReq.setHeader('Content-Type', contentType);
-          proxyReq.setHeader('Content-Length', formData.getLengthSync());
-          
-          // Pipe the form data to the proxy request
-          formData.pipe(proxyReq);
-        } catch (error) {
-          console.error('Error in onProxyReq:', error);
-          res.status(500).json({ 
-            error: 'Error processing file upload',
-            details: error.message
-          });
-        }
-      },
-      onProxyRes: (proxyRes, req, res) => {
-        // Log the response status and headers for debugging
-        console.log('Payment processor response:', {
-          status: proxyRes.statusCode,
-          headers: proxyRes.headers
+        const formData = new FormData();
+        formData.append('file', req.file.buffer, {
+          filename: req.file.originalname,
+          contentType: 'text/csv'
         });
-      },
-      onError: (err, req, res) => {
-        console.error('Payment processor proxy error:', err);
-        res.status(502).json({ 
-          error: 'Payment processor service unavailable',
-          details: err.message 
-        });
+        formData.append('term', req.body.term);
+        proxyReq.setHeader('organizationid', req.headers.organizationid);
+        proxyReq.setHeader('Content-Type', `multipart/form-data; boundary=${formData.getBoundary()}`);
+        proxyReq.setHeader('Content-Length', formData.getLengthSync());
+        formData.pipe(proxyReq);
       }
     })
   );
@@ -104,85 +62,52 @@ export default function routes() {
   const realmsRouter = express.Router();
   realmsRouter.get('/', realmManager.all);
   realmsRouter.get('/:id', realmManager.one);
-  realmsRouter.post('/', Middlewares.asyncWrapper(realmManager.add));
-  realmsRouter.patch('/:id', Middlewares.asyncWrapper(realmManager.update));
+  realmsRouter.post('/', realmManager.add);
+  realmsRouter.patch('/:id', realmManager.update);
   router.use('/realms', realmsRouter);
 
   const dashboardRouter = express.Router();
-  dashboardRouter.get('/', Middlewares.asyncWrapper(dashboardManager.all));
+  dashboardRouter.get('/', dashboardManager.all);
   router.use('/dashboard', dashboardRouter);
 
   const leasesRouter = express.Router();
-  leasesRouter.get('/', Middlewares.asyncWrapper(leaseManager.all));
-  leasesRouter.get('/:id', Middlewares.asyncWrapper(leaseManager.one));
-  leasesRouter.post('/', Middlewares.asyncWrapper(leaseManager.add));
-  leasesRouter.patch('/:id', Middlewares.asyncWrapper(leaseManager.update));
-  leasesRouter.delete('/:ids', Middlewares.asyncWrapper(leaseManager.remove));
+  leasesRouter.get('/', leaseManager.all);
+  leasesRouter.get('/:id', leaseManager.one);
+  leasesRouter.post('/', leaseManager.add);
+  leasesRouter.patch('/:id', leaseManager.update);
+  leasesRouter.delete('/:ids', leaseManager.remove);
   router.use('/leases', leasesRouter);
 
   const occupantsRouter = express.Router();
-  occupantsRouter.get('/', Middlewares.asyncWrapper(occupantManager.all));
-  occupantsRouter.get('/:id', Middlewares.asyncWrapper(occupantManager.one));
-  occupantsRouter.post('/', Middlewares.asyncWrapper(occupantManager.add));
-  occupantsRouter.patch(
-    '/:id',
-    Middlewares.asyncWrapper(occupantManager.update)
-  );
-  occupantsRouter.delete(
-    '/:ids',
-    Middlewares.asyncWrapper(occupantManager.remove)
-  );
+  occupantsRouter.get('/', occupantManager.all);
+  occupantsRouter.get('/:id', occupantManager.one);
+  occupantsRouter.post('/', occupantManager.add);
+  occupantsRouter.patch('/:id', occupantManager.update);
+  occupantsRouter.delete('/:ids', occupantManager.remove);
   router.use('/tenants', occupantsRouter);
 
   const rentsRouter = express.Router();
-  rentsRouter.patch(
-    '/payment/:id/:term',
-    Middlewares.asyncWrapper(rentManager.updateByTerm)
-  );
-  rentsRouter.get(
-    '/tenant/:id',
-    Middlewares.asyncWrapper(rentManager.rentsOfOccupant)
-  );
-  rentsRouter.get(
-    '/tenant/:id/:term',
-    Middlewares.asyncWrapper(rentManager.rentOfOccupantByTerm)
-  );
-  rentsRouter.get('/:year/:month', Middlewares.asyncWrapper(rentManager.all));
+  rentsRouter.patch('/payment/:id/:term', rentManager.updateByTerm);
+  rentsRouter.get('/tenant/:id', rentManager.rentsOfOccupant);
+  rentsRouter.get('/tenant/:id/:term', rentManager.rentOfOccupantByTerm);
+  rentsRouter.get('/:year/:month', rentManager.all);
   router.use('/rents', rentsRouter);
 
   const propertiesRouter = express.Router();
-  propertiesRouter.get('/', Middlewares.asyncWrapper(propertyManager.all));
-  propertiesRouter.get('/:id', Middlewares.asyncWrapper(propertyManager.one));
-  propertiesRouter.post('/', Middlewares.asyncWrapper(propertyManager.add));
-  propertiesRouter.patch(
-    '/:id',
-    Middlewares.asyncWrapper(propertyManager.update)
-  );
-  propertiesRouter.delete(
-    '/:ids',
-    Middlewares.asyncWrapper(propertyManager.remove)
-  );
+  propertiesRouter.get('/', propertyManager.all);
+  propertiesRouter.get('/:id', propertyManager.one);
+  propertiesRouter.post('/', propertyManager.add);
+  propertiesRouter.patch('/:id', propertyManager.update);
+  propertiesRouter.delete('/:ids', propertyManager.remove);
   router.use('/properties', propertiesRouter);
 
-  router.get(
-    '/accounting/:year',
-    Middlewares.asyncWrapper(accountingManager.all)
-  );
-  router.get(
-    '/csv/tenants/incoming/:year',
-    Middlewares.asyncWrapper(accountingManager.csv.incomingTenants)
-  );
-  router.get(
-    '/csv/tenants/outgoing/:year',
-    Middlewares.asyncWrapper(accountingManager.csv.outgoingTenants)
-  );
-  router.get(
-    '/csv/settlements/:year',
-    Middlewares.asyncWrapper(accountingManager.csv.settlements)
-  );
+  router.get('/accounting/:year', accountingManager.all);
+  router.get('/csv/tenants/incoming/:year', accountingManager.csv.incomingTenants);
+  router.get('/csv/tenants/outgoing/:year', accountingManager.csv.outgoingTenants);
+  router.get('/csv/settlements/:year', accountingManager.csv.settlements);
 
   const emailRouter = express.Router();
-  emailRouter.post('/', Middlewares.asyncWrapper(emailManager.send));
+  emailRouter.post('/', emailManager.send);
   router.use('/emails', emailRouter);
 
   const apiRouter = express.Router();
