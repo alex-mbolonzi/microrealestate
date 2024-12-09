@@ -119,23 +119,30 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname}${
           originalRequest?.url === '/authenticator/landlord/signin' &&
           originalRequest?.method === 'post';
 
+        const isRefreshRequest =
+          originalRequest?.url === '/authenticator/landlord/refreshtoken' &&
+          originalRequest?.method === 'post';
+
         // Try to to refresh token once get 401
         if (
           error.response?.status === 401 &&
           !isLoginRequest &&
+          !isRefreshRequest &&
           !originalRequest._retry
         ) {
           if (isRefreshingToken) {
-            // queued incomming request while refresh token is running
+            // queued incoming request while refresh token is running
             return new Promise(function (resolve, reject) {
               requestQueue.push({ resolve, reject });
             })
               .then(async () => {
                 // use latest authorization token
-                originalRequest.headers['Authorization'] =
-                  apiFetch.defaults.headers.common['Authorization'];
-
-                return apiFetch(originalRequest);
+                if (apiFetch.defaults.headers.common['Authorization']) {
+                  originalRequest.headers['Authorization'] =
+                    apiFetch.defaults.headers.common['Authorization'];
+                  return apiFetch(originalRequest);
+                }
+                return Promise.reject(error);
               })
               .catch((err) => Promise.reject(err));
           }
@@ -145,18 +152,27 @@ Please restart the server with APP_DOMAIN=${webAppUrl.hostname}${
 
           try {
             const store = getStoreInstance();
-            await store.user.refreshTokens();
+            const result = await store.user.refreshTokens();
+            
+            if (result?.status === 200) {
+              // run all requests queued
+              requestQueue.forEach((request) => {
+                request.resolve();
+              });
 
-            // run all requests queued
+              // use latest authorization token
+              if (apiFetch.defaults.headers.common['Authorization']) {
+                originalRequest.headers['Authorization'] =
+                  apiFetch.defaults.headers.common['Authorization'];
+                return apiFetch(originalRequest);
+              }
+            }
+            return Promise.reject(error);
+          } catch (refreshError) {
             requestQueue.forEach((request) => {
-              request.resolve();
+              request.reject(refreshError);
             });
-
-            // use latest authorization token
-            originalRequest.headers['Authorization'] =
-              apiFetch.defaults.headers.common['Authorization'];
-
-            return apiFetch(originalRequest);
+            return Promise.reject(refreshError);
           } finally {
             isRefreshingToken = false;
             requestQueue = [];
