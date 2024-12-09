@@ -2,7 +2,7 @@ import { env } from '@microrealestate/commonui/utils';
 
 const config = {
   APP_NAME: env('APP_NAME'),
-  BASE_PATH: process.env.BASE_PATH || '',
+  LANDLORD_BASE_PATH: env('LANDLORD_BASE_PATH') || '',
   CORS_ENABLED: env('CORS_ENABLED') === 'true',
   DEMO_MODE: env('DEMO_MODE') === 'true',
   DOCKER_GATEWAY_URL: env('DOCKER_GATEWAY_URL'),
