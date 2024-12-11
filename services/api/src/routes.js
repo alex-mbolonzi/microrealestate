@@ -27,6 +27,8 @@ export default function routes() {
   // Essential security middleware
   router.use(Middlewares.needAccessToken(ACCESS_TOKEN_SECRET));
   router.use(Middlewares.notRoles(['tenant']));
+  // update req with the user organizations
+  router.use(Middlewares.checkOrganization());
   
   // Add proxy for payment processor service
   const paymentProcessorUrl = process.env.PAYMENTPROCESSOR_URL || 'http://paymentprocessor:8001';
