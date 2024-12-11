@@ -242,11 +242,11 @@ export async function all(req, res) {
   try {
     // If realms is not in the request, fetch them directly
     const realms = req.realms || await Collections.Realm.find({
-      _id: { $in: req.user.realms }
+      _id: { $in: req.realms.map }
     }).lean();
 
     // Map and escape secrets
-    const safeRealms = realms.map(realm => _escapeSecrets(realm));
+    const safeRealms = realms.map((realm) => _escapeSecrets(realm));
     
     res.json(safeRealms);
   } catch (error) {
