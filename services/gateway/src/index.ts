@@ -133,13 +133,7 @@ function exposeServices(application: Express.Application) {
     '/api/v2',
     createProxyMiddleware({
       target: config.API_URL,
-      pathRewrite: { '^/api/v2': '' },
-      proxyTimeout: 60000,  // 60 seconds
-      timeout: 60000,       // 60 seconds
-      onError: (err, req, res) => {
-        logger.error(`Proxy error: ${err.message}`);
-        res.status(504).send('Gateway Timeout');
-      }
+      pathRewrite: { '^/api/v2': '' }
     })
   );
 
@@ -147,13 +141,7 @@ function exposeServices(application: Express.Application) {
     '/tenantapi',
     createProxyMiddleware({
       target: config.TENANTAPI_URL,
-      pathRewrite: { '^/tenantapi': '' },
-      proxyTimeout: 60000,  // 60 seconds
-      timeout: 60000,       // 60 seconds
-      onError: (err, req, res) => {
-        logger.error(`Proxy error: ${err.message}`);
-        res.status(504).send('Gateway Timeout');
-      }
+      pathRewrite: { '^/tenantapi': '' }
     })
   );
 
