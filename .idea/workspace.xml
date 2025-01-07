@@ -6,7 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="0cfd285a-7944-413d-b393-7f01dc0bec1c" name="Changes" comment="refactor: updates">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/api/src/managers/dashboardmanager.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/api/src/managers/dashboardmanager.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helm/templates/gateway-deployment.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/helm/templates/gateway-deployment.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helm/templates/landlord-frontend-deployment.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/helm/templates/landlord-frontend-deployment.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -33,25 +34,25 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "demo",
-    "last_opened_file_path": "/Users/alexmbolonzi/angular-workspace/microrealestate",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "yarn",
-    "ts.external.directory.path": "/Users/alexmbolonzi/angular-workspace/microrealestate/node_modules/typescript/lib",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;demo&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/alexmbolonzi/angular-workspace/microrealestate&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;yarn&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Users/alexmbolonzi/angular-workspace/microrealestate/node_modules/typescript/lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-e768b9ed790e-JavaScript-WS-243.21565.180" />
+        <option value="bundled-js-predefined-d6986cc7102b-deb605915726-JavaScript-WS-243.22562.222" />
       </set>
     </attachedChunks>
   </component>
@@ -80,7 +81,9 @@
       <workItem from="1731599875967" duration="626000" />
       <workItem from="1731600639021" duration="732000" />
       <workItem from="1731601617684" duration="449000" />
-      <workItem from="1733993932369" duration="712000" />
+      <workItem from="1733993932369" duration="1104000" />
+      <workItem from="1735821922529" duration="162000" />
+      <workItem from="1736253977296" duration="578000" />
     </task>
     <task id="LOCAL-00001" summary="refactor: helm chart updates">
       <option name="closed" value="true" />
@@ -186,7 +189,15 @@
       <option name="project" value="LOCAL" />
       <updated>1731601706985</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="refactor: updates">
+      <option name="closed" value="true" />
+      <created>1733994862928</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1733994862928</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
