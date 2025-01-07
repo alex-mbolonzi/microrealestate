@@ -177,44 +177,44 @@ export namespace CollectionTypes {
     };
     preTaxAmounts:
       | {
-          amount: number;
-          description: string;
-        }[]
+      amount: number;
+      description: string;
+    }[]
       | [];
     charges:
       | {
-          amount: number;
-          description: string;
-        }[]
+      amount: number;
+      description: string;
+    }[]
       | [];
     debts:
       | {
-          amount: number;
-          description: string;
-        }[]
+      amount: number;
+      description: string;
+    }[]
       | [];
     discounts:
       | {
-          origin: 'contract' | 'settlement';
-          amount: number;
-          description: string;
-        }[]
+      origin: 'contract' | 'settlement';
+      amount: number;
+      description: string;
+    }[]
       | [];
     vats:
       | {
-          origin: 'contract' | 'settlement';
-          amount: number;
-          description: string;
-          rate: number;
-        }[]
+      origin: 'contract' | 'settlement';
+      amount: number;
+      description: string;
+      rate: number;
+    }[]
       | [];
     payments:
       | {
-          date: string;
-          type: PaymentMethod;
-          reference: string;
-          amount: number;
-        }[]
+      date: string;
+      type: PaymentMethod;
+      reference: string;
+      amount: number;
+    }[]
       | [];
     description: string;
   };
@@ -248,13 +248,15 @@ export namespace CollectionTypes {
     terminationDate: Date;
     properties:
       | {
-          propertyId: string;
-          property: CollectionTypes.Property;
-          rent: number;
-          expenses: [{ title: string; amount: number }];
-          entryDate: Date;
-          exitDate: Date;
-        }[]
+      propertyId: string;
+      property: CollectionTypes.Property;
+      rent: number;
+      expenses: [
+        { title: string; amount: number; beginDate: Date; endDate: Date }
+      ];
+      entryDate: Date;
+      exitDate: Date;
+    }[]
       | [];
     rents: PartRent[] | [];
     isVat: boolean;

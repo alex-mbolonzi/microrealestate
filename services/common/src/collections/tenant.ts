@@ -32,8 +32,6 @@ const TenantSchema = new mongoose.Schema<CollectionTypes.Tenant>({
     {
       contact: String,
       phone: String,
-      phone1: String,  // Primary phone number
-      phone2: String,  // Secondary phone number
       email: String
     }
   ],
@@ -51,7 +49,15 @@ const TenantSchema = new mongoose.Schema<CollectionTypes.Tenant>({
       propertyId: { type: String, ref: Property },
       property: Property.schema,
       rent: Number,
-      expenses: [{ _id: false, title: String, amount: Number }],
+      expenses: [
+        {
+          _id: false,
+          title: String,
+          amount: Number,
+          beginDate: Date,
+          endDate: Date
+        }
+      ],
       entryDate: Date,
       exitDate: Date
     }
