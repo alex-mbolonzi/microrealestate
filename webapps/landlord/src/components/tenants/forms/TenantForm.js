@@ -118,10 +118,10 @@ const TenantForm = observer(({ readOnly, onSubmit }) => {
           return {
             contact,
             email,
-            phone1: phone1,  // Ensure phone1 is saved
-            phone2: phone2,  // Ensure phone2 is saved
+            phone1: phone1 || '',  // Ensure phone1 is saved
+            phone2: phone2 || '',  // Ensure phone2 is saved
           };
-        })
+        }),
     });
   };
 
