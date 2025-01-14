@@ -267,11 +267,7 @@ async def process_payments(
             content.clear()  # Clear content to start fresh
             
             # Send initial progress
-            yield f"data: {json.dumps({
-                'status': 'uploading',
-                'progress': 0,
-                'message': 'Starting file upload...'
-            })}\n\n"
+            yield f"data: {json.dumps(dict(status='uploading', progress=0, message='Starting file upload...'))}\n\n"
             
             # Second pass: actual processing with progress
             bytes_read = 0
@@ -281,20 +277,12 @@ async def process_payments(
                 bytes_read += len(chunk)
                 progress = int((bytes_read / total_size) * 100)
                 
-                yield f"data: {json.dumps({
-                    'status': 'uploading',
-                    'progress': progress,
-                    'message': f'Uploading file... {progress}%'
-                })}\n\n"
+                yield f"data: {json.dumps(dict(status='uploading', progress=progress, message=f'Uploading file... {progress}%'))}\n\n"
                 
                 chunk = await file.read(chunk_size)
             
             # File is uploaded, now process it
-            yield f"data: {json.dumps({
-                'status': 'processing',
-                'progress': 0,
-                'message': 'Processing CSV file...'
-            })}\n\n"
+            yield f"data: {json.dumps(dict(status='processing', progress=0, message='Processing CSV file...'))}\n\n"
             
             csv_content = content.decode()
             
@@ -335,12 +323,7 @@ async def process_payments(
                     
                     # Send progress update
                     progress = int(((index + 1) / total_payments) * 100)
-                    yield f"data: {json.dumps({
-                        'status': 'processing',
-                        'progress': progress,
-                        'message': f'Processing payments... {progress}% ({index + 1}/{total_payments})',
-                        'current_result': result.dict()
-                    })}\n\n"
+                    yield f"data: {json.dumps(dict(status='processing', progress=progress, message=f'Processing payments... {progress}% ({index + 1}/{total_payments})', current_result=result.dict()))}\n\n"
                     
                 except Exception as e:
                     error_msg = f"Error processing payment {index + 1}: {str(e)}"
@@ -352,28 +335,15 @@ async def process_payments(
                         details={"error": str(e)}
                     ))
                     
-                    yield f"data: {json.dumps({
-                        'status': 'error',
-                        'message': error_msg,
-                        'error': str(e)
-                    })}\n\n"
+                    yield f"data: {json.dumps(dict(status='error', message=error_msg, error=str(e)))}\n\n"
             
             # Send final results
-            yield f"data: {json.dumps({
-                'status': 'complete',
-                'progress': 100,
-                'message': f'Processing complete. {successful_payments}/{total_payments} payments successful.',
-                'results': [result.dict() for result in results]
-            })}\n\n"
+            yield f"data: {json.dumps(dict(status='complete', progress=100, message=f'Processing complete. {successful_payments}/{total_payments} payments successful.', results=[result.dict() for result in results]))}\n\n"
             
         except Exception as e:
             error_msg = f"Error in bulk payment processing: {str(e)}"
             logger.error(error_msg)
-            yield f"data: {json.dumps({
-                'status': 'error',
-                'message': error_msg,
-                'error': str(e)
-            })}\n\n"
+            yield f"data: {json.dumps(dict(status='error', message=error_msg, error=str(e)))}\n\n"
     
     return StreamingResponse(
         process_payments_generator(),
