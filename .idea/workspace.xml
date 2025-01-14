@@ -4,8 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0cfd285a-7944-413d-b393-7f01dc0bec1c" name="Changes" comment="refactor: occupantmanager.js">
+    <list default="true" id="0cfd285a-7944-413d-b393-7f01dc0bec1c" name="Changes" comment="fix: paymentprocessor SyntaxError: unterminated string literal (detected at line 270)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/paymentprocessor/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/services/paymentprocessor/Dockerfile" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,6 +85,7 @@
       <workItem from="1736253977296" duration="3409000" />
       <workItem from="1736829657419" duration="12889000" />
       <workItem from="1736859351561" duration="3044000" />
+      <workItem from="1736864084195" duration="861000" />
     </task>
     <task id="LOCAL-00001" summary="refactor: helm chart updates">
       <option name="closed" value="true" />
@@ -293,7 +295,15 @@
       <option name="project" value="LOCAL" />
       <updated>1736862064504</updated>
     </task>
-    <option name="localTasksCounter" value="27" />
+    <task id="LOCAL-00027" summary="fix: paymentprocessor SyntaxError: unterminated string literal (detected at line 270)">
+      <option name="closed" value="true" />
+      <created>1736864314186</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1736864314187</updated>
+    </task>
+    <option name="localTasksCounter" value="28" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -323,6 +333,7 @@
     <MESSAGE value="fix: signout 404 error" />
     <MESSAGE value="refactor: added phone1 &amp; phone 2 issue" />
     <MESSAGE value="refactor: occupantmanager.js" />
-    <option name="LAST_COMMIT_MESSAGE" value="refactor: occupantmanager.js" />
+    <MESSAGE value="fix: paymentprocessor SyntaxError: unterminated string literal (detected at line 270)" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: paymentprocessor SyntaxError: unterminated string literal (detected at line 270)" />
   </component>
 </project>
