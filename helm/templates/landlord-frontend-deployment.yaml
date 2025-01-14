@@ -26,8 +26,8 @@ spec:
               value: "/landlord"
             - name: PORT
               value: "8180"
-            # - name: DOCKER_GATEWAY_URL
-            #   value: "http://localhost:8080"
+            - name: DOCKER_GATEWAY_URL
+              value: "http://localhost:8080"
             - name: APP_NAME
               value: "Bomatech"
             - name: CORS_ENABLED
