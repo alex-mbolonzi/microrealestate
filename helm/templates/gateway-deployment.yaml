@@ -33,7 +33,7 @@ spec:
             - name: CORS_ENABLED
               value: "false"
             - name: DOMAIN_URL
-              value: "http://79.72.69.90"
+              value: "http://79.72.69.90:80"
             - name: MONGO_URL
               value: "mongodb+srv://bomatech:0NRcStqJS70trojB@bomatech-cluster.0eu6m.mongodb.net/bomatechTest?retryWrites=true&w=majority&appName=Bomatech-Cluster"
             - name: PRODUCTION
