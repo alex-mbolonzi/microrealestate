@@ -27,7 +27,7 @@ spec:
             - name: PORT
               value: "8180"
             - name: DOCKER_GATEWAY_URL
-              value: "http://gateway:8080"
+              value: "http://gateway:80"
             - name: APP_NAME
               value: "Bomatech"
             - name: CORS_ENABLED
