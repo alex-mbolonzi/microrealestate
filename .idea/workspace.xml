@@ -4,10 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0cfd285a-7944-413d-b393-7f01dc0bec1c" name="Changes" comment="refactor: User.js file">
+    <list default="true" id="0cfd285a-7944-413d-b393-7f01dc0bec1c" name="Changes" comment="fix: signout 404 error">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/helm/templates/gateway-deployment.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/helm/templates/gateway-deployment.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/helm/templates/landlord-frontend-deployment.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/helm/templates/landlord-frontend-deployment.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/webapps/landlord/src/components/organization/OrganizationMenu.js" beforeDir="false" afterPath="$PROJECT_DIR$/webapps/landlord/src/components/organization/OrganizationMenu.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,7 +84,7 @@
       <workItem from="1733993932369" duration="1104000" />
       <workItem from="1735821922529" duration="162000" />
       <workItem from="1736253977296" duration="3409000" />
-      <workItem from="1736829657419" duration="4722000" />
+      <workItem from="1736829657419" duration="5317000" />
     </task>
     <task id="LOCAL-00001" summary="refactor: helm chart updates">
       <option name="closed" value="true" />
@@ -222,7 +222,15 @@
       <option name="project" value="LOCAL" />
       <updated>1736835878860</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="fix: signout 404 error">
+      <option name="closed" value="true" />
+      <created>1736838732213</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1736838732214</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -248,6 +256,7 @@
     <MESSAGE value="refactor: LB IP address" />
     <MESSAGE value="feature: Added functionality to add multiple expenses" />
     <MESSAGE value="refactor: User.js file" />
-    <option name="LAST_COMMIT_MESSAGE" value="refactor: User.js file" />
+    <MESSAGE value="fix: signout 404 error" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: signout 404 error" />
   </component>
 </project>
