@@ -6,7 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="0cfd285a-7944-413d-b393-7f01dc0bec1c" name="Changes" comment="fix: paymentprocessor SyntaxError: unterminated string literal (detected at line 270)">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/services/paymentprocessor/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/services/paymentprocessor/Dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/api/src/routes.js" beforeDir="false" afterPath="$PROJECT_DIR$/services/api/src/routes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/services/paymentprocessor/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/services/paymentprocessor/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -85,7 +86,7 @@
       <workItem from="1736253977296" duration="3409000" />
       <workItem from="1736829657419" duration="12889000" />
       <workItem from="1736859351561" duration="3044000" />
-      <workItem from="1736864084195" duration="861000" />
+      <workItem from="1736864084195" duration="1717000" />
     </task>
     <task id="LOCAL-00001" summary="refactor: helm chart updates">
       <option name="closed" value="true" />
@@ -303,7 +304,15 @@
       <option name="project" value="LOCAL" />
       <updated>1736864314187</updated>
     </task>
-    <option name="localTasksCounter" value="28" />
+    <task id="LOCAL-00028" summary="fix: paymentprocessor SyntaxError: unterminated string literal (detected at line 270)">
+      <option name="closed" value="true" />
+      <created>1736867098126</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1736867098126</updated>
+    </task>
+    <option name="localTasksCounter" value="29" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
