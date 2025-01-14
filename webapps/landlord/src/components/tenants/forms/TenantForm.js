@@ -67,8 +67,8 @@ const initValues = (tenant) => {
       ? tenant.contacts.map(({ contact, email, phone, phone1, phone2 }) => ({
           contact,
           email,
-          phone1: phone1 || phone,
-          phone2: phone2 || ''
+          phone1: phone1 || phone,  // Ensure fallback to either `phone1` or `phone`
+          phone2: phone2 || '',    // If phone2 is not available, default to empty
         }))
       : [emptyContact],
     address: {
@@ -113,13 +113,13 @@ const TenantForm = observer(({ readOnly, onSubmit }) => {
       state: tenant.address.state,
       country: tenant.address.country,
       contacts: tenant.contacts
-        .filter(({ contact }) => !!contact)
+        .filter(({ contact }) => !!contact)  // Ensure contact field is not empty
         .map(({ contact, email, phone1, phone2 }) => {
           return {
             contact,
             email,
-            phone1,
-            phone2
+            phone1: phone1 || '',  // Ensure phone1 is saved
+            phone2: phone2 || '',  // Ensure phone2 is saved
           };
         })
     });

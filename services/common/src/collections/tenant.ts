@@ -32,6 +32,8 @@ const TenantSchema = new mongoose.Schema<CollectionTypes.Tenant>({
     {
       contact: String,
       phone: String,
+      phone1: String,  // Primary phone number
+      phone2: String,  // Secondary phone number
       email: String
     }
   ],
