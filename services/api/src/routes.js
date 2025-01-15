@@ -49,8 +49,11 @@ export default function routes() {
     Middlewares.asyncWrapper(occupantManager.update)
   );
   occupantsRouter.delete(
-    '/:ids',
-    Middlewares.asyncWrapper(occupantManager.remove)
+      '/:ids',
+      Middlewares.asyncWrapper(async (req, res) => {
+          await occupantManager.remove(req.params.ids);
+          res.redirect('/tenants'); // Redirect to /tenants after deletion
+      })
   );
   router.use('/tenants', occupantsRouter);
 
