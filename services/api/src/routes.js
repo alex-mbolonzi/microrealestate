@@ -49,18 +49,8 @@ export default function routes() {
     Middlewares.asyncWrapper(occupantManager.update)
   );
   occupantsRouter.delete(
-      '/:ids',
-      Middlewares.asyncWrapper(async (req, res) => {
-          try {
-              await occupantManager.remove(req); // Pass the request directly
-              res.redirect('/tenants'); // Redirect to /tenants after deletion
-          } catch (err) {
-              if (err instanceof ServiceError) {
-                  return res.status(err.statusCode || 500).send(err.message); // Handle known service errors
-              }
-              res.status(500).send('Error deleting occupant'); // Handle unexpected errors
-          }
-      })
+    '/:ids',
+    Middlewares.asyncWrapper(occupantManager.remove)
   );
   router.use('/tenants', occupantsRouter);
 
