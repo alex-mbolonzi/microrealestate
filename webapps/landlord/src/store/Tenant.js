@@ -154,8 +154,8 @@ export default class Tenant {
   *delete(ids) {
     try {
       yield apiFetcher().delete(`/tenants/${ids.join(',')}`);
-      this.fetch();
-      return { status: 200 };
+      const fetchResult = yield this.fetch();
+      return { status: 200, data: fetchResult };
     } catch (error) {
       return { status: error?.response?.status };
     }
