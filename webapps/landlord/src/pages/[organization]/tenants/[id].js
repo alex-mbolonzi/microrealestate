@@ -86,6 +86,8 @@ function Tenant() {
     //await store.tenant.fetch(); // Example: Fetch updated tenants list
     store.tenant.setSelected(null);
  
+    store.tenant.fetch();
+    
     await router.push(`/${store.organization.selected.name}/tenants`);
 
   }, [store, router, t]);
