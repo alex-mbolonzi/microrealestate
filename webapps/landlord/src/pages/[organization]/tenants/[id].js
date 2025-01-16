@@ -81,12 +81,8 @@ function Tenant() {
       }
     }
 
-    // await router.push(store.appHistory.previousPath);
-
-    store.tenant.setSelected(null);
-
-    await router.push(`/${store.organization.selected.name}/tenants`);
-
+    await router.push(store.appHistory.previousPath);
+    
   }, [store, router, t]);
 
   const onSubmit = useCallback(
