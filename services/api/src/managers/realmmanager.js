@@ -238,6 +238,22 @@ export function one(req, res) {
   res.json(_escapeSecrets(realm));
 }
 
-export function all(req, res) {
-  res.json(req.realms.map((realm) => _escapeSecrets(realm)));
+export async function all(req, res) {
+  try {
+    // If realms is not in the request, fetch them directly
+    const realms = req.realms || await Collections.Realm.find({
+      _id: { $in: req.realms.map }
+    }).lean();
+
+    // Map and escape secrets
+    const safeRealms = realms.map((realm) => _escapeSecrets(realm));
+    
+    res.json(safeRealms);
+  } catch (error) {
+    logger.error(`Error fetching realms: ${error.message}`);
+    res.status(500).json({
+      message: 'Failed to fetch realms',
+      error: error.message
+    });
+  }
 }

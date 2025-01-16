@@ -270,11 +270,11 @@ export function toOccupantData(inputOccupant) {
   occupant.contactEmails =
     occupant.contacts && occupant.contacts.length
       ? occupant.contacts.reduce((acc, { email }) => {
-          if (email) {
-            return [...acc, email.toLowerCase()];
-          }
-          return acc;
-        }, [])
+        if (email) {
+          return [...acc, email.toLowerCase()];
+        }
+        return acc;
+      }, [])
       : [];
 
   occupant.hasContactEmails = occupant.contactEmails.length > 0;
@@ -313,6 +313,10 @@ export function toOccupantData(inputOccupant) {
       if (item.propertyId?._id) {
         item.property = item.property || item.propertyId;
         item.propertyId = item.propertyId._id;
+        item.expenses.forEach((expense) => {
+          expense.beginDate = moment(expense.beginDate).format('DD/MM/YYYY');
+          expense.endDate = moment(expense.endDate).format('DD/MM/YYYY');
+        });
       }
       if (item.property) {
         if (item.property.type === 'parking') {
@@ -356,11 +360,11 @@ export function toOccupantData(inputOccupant) {
 
   occupant.hasPayments = occupant.rents
     ? occupant.rents.some(
-        (rent) =>
-          (rent.payments &&
-            rent.payments.some((payment) => payment.amount > 0)) ||
-          rent.discounts.some((discount) => discount.origin === 'settlement')
-      )
+      (rent) =>
+        (rent.payments &&
+          rent.payments.some((payment) => payment.amount > 0)) ||
+        rent.discounts.some((discount) => discount.origin === 'settlement')
+    )
     : false;
   delete occupant.rents;
   return occupant;
