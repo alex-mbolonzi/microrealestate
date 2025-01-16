@@ -83,9 +83,11 @@ function Tenant() {
 
     // await router.push(store.appHistory.previousPath);
     // Redirect to /tenants after successful delete
-    await store.tenant.fetchAll(); // Example: Fetch updated tenants list
-    
+    //await store.tenant.fetch(); // Example: Fetch updated tenants list
+    store.tenant.setSelected(null);
+ 
     await router.push(`/${store.organization.selected.name}/tenants`);
+
   }, [store, router, t]);
 
   const onSubmit = useCallback(
