@@ -143,7 +143,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                 buffer = lines.pop() || '';
                 
                 // Process complete lines
-                for (const line of lines) {
+                for (const line of lines.slice(1)) {
                   if (!line.trim()) continue;
                   
                   try {
