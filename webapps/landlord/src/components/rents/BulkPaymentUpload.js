@@ -137,8 +137,12 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                 // Add new data to our buffer
                 buffer += newResponse;
                 
+                console.log('Buffer:', buffer);
                 // Split buffer by newlines and process each line
                 const lines = buffer.split('\n');
+
+                console.log('Lines:', lines);
+                
                 // Keep the last line in buffer as it might be incomplete
                 buffer = lines.pop() || '';
                 
