@@ -57,6 +57,9 @@ async function Main() {
     await service.startUp();
   } catch (err) {
     logger.error(err);
+
+    console.log('Service:', service);
+    
     service.shutdown(1);
   }
 }
