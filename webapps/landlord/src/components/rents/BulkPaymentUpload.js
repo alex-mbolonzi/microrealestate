@@ -90,9 +90,13 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
         return;
       }
 
+      console.log('Uploading file...', file);
       // Create form data with the file
       const formData = new FormData();
       formData.append('file', file);
+
+      console.log('Form data created', formData);
+
       // Get current term from store or URL
       const currentTerm = store.rent.periodAsString;
       formData.append('term', currentTerm);
@@ -142,7 +146,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                 const lines = buffer.split('\n');
 
                 console.log('Lines:', lines);
-                
+
                 // Keep the last line in buffer as it might be incomplete
                 buffer = lines.pop() || '';
                 
@@ -256,12 +260,17 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
 
           // Send the request
           try {
+            console.log('Sending request...');
             xhr.open('POST', `${config.BASE_PATH}/api/paymentprocessor/process-payments`);
+            console.log('Request URL:', `${config.BASE_PATH}/api/paymentprocessor/process-payments`);
             xhr.setRequestHeader('Authorization', `Bearer ${validToken}`);
             xhr.setRequestHeader('organizationid', store.organization?.selected?._id);
+            console.log('Request headers:', { Authorization: `Bearer ${validToken}`, organizationid: store.organization?.selected?._id });
             xhr.send(formData);
+            console.log('Request sent');
           } catch (error) {
             const errorMsg = 'Failed to start upload';
+            console.error('Failed to start upload:', error);
             setCurrentStatus('error');
             setStatusMessage(errorMsg);
             setError(errorMsg);
