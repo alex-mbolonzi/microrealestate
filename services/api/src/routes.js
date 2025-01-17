@@ -9,6 +9,7 @@ import * as rentManager from './managers/rentmanager.js';
 import { Middlewares, Service } from '@microrealestate/common';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import express from 'express';
+import FormData from 'form-data';
 import multer from 'multer';
 
 export default function routes() {
