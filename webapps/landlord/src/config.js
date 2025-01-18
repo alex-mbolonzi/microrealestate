@@ -10,7 +10,7 @@ const config = {
   NODE_ENV: env('NODE_ENV'),
   SIGNUP: env('SIGNUP') === 'true',
   // Allow HTTP in development/testing
-  ALLOW_HTTP: process.env.NODE_ENV !== 'production'
+  ALLOW_HTTP: process.env.NODE_ENV !== 'production',
 };
 
 export default config;
