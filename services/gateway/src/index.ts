@@ -146,13 +146,13 @@ function exposeServices(application: Express.Application) {
     })
   );
 
-  // application.use(
-  //   '/api/paymentprocessor',
-  //   createProxyMiddleware({
-  //     target: config.API_URL,
-  //     pathRewrite: { '^/paymentprocessor/process-payments': '' }
-  //   })
-  // );
+  application.use(
+    '^/api/paymentprocessor',
+    createProxyMiddleware({
+      target: config.API_URL,
+      pathRewrite: { '^/api/paymentprocessor/process-payments': '' }
+    })
+  );
 
   // Do not expose reset api on Prod
   if (!config.PRODUCTION) {
