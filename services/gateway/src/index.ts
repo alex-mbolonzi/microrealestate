@@ -147,7 +147,7 @@ function exposeServices(application: Express.Application) {
   );
 
   application.use(
-    '^/api/paymentprocessor',
+    '/api/paymentprocessor',
     createProxyMiddleware({
       target: config.API_URL,
       pathRewrite: { '^/api/paymentprocessor/process-payments': '' }
