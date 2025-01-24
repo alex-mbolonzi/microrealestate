@@ -39,8 +39,7 @@ async function Main() {
         DOMAIN_URL: process.env.DOMAIN_URL || 'http://localhost', // deprecated
         APP_DOMAIN: process.env.APP_DOMAIN,
         CORS_ENABLED: process.env.CORS_ENABLED === 'true',
-        TENANTAPI_URL: process.env.TENANTAPI_URL,
-        PAYMENTPROCESSOR_URL: process.env.PAYMENTPROCESSOR_URL,
+        TENANTAPI_URL: process.env.TENANTAPI_URL
       })
     );
     await service.init({
@@ -145,14 +144,6 @@ function exposeServices(application: Express.Application) {
       pathRewrite: { '^/tenantapi': '' }
     })
   );
-
-  // application.use(
-  //   '/api/v2/paymentprocessor',
-  //   createProxyMiddleware({
-  //     target: config.API_URL,
-  //     pathRewrite: { '^/api/paymentprocessor/process-payments': '' }
-  //   })
-  // );
 
   // Do not expose reset api on Prod
   if (!config.PRODUCTION) {
