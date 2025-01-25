@@ -124,7 +124,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             headers["Authorization"] = auth_token
 
         # Get tenant by reference number using the reference field
-        tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={padded_reference}"
+        tenant_url = f"{API_BASE_URL}/api/v2/tenants?{padded_reference}"
         logger.info(f"Looking up tenant with reference {padded_reference} at URL: {tenant_url}")
         
         # Use a separate client for tenant lookup
