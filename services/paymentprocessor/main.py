@@ -196,72 +196,53 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         year, month = term.split('.')
         formatted_term = f"{year}{month:02}0100"  # Set day to 01 and hour to 00
 
-        # Now construct the payment request with frequency
-        payment_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"
-        logger.info(f"Sending payment request to URL: {payment_url}")
+        # Fetch existing payments for the tenant and term
+        rent_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"
+        async with httpx.AsyncClient(timeout=30.0) as rent_client:
+            rent_response = await rent_client.get(rent_url, headers=headers)
+            logger.info(f"Fetching existing payments for tenant {tenant_id} and term {formatted_term}")
+            
+            if rent_response.status_code != 200:
+                error_msg = f"Failed to fetch existing payments for tenant {tenant_id}: {rent_response.text}"
+                logger.error(error_msg)
+                return PaymentResult(
+                    success=False,
+                    tenant_id=tenant_id,
+                    message=error_msg
+                )
+            
+            existing_rent = rent_response.json()
+            existing_payments = existing_rent.get("payments", [])
+            logger.info(f"Existing payments: {json.dumps(existing_payments, indent=2)}")
 
+        # Build the new payment
         formatted_date = parse_payment_date(payment.payment_date)
-
-        # tenant_id = tenant.get('_id')
-        # if not tenant_id:
-        #     error_msg = f"Tenant data missing _id field for reference {padded_reference}"
-        #     logger.error(error_msg)
-        #     return PaymentResult(
-        #         success=False,
-        #         tenant_id=payment.tenant_id,
-        #         message=error_msg
-        #     )
-        
-        # Insert the new code here
-        existing_payments = []  # Initialize an empty list for existing payments
-        
-        # Fetch existing payment data for the tenant
-        existing_payment_response = await httpx.AsyncClient().get(payment_url)
-        if existing_payment_response.status_code == 200:
-            existing_payment_data = existing_payment_response.json()
-            existing_payments = existing_payment_data.get('payments', [])  # Get existing payments if available
-        
-        # Append the new payment to the existing payments list
-        existing_payments.append({
+        new_payment = {
             "type": payment.payment_type.lower() if payment.payment_type else "cash",
             "date": formatted_date,
             "reference": payment.reference,
-            "amount": float(payment.amount)
-        })
-        
-        # Construct the payment data with the updated list of payments
-        payment_data = {
-            "_id": tenant_id,
-            "payments": existing_payments,
-            "description": payment.description or "",  # Ensure empty string if None
-            "promo": float(payment.promo_amount) if payment.promo_amount else 0.0,
-            "notepromo": payment.promo_note or "",
-            "extracharge": float(payment.extra_charge) if payment.extra_charge else 0.0,
-            "noteextracharge": payment.extra_charge_note or "",
-            "term": formatted_term
+            "amount": float(payment.amount)  # Ensure amount is float
         }
-        
+
+        # Combine existing payments with the new payment
+        updated_payments = existing_payments + [new_payment]
+
         # Build the payment data
-        # payment_data = {
-        #     "_id": tenant_id,  # Include tenant ID in payment data
-        #     "payments": [{  # Put payment in an array as required by the API
-        #         "type": payment.payment_type.lower() if payment.payment_type else "cash",
-        #         "date": formatted_date,
-        #         "reference": payment.reference,
-        #         "amount": float(payment.amount)  # Ensure amount is float
-        #     }],
-        #     "description": payment.description or "",  # Ensure empty string if None
-        #     "promo": float(payment.promo_amount or 0),  # Ensure float and default to 0
-        #     "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
-        #     "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
-        #     "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
-        #     "term": formatted_term  # Add formatted term to payment data
-        # }
-        logger.info(f"Payment data for tenant {tenant_id}: {json.dumps(payment_data, indent=2)}")
+        payment_data = {
+            "_id": tenant_id,  # Include tenant ID in payment data
+            "payments": updated_payments,  # Send the combined list of payments
+            "description": payment.description or "",  # Ensure empty string if None
+            "promo": float(payment.promo_amount or 0),  # Ensure float and default to 0
+            "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
+            "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
+            "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
+            "term": formatted_term  # Add formatted term to payment data
+        }
+        logger.info(f"Updated payment data for tenant {tenant_id}: {json.dumps(payment_data, indent=2)}")
 
         # Use a separate client for payment request
         async with httpx.AsyncClient(timeout=30.0) as payment_client:
-            payment_response = await payment_client.patch(payment_url, headers=headers, json=payment_data)
+            payment_response = await payment_client.patch(rent_url, headers=headers, json=payment_data)
             logger.info(f"Payment response for tenant {tenant_id} - Status: {payment_response.status_code}")
             logger.info(f"Payment response body: {payment_response.text}")
 
