@@ -97,7 +97,7 @@ def parse_payment_date(date_str: str) -> str:
     try:
         # Parse the date string
         parsed_date = parser.parse(date_str, dayfirst=True)  # Assume DD/MM/YYYY format if ambiguous
-        # Return in MM/DD/YYYY format
+        # Return in DD/MM/YYYY format
         return parsed_date.strftime('%d/%m/%Y')
     except (ValueError, TypeError) as e:
         logger.error(f"Error parsing date {date_str}: {str(e)}")
@@ -202,21 +202,61 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
         formatted_date = parse_payment_date(payment.payment_date)
 
+        # tenant_id = tenant.get('_id')
+        # if not tenant_id:
+        #     error_msg = f"Tenant data missing _id field for reference {padded_reference}"
+        #     logger.error(error_msg)
+        #     return PaymentResult(
+        #         success=False,
+        #         tenant_id=payment.tenant_id,
+        #         message=error_msg
+        #     )
+        
+        # Insert the new code here
+        existing_payments = []  # Initialize an empty list for existing payments
+        
+        # Fetch existing payment data for the tenant
+        existing_payment_response = await httpx.AsyncClient().get(payment_url)
+        if existing_payment_response.status_code == 200:
+            existing_payment_data = existing_payment_response.json()
+            existing_payments = existing_payment_data.get('payments', [])  # Get existing payments if available
+        
+        # Append the new payment to the existing payments list
+        existing_payments.append({
+            "type": payment.payment_type.lower() if payment.payment_type else "cash",
+            "date": formatted_date,
+            "reference": payment.reference,
+            "amount": float(payment.amount)
+        })
+        
+        # Construct the payment data with the updated list of payments
         payment_data = {
-            "_id": tenant_id,  # Include tenant ID in payment data
-            "payments": [{  # Put payment in an array as required by the API
-                "type": payment.payment_type.lower() if payment.payment_type else "cash",
-                "date": formatted_date,
-                "reference": payment.reference,
-                "amount": float(payment.amount)  # Ensure amount is float
-            }],
+            "_id": tenant_id,
+            "payments": existing_payments,
             "description": payment.description or "",  # Ensure empty string if None
-            "promo": float(payment.promo_amount or 0),  # Ensure float and default to 0
-            "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
-            "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
-            "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
-            "term": formatted_term  # Add formatted term to payment data
+            "promo": float(payment.promo_amount) if payment.promo_amount else 0.0,
+            "notepromo": payment.promo_note or "",
+            "extracharge": float(payment.extra_charge) if payment.extra_charge else 0.0,
+            "noteextracharge": payment.extra_charge_note or "",
+            "term": formatted_term
         }
+        
+        # Build the payment data
+        # payment_data = {
+        #     "_id": tenant_id,  # Include tenant ID in payment data
+        #     "payments": [{  # Put payment in an array as required by the API
+        #         "type": payment.payment_type.lower() if payment.payment_type else "cash",
+        #         "date": formatted_date,
+        #         "reference": payment.reference,
+        #         "amount": float(payment.amount)  # Ensure amount is float
+        #     }],
+        #     "description": payment.description or "",  # Ensure empty string if None
+        #     "promo": float(payment.promo_amount or 0),  # Ensure float and default to 0
+        #     "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
+        #     "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
+        #     "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
+        #     "term": formatted_term  # Add formatted term to payment data
+        # }
         logger.info(f"Payment data for tenant {tenant_id}: {json.dumps(payment_data, indent=2)}")
 
         # Use a separate client for payment request
@@ -240,7 +280,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 tenant_id=tenant_id,
                 message=f"Successfully processed payment for tenant {tenant_id}"
             )
-            
+        
     except Exception as e:
         error_msg = f"Error processing payment: {str(e)}"
         logger.error(error_msg)
