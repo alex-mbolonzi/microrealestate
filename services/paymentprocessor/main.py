@@ -52,6 +52,17 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     logger.info(f"Incoming request: {request.method} {request.url}")
     logger.info(f"Headers: {dict(request.headers)}")
+
+    # Convert the request's path to modify the URL
+    modified_url_path = request.url.path.replace(
+        "/api/v2/paymentprocessor/process-payments", "/paymentprocessor/process-payments"
+    )
+
+    # If the URL needs modification
+    if request.url.path == "/api/v2/paymentprocessor/process-payments":
+        # Create a new scope with the modified path
+        request.scope["path"] = modified_url_path
+
     response = await call_next(request)
     logger.info(f"Response status: {response.status_code}")
     return response
