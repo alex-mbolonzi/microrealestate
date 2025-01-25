@@ -55,7 +55,7 @@ async def log_requests(request: Request, call_next):
 
     # Convert the request's path to modify the URL
     modified_url_path = request.url.path.replace(
-        "/api/v2/paymentprocessor/process-payments", "/paymentprocessor/process-payments"
+        "/api/v2/paymentprocessor/process-payments", "/process-payments"
     )
 
     # If the URL needs modification
