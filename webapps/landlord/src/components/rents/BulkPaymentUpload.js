@@ -261,8 +261,8 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
           // Send the request
           try {
             console.log('Sending request...');
-            xhr.open('POST', `${config.GATEWAY_URL}/paymentprocessor`);
-            console.log('Request URL:', `${config.BASE_PATH}/api/paymentprocessor/process-payments`);
+            xhr.open('POST', `${config.GATEWAY_URL}/api/v2/paymentprocessor/process-payments`);
+            console.log('Request URL:', `${config.GATEWAY_URL}/api/v2/paymentprocessor/process-payments`);
             xhr.setRequestHeader('Authorization', `Bearer ${validToken}`);
             xhr.setRequestHeader('organizationid', store.organization?.selected?._id);
             console.log('Request headers:', { Authorization: `Bearer ${validToken}`, organizationid: store.organization?.selected?._id });
