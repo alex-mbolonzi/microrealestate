@@ -98,10 +98,10 @@ def parse_payment_date(date_str: str) -> str:
         # Parse the date string
         parsed_date = parser.parse(date_str, dayfirst=True)  # Assume DD/MM/YYYY format if ambiguous
         # Return in MM/DD/YYYY format
-        return parsed_date.strftime('%m/%d/%Y')
+        return parsed_date.strftime('%d/%m/%Y')
     except (ValueError, TypeError) as e:
         logger.error(f"Error parsing date {date_str}: {str(e)}")
-        raise ValueError(f"Invalid date format: {date_str}. Please use MM/DD/YYYY format.")
+        raise ValueError(f"Invalid date format: {date_str}. Please use DD/MM/YYYY format.")
 
 # Constants for frequency
 PAYMENT_FREQUENCY = 'months'  # Monthly payments are standard for rental contracts
