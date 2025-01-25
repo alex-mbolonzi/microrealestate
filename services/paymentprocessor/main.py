@@ -124,7 +124,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             headers["Authorization"] = auth_token
 
         # Get tenant by reference number using the reference field
-        tenant_url = f"{API_BASE_URL}/api/v2/tenant?{padded_reference}/{term}"
+        tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={padded_reference}"
         logger.info(f"Looking up tenant with reference {padded_reference} at URL: {tenant_url}")
         
         # Use a separate client for tenant lookup
@@ -197,7 +197,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         formatted_term = f"{year}{month:02}0100"  # Set day to 01 and hour to 00
 
         # Fetch existing payments for the tenant and term
-        rent_url = f"{API_BASE_URL}/api/v2/rents/payment/{tenant_id}/{formatted_term}"
+        rent_url = f"{API_BASE_URL}/api/v2/tenant/{tenant_id}/{formatted_term}"
         async with httpx.AsyncClient(timeout=30.0) as rent_client:
             rent_response = await rent_client.get(rent_url, headers=headers)
             logger.info(f"Fetching existing payments for tenant {tenant_id} and term {formatted_term}")
