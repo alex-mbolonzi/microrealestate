@@ -194,7 +194,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             logger.info(f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}")
 
         # Fetch existing payments for the tenant
-        payments_url = f"{GATEWAY_URL}/api/v2/rents/payment/{tenant_id}/{term}"
+        payments_url = f"{GATEWAY_URL}/api/v2/rents/payment?id={tenant_id}&term={term}"
         async with httpx.AsyncClient(timeout=30.0) as payments_client:
             payments_response = await payments_client.get(payments_url, headers=headers)
             logger.info(f"Payments lookup response status: {payments_response.status_code}")
