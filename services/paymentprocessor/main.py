@@ -32,7 +32,8 @@ logger.addHandler(console_handler)
 logger.info("Payment Processor Service starting up...")
 
 # API configuration
-API_BASE_URL = os.getenv('API_BASE_URL', 'http://gateway:8080/landlord')
+API_BASE_URL = os.getenv('API_BASE_URL', 'http://api:8200')
+GATEWAY_URL = os.getenv('API_BASE_URL', 'http://gateway:8080')
 logger.info(f"API Base URL: {API_BASE_URL}")
 
 app = FastAPI(title="Payment Processor Service")
@@ -124,7 +125,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             headers["Authorization"] = auth_token
 
         # Get tenant by reference number using the reference field
-        tenant_url = f"{API_BASE_URL}/api/v2/tenants?reference={padded_reference}"
+        tenant_url = f"{GATEWAY_URL}/api/v2/tenants?reference={padded_reference}"
         logger.info(f"Looking up tenant with reference {padded_reference} at URL: {tenant_url}")
         
         # Use a separate client for tenant lookup
@@ -193,7 +194,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             logger.info(f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}")
 
         # Fetch existing payments for the tenant
-        payments_url = f"{API_BASE_URL}/api/v2/rents/{tenant_id}/{term}"
+        payments_url = f"{GATEWAY_URL}/api/v2/rents/{tenant_id}/{term}"
         async with httpx.AsyncClient(timeout=30.0) as payments_client:
             payments_response = await payments_client.get(payments_url, headers=headers)
             logger.info(f"Payments lookup response status: {payments_response.status_code}")
