@@ -191,12 +191,33 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     message=error_msg
                 )
 
-            logger.info(f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}")
+            # Extract realmId from tenant data
+            realm_id = tenant.get('realmId')
+            if not realm_id:
+                error_msg = f"Tenant data missing realmId field for reference {padded_reference}"
+                logger.error(error_msg)
+                return PaymentResult(
+                    success=False,
+                    tenant_id=payment.tenant_id,
+                    message=error_msg
+                )
+
+            logger.info(f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}, Realm: {realm_id}")
+
+        # Parse the term string (YYYY.MM) into the correct format (YYYYMMDDHH)
+        year, month = term.split('.')
+        formatted_term = f"{year}{month}0100"  # Set day to 01 and hour to 00
+
+        # Update headers to include realmId
+        headers_with_realm = {
+            **headers,
+            "realm": realm_id,  # Add realmId to headers
+        }
 
         # Fetch existing payments for the tenant
-        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{term}"
+        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{formatted_term}"
         async with httpx.AsyncClient(timeout=30.0) as payments_client:
-            payments_response = await payments_client.get(payments_url, headers=headers)
+            payments_response = await payments_client.get(payments_url, headers=headers_with_realm)
             logger.info(f"Payments lookup response status: {payments_response.status_code}")
 
             if payments_response.status_code != 200:
@@ -209,11 +230,11 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 )
 
             existing_payments = payments_response.json().get('payments', [])
-            logger.info(f"Existing payments for tenant {tenant_id}: {json.dumps(existing_payments, indent=2)}")
+            if not existing_payments:
+                logger.info(f"No existing payments found for tenant {tenant_id} and term {term}")
+                existing_payments = []  # Initialize as empty list
 
-        # Parse the term string (YYYY.MM) into the correct format (YYYYMMDDHH)
-        year, month = term.split('.')
-        formatted_term = f"{year}{month:02}0100"  # Set day to 01 and hour to 00
+            logger.info(f"Existing payments for tenant {tenant_id}: {json.dumps(existing_payments, indent=2)}")
 
         # Format the new payment
         formatted_date = parse_payment_date(payment.payment_date)
@@ -242,7 +263,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
         # Use a separate client for payment request
         async with httpx.AsyncClient(timeout=30.0) as payment_client:
-            payment_response = await payment_client.patch(payments_url, headers=headers, json=payment_data)
+            payment_response = await payment_client.patch(payments_url, headers=headers_with_realm, json=payment_data)
             logger.info(f"Payment response for tenant {tenant_id} - Status: {payment_response.status_code}")
             logger.info(f"Payment response body: {payment_response.text}")
 
