@@ -33,7 +33,7 @@ logger.info("Payment Processor Service starting up...")
 
 # API configuration
 API_BASE_URL = os.getenv('API_BASE_URL', 'http://api:8200')
-GATEWAY_URL = os.getenv('API_BASE_URL', 'http://gateway:8080')
+GATEWAY_URL = os.getenv('GATEWAY_URL', 'http://gateway:80')
 logger.info(f"API Base URL: {API_BASE_URL}")
 
 app = FastAPI(title="Payment Processor Service")
