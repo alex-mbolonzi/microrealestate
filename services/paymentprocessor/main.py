@@ -209,13 +209,13 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         # formatted_term = f"{year}.{month}"  # Use YYYY.MM format
 
         # Update headers to include realmId
-        headers_with_realm = {
-            **headers,
-            "realm": realm_id,  # Add realmId to headers
-        }
+        # headers_with_realm = {
+        #     **headers,
+        #     "realm": realm_id,  # Add realmId to headers
+        # }
 
         # Fetch existing payments for the tenant
-        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{term}"
+        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{realm_id}/{tenant_id}/{term}"
         async with httpx.AsyncClient(timeout=30.0) as payments_client:
             payments_response = await payments_client.get(payments_url, headers=headers_with_realm)
             logger.info(f"Payments lookup response status: {payments_response.status_code}")
