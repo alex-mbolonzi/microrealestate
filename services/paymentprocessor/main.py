@@ -204,9 +204,9 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
             logger.info(f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}, Realm: {realm_id}")
 
-        # Parse the term string (YYYY.MM) into the correct format (YYYYMMDDHH)
-        year, month = term.split('.')
-        formatted_term = f"{year}{month}0100"  # Set day to 01 and hour to 00
+        # Parse the term string (YYYY.MM) into the correct format
+        # year, month = term.split('.')
+        # formatted_term = f"{year}.{month}"  # Use YYYY.MM format
 
         # Update headers to include realmId
         headers_with_realm = {
@@ -215,7 +215,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         }
 
         # Fetch existing payments for the tenant
-        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{formatted_term}"
+        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{term}"
         async with httpx.AsyncClient(timeout=30.0) as payments_client:
             payments_response = await payments_client.get(payments_url, headers=headers_with_realm)
             logger.info(f"Payments lookup response status: {payments_response.status_code}")
@@ -257,7 +257,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
             "extracharge": float(payment.extra_charge or 0),  # Ensure float and default to 0
             "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
-            "term": formatted_term  # Add formatted term to payment data
+            "term": term  # Add formatted term to payment data
         }
         logger.info(f"Payment data for tenant {tenant_id}: {json.dumps(payment_data, indent=2)}")
 
