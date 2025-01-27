@@ -215,9 +215,11 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         #     "realm": realm_id,  # Add realmId to headers
         # }
         # Assuming term is in the format 'YYYY.MM'
-        curr_term = term.replace('.', '')
+        year, month = term.split('.')
+        formatted_term = f"{year}{month.zfill(2)}0100"  # Format to YYYYMMDDHH
+
         # Fetch existing payments for the tenant
-        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/012025"
+        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{formatted_term}"
 
         async with httpx.AsyncClient(timeout=30.0) as payments_client:
             payments_response = await payments_client.get(payments_url, headers=headers)
