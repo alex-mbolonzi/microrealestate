@@ -7,7 +7,10 @@ import * as propertyManager from './managers/propertymanager.js';
 import * as realmManager from './managers/realmmanager.js';
 import * as rentManager from './managers/rentmanager.js';
 import { Middlewares, Service } from '@microrealestate/common';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import express from 'express';
+import FormData from 'form-data';
+import multer from 'multer';
 
 export default function routes() {
   const { ACCESS_TOKEN_SECRET } = Service.getInstance().envConfig.getValues();
@@ -19,6 +22,47 @@ export default function routes() {
     Middlewares.checkOrganization(),
     // forbid access to tenant
     Middlewares.notRoles(['tenant'])
+  );
+
+  // Configure multer for file uploads
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+  });
+
+  // Add proxy for payment processor service
+  const paymentProcessorUrl = process.env.PAYMENTPROCESSOR_URL || 'http://paymentprocessor:8001';
+
+  router.post('/paymentprocessor/process-payments',
+    upload.single('file'),
+    (req, res, next) => {
+      if (!req.file || !req.body.term) {
+        return res.status(400).json({ error: 'File and term are required' });
+      }
+      next();
+    },
+    createProxyMiddleware({
+      target: paymentProcessorUrl,
+      pathRewrite: {
+        '^/paymentprocessor/process-payments': '/process-payments'
+      },
+      changeOrigin: true,
+      onProxyReq: (proxyReq, req, res) => {
+        const formData = new FormData();
+        formData.append('file', req.file.buffer, {
+          filename: req.file.originalname,
+          contentType: 'text/csv'
+        });
+        formData.append('term', req.body.term);
+        proxyReq.setHeader('organizationid', req.headers.organizationid);
+        proxyReq.setHeader('Content-Type', `multipart/form-data; boundary=${formData.getBoundary()}`);
+        proxyReq.setHeader('Content-Length', formData.getLengthSync());
+        proxyReq.setHeader('Accept-Language', 'en');
+        formData.pipe(proxyReq);
+      }
+    })
   );
 
   const realmsRouter = express.Router();
