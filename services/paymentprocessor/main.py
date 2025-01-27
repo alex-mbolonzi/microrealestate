@@ -117,7 +117,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Accept-Language": "en-US",
+            "Accept-Language": "en",
             "organizationId": organization_id,
         }
         
