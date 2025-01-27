@@ -215,9 +215,16 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         # }
 
         # Fetch existing payments for the tenant
-        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{realm_id}/{tenant_id}/{term}"
+        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{term}"
+
+        # Prepare the body with the realm and other necessary data
+        body = {
+           "realm": realm_id,  # Include the realm
+          # Add any other parameters you need to send in the body
+        } 
+
         async with httpx.AsyncClient(timeout=30.0) as payments_client:
-            payments_response = await payments_client.get(payments_url, headers=headers)
+            payments_response = await payments_client.get(payments_url, headers=headers, json=body)
             logger.info(f"Payments lookup response status: {payments_response.status_code}")
 
             if payments_response.status_code != 200:
