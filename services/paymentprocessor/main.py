@@ -269,7 +269,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
         # Use a separate client for payment request
         async with httpx.AsyncClient(timeout=30.0) as payment_client:
-            payment_response = await payment_client.patch(payments_url, headers=headers_with_realm, json=payment_data)
+            payment_response = await payment_client.patch(payments_url, headers=headers, json=payment_data)
             logger.info(f"Payment response for tenant {tenant_id} - Status: {payment_response.status_code}")
             logger.info(f"Payment response body: {payment_response.text}")
 
