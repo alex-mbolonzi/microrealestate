@@ -7,9 +7,9 @@ export default function usePaymentTypes() {
   return useMemo(() => {
     const itemList = [
       {
-        id: 'cheque',
-        label: t('Cheque'),
-        value: 'cheque',
+        id: 'bank',
+        label: t('Bank'),
+        value: 'bank',
       },
       {
         id: 'cash',
