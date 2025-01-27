@@ -216,7 +216,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         # }
 
         # Fetch existing payments for the tenant
-        payments_url = f"{GATEWAY_URL}/api/v2/Bomatech/rents/tenant/{tenant_id}/{term}"
+        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{term}"
 
         async with httpx.AsyncClient(timeout=30.0) as payments_client:
             payments_response = await payments_client.get(payments_url, headers=headers)
@@ -231,6 +231,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     message=error_msg
                 )
 
+            logger.info(f"Payments response : {payments_response.json()}")
             existing_payments = payments_response.json().get('payments', [])
             if not existing_payments:
                 logger.info(f"No existing payments found for tenant {tenant_id} and term {term}")
