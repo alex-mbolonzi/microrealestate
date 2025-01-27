@@ -219,10 +219,10 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         formatted_term = f"{year}{month.zfill(2)}0100"  # Format to YYYYMMDDHH
 
         # Fetch existing payments for the tenant
-        payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{formatted_term}"
+        get_payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{formatted_term}"
 
         async with httpx.AsyncClient(timeout=30.0) as payments_client:
-            payments_response = await payments_client.get(payments_url, headers=headers)
+            payments_response = await payments_client.get(get_payments_url, headers=headers)
             logger.info(f"Payments lookup response status: {payments_response.status_code}")
 
             if payments_response.status_code != 200:
@@ -267,9 +267,11 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         }
         logger.info(f"Payment data for tenant {tenant_id}: {json.dumps(payment_data, indent=2)}")
 
+        update_payments_url = f"{GATEWAY_URL}/api/v2/rents/payment/{tenant_id}/{term}"
+
         # Use a separate client for payment request
         async with httpx.AsyncClient(timeout=30.0) as payment_client:
-            payment_response = await payment_client.patch(payments_url, headers=headers, json=payment_data)
+            payment_response = await payment_client.patch(update_payments_url, headers=headers, json=payment_data)
             logger.info(f"Payment response for tenant {tenant_id} - Status: {payment_response.status_code}")
             logger.info(f"Payment response body: {payment_response.text}")
 
