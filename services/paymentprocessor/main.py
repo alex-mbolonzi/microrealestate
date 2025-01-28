@@ -302,61 +302,44 @@ async def process_payments(
         try:
             logger.info(f"Starting bulk payment processing for term: {term}")
 
-            # Read the CSV file content in chunks
-            chunk_size = 8192  # 8KB chunks
-            content = bytearray()
-            total_size = 0
+            # Read the entire file into memory
+            content = await file.read()
+            total_size = len(content)
+            yield f"data: {json.dumps(dict(status='uploading', progress=100, message='File uploaded successfully'))}\n\n"
 
-            # First pass: get total size
-            chunk = await file.read(chunk_size)
-            while chunk:
-                total_size += len(chunk)
-                content.extend(chunk)
-                chunk = await file.read(chunk_size)
-
-            # Reset file pointer
-            await file.seek(0)
-            content.clear()  # Clear content to start fresh
-            logger.info("File pointer reset for second pass.")
-
-            # Send initial progress
-            yield f"data: {json.dumps(dict(status='uploading', progress=0, message='Starting file upload...'))}\n\n"
-
-            # Second pass: actual processing with progress
-            bytes_read = 0
-            chunk = await file.read(chunk_size)
-            while chunk:
-                content.extend(chunk)
-                bytes_read += len(chunk)
-                progress = int((bytes_read / total_size) * 100)
-
-                yield f"data: {json.dumps(dict(status='uploading', progress=progress, message=f'Uploading file... {progress}%'))}\n\n"
-
-                chunk = await file.read(chunk_size)
-
-            # File is uploaded, now process it
+            # Process the CSV content
             yield f"data: {json.dumps(dict(status='processing', progress=0, message='Processing CSV file...'))}\n\n"
 
-            csv_content = content.decode()
+            # Close the file to release resources
+            await file.close()
 
             # Get organization ID from headers
             organization_id = request.headers.get('organizationid')
             auth_token = request.headers.get('authorization')
 
-            # Read CSV into pandas DataFrame
+            csv_content = content.decode()
             df = pd.read_csv(StringIO(csv_content))
-            logger.debug(f"DataFrame content:\n{df}")  # Log DataFrame content
+            logger.debug(f"DataFrame content:\n{df}")
+
+            # Clear the file content from memory
+            del content
+            # Clear the decoded CSV content from memory (no longer needed)
+            del csv_content
+
+            # Validate required columns
+            required_columns = {"tenant_id", "payment_date", "payment_type", "payment_reference", "amount"}
+            if not required_columns.issubset(df.columns):
+                error_msg = f"CSV file is missing required columns: {required_columns - set(df.columns)}"
+                logger.error(error_msg)
+                yield f"data: {json.dumps(dict(status='error', message=error_msg))}\n\n"
+                return
 
             total_payments = len(df)
-            logger.info(f"Total payments to process: {total_payments}")
-
-            # Initialize results list
-            results = []
+            update_interval = max(1, total_payments // 10)  # Send updates every 10% progress
             successful_payments = 0
+            results = []
 
-            # Process each payment with progress updates
             for index, row in df.iterrows():
-                logger.debug(f"Processing row {index + 1}: {row}")  # Log each row
                 try:
                     # Create payment object
                     payment = Payment(
@@ -379,8 +362,9 @@ async def process_payments(
                     results.append(result)
 
                     # Send progress update
-                    progress = int(((index + 1) / total_payments) * 100)
-                    yield f"data: {json.dumps(dict(status='processing', progress=progress, message=f'Processing payments... {progress}% ({index + 1}/{total_payments})', current_result=result.dict()))}\n\n"
+                    if (index + 1) % update_interval == 0 or (index + 1) == total_payments:
+                        progress = int(((index + 1) / total_payments) * 100)
+                        yield f"data: {json.dumps(dict(status='processing', progress=progress, message=f'Processing payments... {progress}% ({index + 1}/{total_payments})', current_result=result.dict()))}\n\n"
 
                 except Exception as e:
                     error_msg = f"Error processing payment {index + 1}: {str(e)}"
@@ -391,7 +375,6 @@ async def process_payments(
                         message=f"Failed to process payment: {str(e)}",
                         details={"error": str(e)}
                     ))
-
                     yield f"data: {json.dumps(dict(status='error', message=error_msg, error=str(e)))}\n\n"
 
             # Send final results
