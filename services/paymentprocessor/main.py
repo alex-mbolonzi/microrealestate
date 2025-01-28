@@ -6,8 +6,6 @@ from typing import List, Dict
 import json
 import httpx
 import logging
-from datetime import datetime
-import asyncio
 from starlette.responses import StreamingResponse
 import os
 from dateutil import parser
@@ -51,8 +49,8 @@ app.add_middleware(
 # Add logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    logger.info(f"Incoming request: {request.method} {request.url}")
-    logger.info(f"Headers: {dict(request.headers)}")
+    logger.debug(f"Incoming request: {request.method} {request.url}")
+    logger.debug(f"Headers: {dict(request.headers)}")
 
     # Convert the request's path to modify the URL
     modified_url_path = request.url.path.replace(
@@ -127,12 +125,12 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
         # Get tenant by reference number using the reference field
         tenant_url = f"{GATEWAY_URL}/api/v2/tenants?reference={padded_reference}"
-        logger.info(f"Looking up tenant with reference {padded_reference} at URL: {tenant_url}")
+        logger.debug(f"Looking up tenant with reference {padded_reference} at URL: {tenant_url}")
         
         # Use a separate client for tenant lookup
         async with httpx.AsyncClient(timeout=30.0) as lookup_client:
             tenant_response = await lookup_client.get(tenant_url, headers=headers)
-            logger.info(f"Tenant lookup response status: {tenant_response.status_code}")
+            logger.debug(f"Tenant lookup response status: {tenant_response.status_code}")
             
             if tenant_response.status_code != 200:
                 error_msg = f"Failed to find tenant with reference {padded_reference}: {tenant_response.text}"
@@ -144,7 +142,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 )
             
             tenant_data = tenant_response.json()
-            logger.info(f"Raw tenant data: {json.dumps(tenant_data, indent=2)}")
+            logger.debug(f"Raw tenant data: {json.dumps(tenant_data, indent=2)}")
             
             # Handle both list and single object responses
             if isinstance(tenant_data, list):
@@ -203,17 +201,8 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     message=error_msg
                 )
 
-            logger.info(f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}, Realm: {realm_id}")
+            logger.debug(f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}, Realm: {realm_id}")
 
-        # Parse the term string (YYYY.MM) into the correct format
-        # year, month = term.split('.')
-        # formatted_term = f"{year}.{month}"  # Use YYYY.MM format
-
-        # Update headers to include realmId
-        # headers_with_realm = {
-        #     **headers,
-        #     "realm": realm_id,  # Add realmId to headers
-        # }
         # Assuming term is in the format 'YYYY.MM'
         year, month = term.split('.')
         formatted_term = f"{year}{month.zfill(2)}0100"  # Format to YYYYMMDDHH
@@ -223,7 +212,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
         async with httpx.AsyncClient(timeout=30.0) as payments_client:
             payments_response = await payments_client.get(get_payments_url, headers=headers)
-            logger.info(f"Payments lookup response status: {payments_response.status_code}")
+            logger.debug(f"Payments lookup response status: {payments_response.status_code}")
 
             if payments_response.status_code != 200:
                 error_msg = f"Failed to fetch existing payments for tenant {tenant_id}: {payments_response.text}"
@@ -234,13 +223,13 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     message=error_msg
                 )
 
-            logger.info(f"Payments response : {payments_response.json()}")
+            logger.debug(f"Payments response : {payments_response.json()}")
             existing_payments = payments_response.json().get('payments', [])
             if not existing_payments:
                 logger.info(f"No existing payments found for tenant {tenant_id} and term {term}")
                 existing_payments = []  # Initialize as empty list
 
-            logger.info(f"Existing payments for tenant {tenant_id}: {json.dumps(existing_payments, indent=2)}")
+            logger.debug(f"Existing payments for tenant {tenant_id}: {json.dumps(existing_payments, indent=2)}")
 
         # Format the new payment
         formatted_date = parse_payment_date(payment.payment_date)
@@ -265,7 +254,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
             "term": term  # Add formatted term to payment data
         }
-        logger.info(f"Payment data for tenant {tenant_id}: {json.dumps(payment_data, indent=2)}")
+        logger.debug(f"Payment data for tenant {tenant_id}: {json.dumps(payment_data, indent=2)}")
 
         update_payments_url = f"{GATEWAY_URL}/api/v2/rents/payment/{tenant_id}/{term}"
 
@@ -356,7 +345,7 @@ async def process_payments(
 
             # Read CSV into pandas DataFrame
             df = pd.read_csv(StringIO(csv_content))
-            logger.info(f"DataFrame content:\n{df}")  # Log DataFrame content
+            logger.debug(f"DataFrame content:\n{df}")  # Log DataFrame content
 
             total_payments = len(df)
             logger.info(f"Total payments to process: {total_payments}")
@@ -367,7 +356,7 @@ async def process_payments(
 
             # Process each payment with progress updates
             for index, row in df.iterrows():
-                logger.info(f"Processing row {index + 1}: {row}")  # Log each row
+                logger.debug(f"Processing row {index + 1}: {row}")  # Log each row
                 try:
                     # Create payment object
                     payment = Payment(
