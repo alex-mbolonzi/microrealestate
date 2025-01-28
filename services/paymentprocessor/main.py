@@ -105,7 +105,9 @@ def parse_payment_date(date_str: str) -> str:
 # Constants for frequency
 PAYMENT_FREQUENCY = 'months'  # Monthly payments are standard for rental contracts
 
-async def process_single_payment(payment: Payment, term: str, organization_id: str, auth_token: str = None) -> PaymentResult:
+
+async def process_single_payment(payment: Payment, term: str, organization_id: str,
+                                 auth_token: str = None) -> PaymentResult:
     """Process a single payment by calling the rent API endpoint."""
     try:
         # Pad the tenant reference with leading zeros
@@ -118,7 +120,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             "Accept-Language": "en",
             "organizationId": organization_id,
         }
-        
+
         # Add authorization header if token is provided
         if auth_token:
             headers["Authorization"] = auth_token
@@ -126,12 +128,12 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         # Get tenant by reference number using the reference field
         tenant_url = f"{GATEWAY_URL}/api/v2/tenants?reference={padded_reference}"
         logger.debug(f"Looking up tenant with reference {padded_reference} at URL: {tenant_url}")
-        
+
         # Use a separate client for tenant lookup
         async with httpx.AsyncClient(timeout=30.0) as lookup_client:
             tenant_response = await lookup_client.get(tenant_url, headers=headers)
             logger.debug(f"Tenant lookup response status: {tenant_response.status_code}")
-            
+
             if tenant_response.status_code != 200:
                 error_msg = f"Failed to find tenant with reference {padded_reference}: {tenant_response.text}"
                 logger.error(error_msg)
@@ -140,10 +142,10 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     tenant_id=payment.tenant_id,
                     message=error_msg
                 )
-            
+
             tenant_data = tenant_response.json()
             logger.debug(f"Raw tenant data: {json.dumps(tenant_data, indent=2)}")
-            
+
             # Handle both list and single object responses
             if isinstance(tenant_data, list):
                 if not tenant_data:
@@ -179,7 +181,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                         message=error_msg
                     )
                 tenant = tenant_data
-            
+
             tenant_id = tenant.get('_id')
             if not tenant_id:
                 error_msg = f"Tenant data missing _id field for reference {padded_reference}"
@@ -191,45 +193,54 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 )
 
             # Extract realmId from tenant data
-            realm_id = tenant.get('realmId')
-            if not realm_id:
-                error_msg = f"Tenant data missing realmId field for reference {padded_reference}"
-                logger.error(error_msg)
-                return PaymentResult(
-                    success=False,
-                    tenant_id=payment.tenant_id,
-                    message=error_msg
-                )
+            # realm_id = tenant.get('realmId')
+            # if not realm_id:
+            #     error_msg = f"Tenant data missing realmId field for reference {padded_reference}"
+            #     logger.error(error_msg)
+            #     return PaymentResult(
+            #         success=False,
+            #         tenant_id=payment.tenant_id,
+            #         message=error_msg
+            #     )
+            #
+            # logger.debug(
+            #     f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}, Realm: {realm_id}")
 
-            logger.debug(f"Successfully found tenant. Reference: {padded_reference}, ID: {tenant_id}, Realm: {realm_id}")
+            # Check if the tenant has previous payments
+            has_payments = tenant.get("hasPayments", False)
+            if has_payments:
+                logger.debug(f"Tenant {tenant_id} has previous payments. Fetching payment history.")
 
-        # Assuming term is in the format 'YYYY.MM'
-        year, month = term.split('.')
-        formatted_term = f"{year}{month.zfill(2)}0100"  # Format to YYYYMMDDHH
+                # Assuming term is in the format 'YYYY.MM'
+                year, month = term.split('.')
+                formatted_term = f"{year}{month.zfill(2)}0100"  # Format to YYYYMMDDHH
 
-        # Fetch existing payments for the tenant
-        get_payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{formatted_term}"
+                # Fetch existing payments for the tenant
+                get_payments_url = f"{GATEWAY_URL}/api/v2/rents/tenant/{tenant_id}/{formatted_term}"
 
-        async with httpx.AsyncClient(timeout=30.0) as payments_client:
-            payments_response = await payments_client.get(get_payments_url, headers=headers)
-            logger.debug(f"Payments lookup response status: {payments_response.status_code}")
+                async with httpx.AsyncClient(timeout=30.0) as payments_client:
+                    payments_response = await payments_client.get(get_payments_url, headers=headers)
+                    logger.debug(f"Payments lookup response status: {payments_response.status_code}")
 
-            if payments_response.status_code != 200:
-                error_msg = f"Failed to fetch existing payments for tenant {tenant_id}: {payments_response.text}"
-                logger.error(error_msg)
-                return PaymentResult(
-                    success=False,
-                    tenant_id=tenant_id,
-                    message=error_msg
-                )
+                    if payments_response.status_code != 200:
+                        error_msg = f"Failed to fetch existing payments for tenant {tenant_id}: {payments_response.text}"
+                        logger.error(error_msg)
+                        return PaymentResult(
+                            success=False,
+                            tenant_id=tenant_id,
+                            message=error_msg
+                        )
 
-            logger.debug(f"Payments response : {payments_response.json()}")
-            existing_payments = payments_response.json().get('payments', [])
-            if not existing_payments:
-                logger.info(f"No existing payments found for tenant {tenant_id} and term {term}")
-                existing_payments = []  # Initialize as empty list
+                    logger.debug(f"Payments response : {payments_response.json()}")
+                    existing_payments = payments_response.json().get('payments', [])
+                    if not existing_payments:
+                        logger.info(f"No existing payments found for tenant {tenant_id} and term {term}")
+                        existing_payments = []  # Initialize as empty list
 
-            logger.debug(f"Existing payments for tenant {tenant_id}: {json.dumps(existing_payments, indent=2)}")
+                    logger.debug(f"Existing payments for tenant {tenant_id}: {json.dumps(existing_payments, indent=2)}")
+            else:
+                logger.debug(f"Tenant {tenant_id} has no previous payments. Proceeding with new payment.")
+                existing_payments = []
 
         # Format the new payment
         formatted_date = parse_payment_date(payment.payment_date)
