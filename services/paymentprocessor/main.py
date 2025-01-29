@@ -86,7 +86,8 @@ class PaymentResult(BaseModel):
 
 def pad_tenant_id(tenant_id: str) -> str:
     """Pad tenant_id with leading zeros to ensure it's six digits"""
-    return str(tenant_id).strip().zfill(6)
+    # Convert to integer first to remove any decimal points, then to string and pad
+    return str(int(float(tenant_id))).strip().zfill(6)
 
 def parse_payment_date(date_str: str) -> str:
     """
