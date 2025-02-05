@@ -156,12 +156,12 @@ function Accounting() {
           />
         </TabsContent>
         <TabsContent value="lookerReports">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex flex-wrap gap-4">
             <a
               href="https://lookerstudio.google.com/s/v7daddbhDsU"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+              className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
             >
               <h3 className="font-semibold">Rent Payment Report</h3>
               <p className="text-sm text-gray-600">View detailed rent payment information.</p>
@@ -170,7 +170,7 @@ function Accounting() {
               href="https://lookerstudio.google.com/s/nA4vJCqFB8A"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+              className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
             >
               <h3 className="font-semibold">Payment Details Report</h3>
               <p className="text-sm text-gray-600">Explore payment breakdowns and trends.</p>
@@ -179,7 +179,7 @@ function Accounting() {
               href="https://lookerstudio.google.com/s/uLcj_Qtnxxc"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+              className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
             >
               <h3 className="font-semibold">Rented Properties Report</h3>
               <p className="text-sm text-gray-600">See an overview of rented properties.</p>
