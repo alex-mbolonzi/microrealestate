@@ -139,6 +139,9 @@ function Accounting() {
           )} (${
             store.accounting.filteredData.settlements?.length || 0
           })`}</TabsTrigger>
+          <TabsTrigger value="lookerReports" className="min-w-48 sm:w-full">
+            {`${t('Looker Reports')}`}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="incoming">
           <IncomingTenants onCSVClick={getIncomingTenantsAsCsv} />
