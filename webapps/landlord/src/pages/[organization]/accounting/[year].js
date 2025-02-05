@@ -152,6 +152,15 @@ function Accounting() {
             onDownloadYearInvoices={getYearInvoices}
           />
         </TabsContent>
+        <TabsContent value="lookerReports">
+          <div>
+            <a href="https://lookerstudio.google.com/s/v7daddbhDsU" target="_blank" rel="noopener noreferrer">Rent Payment Report</a>
+            <br />
+            <a href="https://lookerstudio.google.com/s/nA4vJCqFB8A" target="_blank" rel="noopener noreferrer">Payment Details Report</a>
+            <br />
+            <a href="https://lookerstudio.google.com/s/uLcj_Qtnxxc" target="_blank" rel="noopener noreferrer">Rented Properties Report</a>
+          </div>
+        </TabsContent>
       </Tabs>
     </Page>
   );
