@@ -26,7 +26,7 @@ function _filterData(data, filters) {
       .replace(regExp, '');
 
     filteredItems = filteredItems.filter(
-      ({ isCompany, name, manager, contacts, properties }) => {
+      ({ isCompany, name, manager, contacts, properties, reference }) => {
         // Search match name
         let found =
           name.replace(regExp, '').toLowerCase().indexOf(cleanedSearchText) !=
@@ -67,6 +67,16 @@ function _filterData(data, filters) {
                 .indexOf(cleanedSearchText) != -1
           ).length;
         }
+
+        // Search match reference field
+        if (!found && reference) {
+          found =
+            reference
+              ?.replace(regExp, '')
+              .toLowerCase()
+              .indexOf(cleanedSearchText) !== -1;
+        }
+
         return found;
       }
     );

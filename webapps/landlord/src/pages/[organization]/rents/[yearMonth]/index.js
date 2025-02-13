@@ -37,7 +37,7 @@ function _filterData(data, filters) {
       .replace(regExp, '');
 
     filteredItems = filteredItems.filter(
-      ({ occupant: { isCompany, name, manager, contacts }, payments }) => {
+      ({ occupant: { isCompany, name, manager, contacts, reference }, payments }) => {
         // Search match name
         let found =
           name.replace(regExp, '').toLowerCase().indexOf(cleanedSearchText) !=
@@ -77,6 +77,15 @@ function _filterData(data, filters) {
                 .toLowerCase()
                 .indexOf(cleanedSearchText) != -1
           );
+        }
+
+        // Search match reference field
+        if (!found && reference) {
+          found =
+            reference
+              ?.replace(regExp, '')
+              .toLowerCase()
+              .indexOf(cleanedSearchText) !== -1;
         }
 
         return found;
