@@ -182,7 +182,16 @@ function Accounting() {
               className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
             >
               <h3 className="font-semibold">Rented Properties Report</h3>
-              <p className="text-sm text-gray-600">See an overview of rented properties.</p>
+              <p className="text-sm text-gray-600">See an overview of rented properties payments.</p>
+            </a>
+            <a
+              href="https://lookerstudio.google.com/s/lQ6TF_433b8"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
+            >
+              <h3 className="font-semibold">Property Occupancy Report</h3>
+              <p className="text-sm text-gray-600">See details of monthly occupancy and payments.</p>
             </a>
           </div>
         </TabsContent>
