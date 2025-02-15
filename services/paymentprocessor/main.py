@@ -9,7 +9,9 @@ import logging
 from starlette.responses import StreamingResponse
 import os
 from dateutil import parser
+from datetime import datetime
 from pydantic import BaseModel
+import pymongo
 
 # Configure logging
 logging.basicConfig(
@@ -32,6 +34,8 @@ logger.info("Payment Processor Service starting up...")
 # API configuration
 API_BASE_URL = os.getenv('API_BASE_URL', 'http://api:8200')
 GATEWAY_URL = os.getenv('GATEWAY_URL', 'http://gateway:80')
+# Get the MongoDB connection string from the environment variable
+MONGO_URL = os.getenv('MONGO_URL', 'mongodb://localhost:27017')  # Default to localhost
 logger.info(f"API Base URL: {API_BASE_URL}")
 
 app = FastAPI(title="Payment Processor Service")
@@ -106,6 +110,48 @@ def parse_payment_date(date_str: str) -> str:
 # Constants for frequency
 PAYMENT_FREQUENCY = 'months'  # Monthly payments are standard for rental contracts
 
+def log_pending_payment(tenant_id, payment_date, payment_type, payment_reference, amount, narration):
+    """
+    Logs details of a failed payment attempt into the 'pendingPayments' collection.
+
+    Args:
+        tenant_id (str): Unique identifier for the tenant.
+        payment_date (str): Date of the payment. Expected in "YYYY-MM-DD" format.
+        payment_type (str): Type of payment (e.g., credit card, bank transfer, etc.).
+        payment_reference (str): Unique reference for the payment.
+        amount (float): Amount of payment.
+        narration (str): Reason or details of why the payment failed.
+
+    Returns:
+        None
+    """
+
+    # Initialize MongoDB client using the connection string
+    client = pymongo.MongoClient(MONGO_URL)
+
+    # Select the database (replace 'database_name' with your actual database name)
+    db = client['bomatech']
+
+    try:
+        # Define the document to be inserted
+        pending_payment = {
+            "tenantId": tenant_id,
+            "paymentDate": payment_date,
+            "paymentType": payment_type,
+            "paymentReference": payment_reference,
+            "amount": amount,
+            "dateCreated": datetime.utcnow(),  # Automatically log creation date
+            "dateUpdated": datetime.utcnow(),  # Automatically log the last update date
+            "narration": narration
+        }
+
+        # Insert the document into the 'pendingPayments' collection
+        db['pendingPayments'].insert_one(pending_payment)
+        print(f"Pending payment logged successfully for tenantId: {tenant_id}")
+    except Exception as e:
+        # Log an error if the operation fails (logger is assumed to be defined)
+        logger.error(f"Failed to log pending payment for tenantId: {tenant_id}. Error: {e}")
+
 
 async def process_single_payment(payment: Payment, term: str, organization_id: str,
                                  auth_token: str = None) -> PaymentResult:
@@ -151,6 +197,17 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             if isinstance(tenant_data, list):
                 if not tenant_data:
                     error_msg = f"No tenant found with reference {padded_reference}"
+
+                    # Log to pendingPayments if the payment fails
+                    log_pending_payment(
+                        tenant_id=payment.tenant_id,
+                        payment_date=payment.payment_date,
+                        payment_type=payment.payment_type,
+                        payment_reference=payment.reference,
+                        amount=payment.amount,
+                        narration=error_msg  # Explanation of failure
+                    )
+
                     logger.error(error_msg)
                     return PaymentResult(
                         success=False,
@@ -165,6 +222,17 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                         break
                 if not tenant:
                     error_msg = f"No tenant found with exact reference {padded_reference}"
+
+                    # Log to pendingPayments if the payment fails
+                    log_pending_payment(
+                        tenant_id=payment.tenant_id,
+                        payment_date=payment.payment_date,
+                        payment_type=payment.payment_type,
+                        payment_reference=payment.reference,
+                        amount=payment.amount,
+                        narration=error_msg  # Explanation of failure
+                    )
+
                     logger.error(error_msg)
                     return PaymentResult(
                         success=False,
@@ -175,6 +243,17 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 # Verify the reference matches
                 if str(tenant_data.get('reference', '')).strip() != padded_reference:
                     error_msg = f"Tenant reference mismatch. Expected {padded_reference}, got {tenant_data.get('reference', '')}"
+
+                    # Log to pendingPayments if the payment fails
+                    log_pending_payment(
+                        tenant_id=payment.tenant_id,
+                        payment_date=payment.payment_date,
+                        payment_type=payment.payment_type,
+                        payment_reference=payment.reference,
+                        amount=payment.amount,
+                        narration=error_msg  # Explanation of failure
+                    )
+
                     logger.error(error_msg)
                     return PaymentResult(
                         success=False,
@@ -186,6 +265,17 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             tenant_id = tenant.get('_id')
             if not tenant_id:
                 error_msg = f"Tenant data missing _id field for reference {padded_reference}"
+
+                # Log to pendingPayments if the payment fails
+                log_pending_payment(
+                    tenant_id=payment.tenant_id,
+                    payment_date=payment.payment_date,
+                    payment_type=payment.payment_type,
+                    payment_reference=payment.reference,
+                    amount=payment.amount,
+                    narration=error_msg  # Explanation of failure
+                )
+
                 logger.error(error_msg)
                 return PaymentResult(
                     success=False,
@@ -225,6 +315,17 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
                     if payments_response.status_code != 200:
                         error_msg = f"Failed to fetch existing payments for tenant {tenant_id}: {payments_response.text}"
+
+                        # Log to pendingPayments if the payment fails
+                        log_pending_payment(
+                            tenant_id=payment.tenant_id,
+                            payment_date=payment.payment_date,
+                            payment_type=payment.payment_type,
+                            payment_reference=payment.reference,
+                            amount=payment.amount,
+                            narration=error_msg  # Explanation of failure
+                        )
+
                         logger.error(error_msg)
                         return PaymentResult(
                             success=False,
@@ -278,6 +379,17 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
             if payment_response.status_code != 200:
                 error_msg = f"Failed to process payment for tenant {tenant_id}: {payment_response.text}"
+
+                # Log to pendingPayments if the payment fails
+                log_pending_payment(
+                    tenant_id=payment.tenant_id,
+                    payment_date=payment.payment_date,
+                    payment_type=payment.payment_type,
+                    payment_reference=payment.reference,
+                    amount=payment.amount,
+                    narration=error_msg  # Explanation of failure
+                )
+
                 logger.error(error_msg)
                 return PaymentResult(
                     success=False,
@@ -294,6 +406,17 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
     except Exception as e:
         error_msg = f"Error processing payment: {str(e)}"
+
+        # Log to pendingPayments if the payment fails
+        log_pending_payment(
+            tenant_id=payment.tenant_id,
+            payment_date=payment.payment_date,
+            payment_type=payment.payment_type,
+            payment_reference=payment.reference,
+            amount=payment.amount,
+            narration=error_msg  # Explanation of failure
+        )
+
         logger.error(error_msg)
         return PaymentResult(
             success=False,
@@ -380,6 +503,17 @@ async def process_payments(
 
                 except Exception as e:
                     error_msg = f"Error processing payment {index + 1}: {str(e)}"
+
+                    # Log to pendingPayments if the payment fails
+                    log_pending_payment(
+                        tenant_id=payment.tenant_id,
+                        payment_date=payment.payment_date,
+                        payment_type=payment.payment_type,
+                        payment_reference=payment.reference,
+                        amount=payment.amount,
+                        narration=error_msg  # Explanation of failure
+                    )
+
                     logger.error(error_msg)
                     results.append(PaymentResult(
                         success=False,
@@ -394,6 +528,17 @@ async def process_payments(
 
         except Exception as e:
             error_msg = f"Error in bulk payment processing: {str(e)}"
+
+            # Log to pendingPayments if the payment fails
+            log_pending_payment(
+                tenant_id=0,
+                payment_date=datetime.utcnow(),
+                payment_type='',
+                payment_reference=0,
+                amount=0,
+                narration=error_msg  # Explanation of failure
+            )
+
             logger.error(error_msg)
             yield f"data: {json.dumps(dict(status='error', message=error_msg, error=str(e)))}\n\n"
 
