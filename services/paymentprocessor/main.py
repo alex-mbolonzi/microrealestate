@@ -381,14 +381,14 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 error_msg = f"Failed to process payment for tenant {tenant_id}: {payment_response.text}"
 
                 # Log to pendingPayments if the payment fails
-                log_pending_payment(
-                    tenant_id=payment.tenant_id,
-                    payment_date=payment.payment_date,
-                    payment_type=payment.payment_type,
-                    payment_reference=payment.reference,
-                    amount=payment.amount,
-                    narration=error_msg  # Explanation of failure
-                )
+                # log_pending_payment(
+                #     tenant_id=payment.tenant_id,
+                #     payment_date=payment.payment_date,
+                #     payment_type=payment.payment_type,
+                #     payment_reference=payment.reference,
+                #     amount=payment.amount,
+                #     narration=error_msg  # Explanation of failure
+                # )
 
                 logger.error(error_msg)
                 return PaymentResult(
