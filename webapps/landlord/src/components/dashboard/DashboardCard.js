@@ -26,7 +26,7 @@ export function DashboardCard({
           {Icon ? <Icon className="size-6 text-muted-foreground" /> : null}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-grow flex justify-between items-center text-3xl xl:text-4xl font-medium">
+      <CardContent className="flex-grow flex justify-between items-center text-2xl xl:text-3xl font-medium">
         <div className="w-full h-full">{renderContent?.()}</div>
         {onClick ? (
           <Button variant="link" className="p-0 m-0 h-fit" onClick={onClick}>
