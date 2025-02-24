@@ -13,6 +13,7 @@ from datetime import datetime
 from pydantic import BaseModel
 import pymongo
 from pymongo.errors import PyMongoError
+from motor.motor_asyncio import AsyncIOMotorClient  # Use motor for async MongoDB
 
 # Configure logging
 logging.basicConfig(
@@ -168,7 +169,7 @@ def check_payment_exists(payment_reference, db_name='bomatech', collection_name=
     """
     try:
         # Connect to MongoDB
-        client = pymongo.MongoClient(MONGO_URL)
+        client = AsyncIOMotorClient(MONGO_URL)
 
         # Select the database
         db = client[db_name]
