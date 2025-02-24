@@ -12,6 +12,7 @@ from dateutil import parser
 from datetime import datetime
 from pydantic import BaseModel
 import pymongo
+from pymongo.errors import PyMongoError
 
 # Configure logging
 logging.basicConfig(
