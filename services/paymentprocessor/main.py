@@ -155,7 +155,7 @@ def log_pending_payment(tenant_id, payment_date, payment_type, payment_reference
         logger.error(f"Failed to log pending payment for tenantId: {tenant_id}. Error: {e}")
 
 
-def check_payment_exists(payment_reference, db_name='bomatech', collection_name='occupants'):
+async def check_payment_exists(payment_reference, db_name='bomatech', collection_name='occupants'):
     """
     Check if a payment with the given reference exists in the occupants collection.
 
@@ -181,7 +181,7 @@ def check_payment_exists(payment_reference, db_name='bomatech', collection_name=
         filter = {"rents.payments.reference": payment_reference}
 
         # Find the payment in the occupants collection
-        payment = collection.find_one(filter)
+        payment = await collection.find_one(filter)
 
         # Return True if the payment exists, False otherwise
         return payment is not None
