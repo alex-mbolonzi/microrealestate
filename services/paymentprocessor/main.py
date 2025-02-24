@@ -167,9 +167,14 @@ def check_payment_exists(payment_reference, db_name='bomatech', collection_name=
         bool: True if the payment exists, False otherwise.
     """
     try:
-        # Select the database and collection
+        # Connect to MongoDB
         client = pymongo.MongoClient(MONGO_URL)
-        collection = client[collection_name]
+
+        # Select the database
+        db = client[db_name]
+
+        # Select the collection
+        collection = db[collection_name]
 
         # Define the filter to find the payment
         filter = {"rents.payments.reference": payment_reference}
