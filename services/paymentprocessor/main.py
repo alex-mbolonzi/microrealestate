@@ -153,6 +153,42 @@ def log_pending_payment(tenant_id, payment_date, payment_type, payment_reference
         logger.error(f"Failed to log pending payment for tenantId: {tenant_id}. Error: {e}")
 
 
+def check_payment_exists(payment_reference, db_name='bomatech', collection_name='occupants'):
+    """
+    Check if a payment with the given reference exists in the occupants collection.
+
+    Args:
+        payment_reference (str): The payment reference to check.
+        db_name (str): The name of the MongoDB database. Defaults to 'bomatech'.
+        collection_name (str): The name of the MongoDB collection. Defaults to 'occupants'.
+
+    Returns:
+        bool: True if the payment exists, False otherwise.
+    """
+    try:
+        # Select the database and collection
+        client = pymongo.MongoClient(MONGO_URL)
+        collection = client[collection_name]
+
+        # Define the filter to find the payment
+        filter = {"rents.payments.reference": payment_reference}
+
+        # Find the payment in the occupants collection
+        payment = collection.find_one(filter)
+
+        # Return True if the payment exists, False otherwise
+        return payment is not None
+
+    except PyMongoError as e:
+        # Log the error and handle it appropriately
+        logger.error(f"Error checking payment existence for reference {payment_reference}: {str(e)}")
+        raise  # Re-raise the exception for the caller to handle
+
+    except Exception as e:
+        # Handle any other unexpected errors
+        logger.error(f"Unexpected error in check_payment_exists: {str(e)}")
+        raise
+
 async def process_single_payment(payment: Payment, term: str, organization_id: str,
                                  auth_token: str = None) -> PaymentResult:
     """Process a single payment by calling the rent API endpoint."""
@@ -489,6 +525,28 @@ async def process_payments(
                         extra_charge=float(row.get('extra_charge', 0)),
                         extra_charge_note=str(row.get('extra_charge_note', '')).strip()
                     )
+
+                    # Check if the payment exists in the occupants collection if it exists, skip the payment
+                    if await check_payment_exists(payment.reference):
+                        error_msg = f"Payment with reference {payment.reference} already exists in the database"
+                        logger.error(error_msg)
+                        results.append(PaymentResult(
+                            success=False,
+                            tenant_id=str(row.get('tenant_id', '')),
+                            message=error_msg
+                        ))
+
+                        log_pending_payment(
+                            tenant_id=payment.tenant_id,
+                            payment_date=payment.payment_date,
+                            payment_type=payment.payment_type,
+                            payment_reference=payment.reference,
+                            amount=payment.amount,
+                            narration=error_msg  # Explanation of failure
+                        )
+
+                        yield f"data: {json.dumps(dict(status='error', message=error_msg))}\n\n"
+                        continue
 
                     # Process the payment
                     result = await process_single_payment(payment, term, organization_id, auth_token)
