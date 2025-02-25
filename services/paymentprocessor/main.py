@@ -201,7 +201,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
     """Process a single payment by calling the rent API endpoint."""
     try:
         # Pad the tenant reference with leading zeros
-        padded_reference = pad_tenant_id(payment.tenant_id)
+        padded_reference = await pad_tenant_id(payment.tenant_id)
         logger.debug(f"Looking up tenant with reference: {padded_reference}")
 
         headers = {
