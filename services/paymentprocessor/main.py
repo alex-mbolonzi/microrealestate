@@ -90,12 +90,12 @@ class PaymentResult(BaseModel):
     message: str
     details: Dict = {}
 
-def pad_tenant_id(tenant_id: str) -> str:
+async def pad_tenant_id(tenant_id: str) -> str:
     """Pad tenant_id with leading zeros to ensure it's six digits"""
     # Convert to integer first to remove any decimal points, then to string and pad
     return str(int(float(tenant_id))).strip().zfill(6)
 
-def parse_payment_date(date_str: str) -> str:
+async def parse_payment_date(date_str: str) -> str:
     """
     Parse payment date from various formats and return in DD/MM/YYYY format.
     Handles common formats like DD/MM/YYYY, DD-MM-YYYY, etc.
@@ -112,7 +112,7 @@ def parse_payment_date(date_str: str) -> str:
 # Constants for frequency
 PAYMENT_FREQUENCY = 'months'  # Monthly payments are standard for rental contracts
 
-def log_pending_payment(tenant_id, payment_date, payment_type, payment_reference, amount, narration):
+async def log_pending_payment(tenant_id, payment_date, payment_type, payment_reference, amount, narration):
     """
     Logs details of a failed payment attempt into the 'pendingPayments' collection.
 
@@ -129,7 +129,7 @@ def log_pending_payment(tenant_id, payment_date, payment_type, payment_reference
     """
 
     # Initialize MongoDB client using the connection string
-    client = pymongo.MongoClient(MONGO_URL)
+    client = AsyncIOMotorClient(MONGO_URL)
 
     # Select the database (replace 'database_name' with your actual database name)
     db = client['bomatech']
@@ -242,7 +242,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     error_msg = f"No tenant found with reference {padded_reference}"
 
                     # Log to pendingPayments if the payment fails
-                    log_pending_payment(
+                    await log_pending_payment(
                         tenant_id=payment.tenant_id,
                         payment_date=payment.payment_date,
                         payment_type=payment.payment_type,
@@ -267,7 +267,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     error_msg = f"No tenant found with exact reference {padded_reference}"
 
                     # Log to pendingPayments if the payment fails
-                    log_pending_payment(
+                    await log_pending_payment(
                         tenant_id=payment.tenant_id,
                         payment_date=payment.payment_date,
                         payment_type=payment.payment_type,
@@ -288,7 +288,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     error_msg = f"Tenant reference mismatch. Expected {padded_reference}, got {tenant_data.get('reference', '')}"
 
                     # Log to pendingPayments if the payment fails
-                    log_pending_payment(
+                    await log_pending_payment(
                         tenant_id=payment.tenant_id,
                         payment_date=payment.payment_date,
                         payment_type=payment.payment_type,
@@ -310,7 +310,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 error_msg = f"Tenant data missing _id field for reference {padded_reference}"
 
                 # Log to pendingPayments if the payment fails
-                log_pending_payment(
+                await log_pending_payment(
                     tenant_id=payment.tenant_id,
                     payment_date=payment.payment_date,
                     payment_type=payment.payment_type,
@@ -360,7 +360,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                         error_msg = f"Failed to fetch existing payments for tenant {tenant_id}: {payments_response.text}"
 
                         # Log to pendingPayments if the payment fails
-                        log_pending_payment(
+                        await log_pending_payment(
                             tenant_id=payment.tenant_id,
                             payment_date=payment.payment_date,
                             payment_type=payment.payment_type,
@@ -388,7 +388,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                 existing_payments = []
 
         # Format the new payment
-        formatted_date = parse_payment_date(payment.payment_date)
+        formatted_date = await parse_payment_date(payment.payment_date)
         new_payment = {
             "type": payment.payment_type.lower() if payment.payment_type else "cash",
             "date": formatted_date,
@@ -451,7 +451,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         error_msg = f"Error processing payment: {str(e)}"
 
         # Log to pendingPayments if the payment fails
-        log_pending_payment(
+        await log_pending_payment(
             tenant_id=payment.tenant_id,
             payment_date=payment.payment_date,
             payment_type=payment.payment_type,
@@ -543,7 +543,7 @@ async def process_payments(
                             message=error_msg
                         ))
 
-                        log_pending_payment(
+                        await log_pending_payment(
                             tenant_id=payment.tenant_id,
                             payment_date=payment.payment_date,
                             payment_type=payment.payment_type,
@@ -570,7 +570,7 @@ async def process_payments(
                     error_msg = f"Error processing payment {index + 1}: {str(e)}"
 
                     # Log to pendingPayments if the payment fails
-                    log_pending_payment(
+                    await log_pending_payment(
                         tenant_id=payment.tenant_id,
                         payment_date=payment.payment_date,
                         payment_type=payment.payment_type,
@@ -595,7 +595,7 @@ async def process_payments(
             error_msg = f"Error in bulk payment processing: {str(e)}"
 
             # Log to pendingPayments if the payment fails
-            log_pending_payment(
+            await log_pending_payment(
                 tenant_id=0,
                 payment_date=datetime.utcnow(),
                 payment_type='',
