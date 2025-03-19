@@ -158,13 +158,13 @@ function Accounting() {
         <TabsContent value="lookerReports">
           <div className="flex flex-wrap gap-4">
             <a
-              href="https://lookerstudio.google.com/s/v7daddbhDsU"
+              href="https://lookerstudio.google.com/s/jnDMWbsD7WQ"
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
             >
-              <h3 className="font-semibold">Rent Payment Report</h3>
-              <p className="text-sm text-gray-600">View detailed rent payment information.</p>
+              <h3 className="font-semibold">Pending Payments Report</h3>
+              <p className="text-sm text-gray-600">View un-posted payments information.</p>
             </a>
             <a
               href="https://lookerstudio.google.com/s/nA4vJCqFB8A"
@@ -176,13 +176,13 @@ function Accounting() {
               <p className="text-sm text-gray-600">Explore payment breakdowns and trends.</p>
             </a>
             <a
-              href="https://lookerstudio.google.com/s/uLcj_Qtnxxc"
+              href="https://lookerstudio.google.com/s/kMxLw1mHDOs"
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
             >
-              <h3 className="font-semibold">Rented Properties Report</h3>
-              <p className="text-sm text-gray-600">See an overview of rented properties payments.</p>
+              <h3 className="font-semibold">Occupant Payment Summary</h3>
+              <p className="text-sm text-gray-600">See an overview of Occupants Monthly payments.</p>
             </a>
             <a
               href="https://lookerstudio.google.com/s/lQ6TF_433b8"
