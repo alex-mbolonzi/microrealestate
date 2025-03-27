@@ -129,6 +129,7 @@ export namespace CollectionTypes {
     timeRange: LeaseTimeRange;
     active: boolean;
     stepperMode: boolean;
+    commission: number;
   };
 
   export type Property = {
