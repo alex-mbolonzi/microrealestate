@@ -21,7 +21,8 @@ function initValues(lease) {
     description: lease?.description || '',
     numberOfTerms: lease?.numberOfTerms || '',
     timeRange: lease?.timeRange || '',
-    active: lease?.active || true
+    active: lease?.active || true,
+    commission: lease?.commission || 0
   };
 }
 
@@ -37,7 +38,8 @@ function getValidationSchema(newLease, existingLeases) {
     description: Yup.string(),
     numberOfTerms: Yup.number().integer().min(1).required(),
     timeRange: Yup.string().required(),
-    active: Yup.boolean().required()
+    active: Yup.boolean().required(),
+    commission: Yup.number().min(0).max(100)
   });
 }
 
@@ -102,6 +104,11 @@ const LeaseForm = ({ onSubmit }) => {
                   <NumberField
                     label={t('Number of terms')}
                     name="numberOfTerms"
+                    disabled={values.usedByTenants}
+                  />
+                  <NumberField
+                    label={t('Agent commission')}
+                    name="commission"
                     disabled={values.usedByTenants}
                   />
                 </div>
