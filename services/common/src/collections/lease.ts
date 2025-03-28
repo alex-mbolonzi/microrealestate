@@ -11,7 +11,8 @@ const LeaseSchema = new mongoose.Schema<CollectionTypes.Lease>({
   active: Boolean,
 
   // ui state
-  stepperMode: { type: Boolean, default: false }
+  stepperMode: { type: Boolean, default: false },
+  commission: { type: Number, default: 0 }
 });
 
 export default mongoose.model<CollectionTypes.Lease>('Lease', LeaseSchema);

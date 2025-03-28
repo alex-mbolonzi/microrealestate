@@ -62,6 +62,7 @@ export async function update(req, res) {
           name: lease.name || dbLease.name,
           description: lease.description ?? dbLease.description,
           active: lease.active ?? dbLease.active,
+          commission: lease.commission ?? dbLease.commission,
           stepperMode: lease.stepperMode ?? dbLease.stepperMode
         }
       : lease,
