@@ -45,6 +45,14 @@ export async function update(req, res) {
     throw new ServiceError('missing fields', 422);
   }
 
+  // Handle boolean conversion for active field
+  if (lease.active !== undefined) {
+    if (typeof lease.active === 'string') {
+      lease.active = lease.active.toLowerCase() === 'true';
+    }
+    // lease.active = Boolean(lease.active) && lease.numberOfTerms > 0 && !!lease.timeRange;
+  }
+
   if (lease.active === undefined) {
     lease.active = lease.numberOfTerms > 0 && !!lease.timeRange;
   }
