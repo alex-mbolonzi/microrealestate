@@ -125,7 +125,7 @@ function LeasesSettings() {
                   {lease.description}
                 </div>
                 <div className="mt-4 h-20 md:h-14 overflow-auto">
-                  {lease.commission}
+                   Agency commission {lease.commission}%
                 </div>
                 <div className="flex items-center justify-end gap-2 mt-4">
                   <Label
