@@ -1,7 +1,8 @@
 from fastapi import FastAPI, UploadFile, HTTPException, Form, File, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
-from pydantic import BaseModel, validator, BaseSettings
+from pydantic import BaseModel, validator
+from pydantic_settings import BaseSettings
 from typing import List, Dict, Optional
 import pandas as pd
 from io import StringIO

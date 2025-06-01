@@ -16,6 +16,7 @@ pymongo==4.5.0  # Kept at current version for compatibility
 # Security & Validation
 python-jose[cryptography]==3.3.0
 pydantic==2.5.1  # Using v2 for better performance and features
+pydantic-settings==2.5.1  # Settings management with Pydantic v2
 
 # Utilities
 python-dateutil==2.8.2
