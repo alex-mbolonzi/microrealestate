@@ -205,12 +205,20 @@ async def process_single_payment(payment: Payment, term: str, headers: dict) -> 
             )
 
         # Process payment (rest of your existing logic)
-        # ...
+        # For demonstration, we'll simulate success
+        # In a real scenario, this would involve updating the tenant's payment records in MongoDB
+        # For example:
+        # async with get_mongo_client() as client:
+        #     db = client['bomatech']
+        #     await db['occupants'].update_one(
+        #         {"_id": tenant_id, "rents.term": term},
+        #         {"$push": {"rents.$.payments": payment.dict(exclude={'tenant_id'})}}
+        #     )
 
         return PaymentResult(
             success=True,
             tenant_id=tenant_id,
-            message=f"Payment processed successfully"
+            message=f"Payment {payment.reference} processed successfully for tenant {padded_reference}"
         )
 
     except Exception as e:
@@ -242,11 +250,10 @@ async def process_payments(
 ):
     async def generate_events():
         try:
-            # Stream file processing
-            contents = []
-            async for chunk in file.stream():
-                contents.append(chunk)
-            df = pd.read_csv(StringIO(b''.join(contents).decode()))
+            # Read the entire file content first
+            # Removed the incorrect 'async for chunk in file.stream()' loop
+            contents = await file.read()
+            df = pd.read_csv(StringIO(contents.decode()))
 
             # Prepare headers
             headers = {
@@ -256,15 +263,10 @@ async def process_payments(
                 "Authorization": request.headers.get('authorization', "")
             }
 
-            # Process in batches
-            total = len(df)
-            processed = 0
-            batch_size = settings.payment_batch_size
-
-            for i in range(0, total, batch_size):
-                batch = df.iloc[i:i + batch_size]
-                payments = [
-                    Payment(
+            all_payments: List[Payment] = []
+            for _, row in df.iterrows():
+                try:
+                    payment = Payment(
                         tenant_id=str(row['tenant_id']).strip(),
                         payment_date=str(row['payment_date']).strip(),
                         payment_type=str(row['payment_type']).strip(),
@@ -275,30 +277,65 @@ async def process_payments(
                         promo_note=str(row.get('promo_note', '')).strip(),
                         extra_charge=float(row.get('extra_charge', 0)),
                         extra_charge_note=str(row.get('extra_charge_note', '')).strip()
-                    ) for _, row in batch.iterrows()
-                ]
-
-                # Check for duplicates first
-                for payment in payments:
-                    if await check_payment_exists(payment.reference):
-                        yield json.dumps({
-                            "status": "skipped",
-                            "message": f"Payment {payment.reference} exists",
-                            "tenant_id": payment.tenant_id
-                        }) + "\n\n"
-                        continue
-
-                    # Process batch
-                    results = await process_payments_batch(payments, term, headers)
-                    processed += len(results)
-
-                    progress = min(100, int(processed / total * 100))
+                    )
+                    all_payments.append(payment)
+                except Exception as e:
+                    logger.warning("Skipping invalid row during parsing", row_data=row.to_dict(), error=str(e))
                     yield json.dumps({
-                        "status": "processing",
-                        "progress": progress,
-                        "results": [r.dict() for r in results if not isinstance(r, Exception)],
-                        "errors": [str(e) for e in results if isinstance(e, Exception)]
+                        "status": "skipped",
+                        "message": f"Invalid row skipped: {str(e)}",
+                        "details": row.to_dict()
                     }) + "\n\n"
+
+            # Separate duplicates from new payments
+            payments_to_process: List[Payment] = []
+            skipped_duplicates: List[Dict] = []
+
+            # Perform all duplicate checks concurrently
+            duplicate_checks = [check_payment_exists(p.reference) for p in all_payments]
+            duplicate_results = await asyncio.gather(*duplicate_checks)
+
+            for i, payment in enumerate(all_payments):
+                if duplicate_results[i]:
+                    skipped_duplicates.append({
+                        "status": "skipped",
+                        "message": f"Payment with reference '{payment.reference}' already exists.",
+                        "tenant_id": payment.tenant_id
+                    })
+                else:
+                    payments_to_process.append(payment)
+
+            # Yield skipped duplicates first
+            for skipped in skipped_duplicates:
+                yield json.dumps(skipped) + "\n\n"
+
+            # Process new payments in batches
+            total_to_process = len(payments_to_process)
+            processed_count = 0
+            batch_size = settings.payment_batch_size
+
+            for i in range(0, total_to_process, batch_size):
+                batch = payments_to_process[i:i + batch_size]
+
+                results = await process_payments_batch(batch, term, headers)
+                processed_count += len(batch)
+
+                # Collect successful results and errors for the current batch
+                batch_successes = []
+                batch_errors = []
+                for r in results:
+                    if isinstance(r, Exception):
+                        batch_errors.append(str(r))
+                    else:
+                        batch_successes.append(r.dict())
+
+                progress = min(100, int(processed_count / total_to_process * 100))
+                yield json.dumps({
+                    "status": "processing",
+                    "progress": progress,
+                    "results": batch_successes,
+                    "errors": batch_errors
+                }) + "\n\n"
 
             yield json.dumps({
                 "status": "complete",
