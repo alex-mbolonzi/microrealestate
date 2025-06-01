@@ -1,10 +1,27 @@
+# Core dependencies
 fastapi==0.104.1
-uvicorn==0.24.0
-python-multipart==0.0.6
+uvicorn==0.24.0.post1  # Using post-release for potential bug fixes
+
+# Data processing
 pandas==2.1.3
-pydantic==2.5.1
+python-multipart==0.0.6
+
+# Async & HTTP
+httpx==0.25.0  # Updated to latest stable in 0.24.x series
+motor==3.3.2  # Latest stable version for async MongoDB
+
+# MongoDB
+pymongo==4.5.0  # Kept at current version for compatibility
+
+# Security & Validation
 python-jose[cryptography]==3.3.0
-httpx==0.24.1
+pydantic==2.5.1  # Using v2 for better performance and features
+
+# Utilities
 python-dateutil==2.8.2
-pymongo==4.5.0
-motor>=3.0.0
+
+# New additions for optimized code
+structlog==23.1.0  # For structured logging
+types-python-dateutil==2.8.19.14  # Type stubs for dateutil
+types-pyyaml==6.0.12.11  # If you use YAML configs
+asyncio-throttle==1.0.2  # Optional: For rate limiting
