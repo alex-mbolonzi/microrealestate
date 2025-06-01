@@ -21,9 +21,9 @@ from functools import lru_cache
 
 # Configuration
 class Settings(BaseSettings):
-    api_base_url: str = 'http://api:8200'
-    gateway_url: str = 'http://gateway:80'
-    mongo_url: str = 'mongodb://localhost:27017'
+    api_url: str
+    gateway_url: str
+    mongo_url: str
     payment_batch_size: int = 10
     http_timeout: float = 30.0
     allow_origins: List[str] = ["*"]
@@ -158,7 +158,6 @@ async def log_pending_payment(tenant_id: str, payment_date: str, payment_type: s
             logger.info("Pending payment logged", tenant_id=tenant_id)
         except Exception as e:
             logger.error("Failed to log pending payment", tenant_id=tenant_id, error=str(e))
-
 
 async def check_payment_exists(payment_reference: str) -> bool:
     async with get_mongo_client() as client:
@@ -297,11 +296,20 @@ async def process_payments(
 
             for i, payment in enumerate(all_payments):
                 if duplicate_results[i]:
+                    skip_message = f"Payment with reference '{payment.reference}' already exists."
+
                     skipped_duplicates.append({
                         "status": "skipped",
                         "message": f"Payment with reference '{payment.reference}' already exists.",
                         "tenant_id": payment.tenant_id
                     })
+
+                    # Log to pendingPayments for duplicates
+                    await log_pending_payment(
+                        payment.tenant_id, payment.payment_date, payment.payment_type,
+                        payment.reference, payment.amount, skip_message
+                    )
+
                 else:
                     payments_to_process.append(payment)
 
