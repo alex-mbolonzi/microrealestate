@@ -28,14 +28,15 @@ function _filterData(data, filters) {
     filteredItems = filteredItems.filter(
       ({ isCompany, name, manager, contacts, properties, reference }) => {
         // Search match name
-        let found =
-          name.replace(regExp, '').toLowerCase().indexOf(cleanedSearchText) !=
-          -1;
+        let found = (name || '') // <--- Add a default empty string for 'name'
+            .replace(regExp, '')
+            .toLowerCase()
+            .indexOf(cleanedSearchText) != -1;
 
         // Search match manager
         if (!found && isCompany) {
           found =
-            manager
+            (manager || '') // <--- Add a default empty string for 'manager'
               ?.replace(regExp, '')
               .toLowerCase()
               .indexOf(cleanedSearchText) != -1;
@@ -60,18 +61,27 @@ function _filterData(data, filters) {
         // Search match property name
         if (!found) {
           found = !!properties?.filter(
-            ({ property: { name } }) =>
-              name
-                .replace(regExp, '')
-                .toLowerCase()
-                .indexOf(cleanedSearchText) != -1
+            (propItem) => {
+              // Ensure propItem.property and propItem.property.name exist
+              if (!propItem || !propItem.property || !propItem.property.name) {
+                return false; // Skip this item as it's malformed
+              }
+              const propertyName = propItem.property.name; // Now safely access name
+
+              return (
+                propertyName
+                  .replace(regExp, '')
+                  .toLowerCase()
+                  .indexOf(cleanedSearchText) != -1
+              );
+            }
           ).length;
         }
 
         // Search match reference field
         if (!found && reference) {
           found =
-            reference
+            (reference || '') // <--- Add a default empty string for 'reference'
               ?.replace(regExp, '')
               .toLowerCase()
               .indexOf(cleanedSearchText) !== -1;
