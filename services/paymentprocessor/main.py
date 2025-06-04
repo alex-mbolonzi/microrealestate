@@ -236,75 +236,126 @@ async def check_payment_exists(payment_reference: str) -> bool:
 
 # Core processing
 async def process_single_payment(payment: Payment, term: str, headers: dict) -> PaymentResult:
-    padded_reference = ""  # Initialize for logging if padding fails early
+    padded_reference = ""
     try:
         padded_reference = await pad_tenant_id(payment.tenant_id)
+
+        # 1. Get Tenant Information from Gateway
         tenant = await get_tenant_by_reference(padded_reference, headers)
 
         if not tenant:
             error_msg = f"Tenant not found for reference '{padded_reference}' via Gateway."
+            logger.warning("Payment processing logical failure: Tenant not found",
+                           tenant_id=payment.tenant_id, reference=payment.reference, message=error_msg)
             await log_pending_payment(
                 payment.tenant_id, payment.payment_date, payment.payment_type,
                 payment.reference, payment.amount, error_msg
             )
-            logger.warning("Payment processing logical failure: Tenant not found",
-                           tenant_id=payment.tenant_id, reference=payment.reference, message=error_msg)
-            return PaymentResult(
-                success=False,
-                tenant_id=payment.tenant_id,
-                message=error_msg
-            )
+            return PaymentResult(success=False, tenant_id=payment.tenant_id, message=error_msg)
 
         tenant_id_from_gateway = tenant.get('_id')
         if not tenant_id_from_gateway:
             error_msg = f"Gateway returned tenant with reference '{padded_reference}' but no '_id' field."
+            logger.warning("Payment processing logical failure: Tenant missing ID",
+                           tenant_id=payment.tenant_id, reference=payment.reference, message=error_msg)
             await log_pending_payment(
                 payment.tenant_id, payment.payment_date, payment.payment_type,
                 payment.reference, payment.amount, error_msg
             )
-            logger.warning("Payment processing logical failure: Tenant missing ID",
-                           tenant_id=payment.tenant_id, reference=payment.reference, message=error_msg)
-            return PaymentResult(
-                success=False,
-                tenant_id=payment.tenant_id,
-                message=error_msg
+            return PaymentResult(success=False, tenant_id=payment.tenant_id, message=error_msg)
+
+        # 2. Record the Successful Payment in MongoDB
+        # This is the crucial part that was likely missing or commented out!
+        try:
+            async with get_mongo_client() as client:
+                db = client['bomatech']  # Or your actual database name
+                occupants_collection = db['occupants']  # Or your actual collection name for tenants/occupants
+
+                # Prepare the payment data to be inserted
+                payment_data = payment.dict(exclude={'tenant_id'})  # Exclude tenant_id as it's the main doc ID
+
+                # MongoDB update query: Find the occupant by _id, then find the specific rent term, and push the payment
+                update_result = await occupants_collection.update_one(
+                    {"_id": tenant_id_from_gateway, "rents.term": term},
+                    {"$push": {"rents.$.payments": payment_data}},
+                    upsert=False  # We assume the tenant and rent term already exist
+                )
+
+                if update_result.matched_count == 0:
+                    # This means either the tenant_id_from_gateway was not found
+                    # or the specific 'rents.term' was not found for that tenant.
+                    error_msg = (
+                        f"Payment {payment.reference} for tenant {padded_reference} (ID: {tenant_id_from_gateway}) "
+                        f"could not be recorded. Tenant or rent term '{term}' not found in DB.")
+                    logger.warning("Payment recording failed: Tenant or rent term not found",
+                                   tenant_id=payment.tenant_id, reference=payment.reference, message=error_msg)
+                    await log_pending_payment(
+                        payment.tenant_id, payment.payment_date, payment.payment_type,
+                        payment.reference, payment.amount, error_msg
+                    )
+                    return PaymentResult(success=False, tenant_id=payment.tenant_id, message=error_msg)
+
+                if update_result.modified_count == 0:
+                    # Matched but not modified could mean the payment already exists in the array
+                    # or some other condition prevented modification.
+                    warning_msg = (
+                        f"Payment {payment.reference} for tenant {padded_reference} (ID: {tenant_id_from_gateway}) "
+                        f"matched but was not modified. Possible duplicate or no change needed.")
+                    logger.warning("Payment recording warning: Matched but not modified",
+                                   tenant_id=payment.tenant_id, reference=payment.reference, message=warning_msg)
+                    # For a robust system, you might want to return success=False or specific status here
+                    # For now, we'll still consider it a success if matched (assuming it was already there)
+                    # If this implies a real error (e.g. payment *must* be added), then return False.
+                    # For now, let's treat it as a success if matched, assuming idempotent operation.
+                    return PaymentResult(
+                        success=True,
+                        tenant_id=tenant_id_from_gateway,
+                        message=f"Payment {payment.reference} processed successfully for tenant {padded_reference} (ID: {tenant_id_from_gateway}). Matched but not modified (possibly already existed)."
+                    )
+
+                logger.info("Payment successfully processed and recorded in MongoDB",
+                            tenant_id=tenant_id_from_gateway,
+                            reference=payment.reference,
+                            matched_count=update_result.matched_count,
+                            modified_count=update_result.modified_count)
+
+        except Exception as e:
+            # Catch any issues specific to the MongoDB update operation
+            error_msg = f"MongoDB update failed for payment {payment.reference}: {str(e)}"
+            logger.error("MongoDB payment recording error",
+                         error_message=error_msg,
+                         error_type=type(e).__name__,
+                         error_repr=repr(e),
+                         tenant_id=payment.tenant_id,
+                         payment_reference=payment.reference,
+                         exc_info=True)
+            await log_pending_payment(
+                payment.tenant_id, payment.payment_date, payment.payment_type,
+                payment.reference, payment.amount, error_msg
             )
+            return PaymentResult(success=False, tenant_id=payment.tenant_id, message=error_msg)
 
-        # Process payment (rest of your existing logic)
-        # Assuming success for now.
-        # This is where your actual payment integration logic would go.
-        # Example of simulating an internal success:
-        # For a real scenario, you'd interact with MongoDB here to record the payment.
-        # async with get_mongo_client() as client:
-        #     db = client['bomatech']
-        #     # Example update logic (adjust to your actual schema)
-        #     await db['occupants'].update_one(
-        #         {"_id": tenant_id_from_gateway, "rents.term": term},
-        #         {"$push": {"rents.$.payments": payment.dict(exclude={'tenant_id'})}},
-        #         upsert=False # Do not create if parent rent/occupant doesn't exist
-        #     )
-        # logger.info("Payment successfully processed and recorded", tenant_id=tenant_id_from_gateway, reference=payment.reference)
-
+        # 3. Return Success Result
         return PaymentResult(
             success=True,
             tenant_id=tenant_id_from_gateway,
-            message=f"Payment {payment.reference} processed successfully for tenant {padded_reference} (ID: {tenant_id_from_gateway})"
+            message=f"Payment {payment.reference} processed and recorded successfully for tenant {padded_reference} (ID: {tenant_id_from_gateway})"
         )
 
     except Exception as e:
-        # This catches exceptions from get_tenant_by_reference, pad_tenant_id, or internal logic
-        actual_error_message = str(e) if str(e) else f"Unknown error (type: {type(e).__name__}, repr: {repr(e)})"
+        # This catches exceptions from get_tenant_by_reference, pad_tenant_id, or other unhandled logic
+        actual_error_message = str(e)
+        if not actual_error_message:
+            actual_error_message = f"Unhandled processing error (Type: {type(e).__name__}, Repr: {repr(e)})"
 
-        # Log this specific event with comprehensive details
         logger.error("Payment processing error (caught in process_single_payment)",
                      error_message=actual_error_message,
                      error_type=type(e).__name__,
-                     error_repr=repr(e),  # The full repr of the exception
+                     error_repr=repr(e),
                      tenant_id=payment.tenant_id,
                      payment_reference=payment.reference,
-                     exc_info=True)  # Ensure full traceback is logged
+                     exc_info=True)
 
-        # Ensure pending payment has the actual error message
         await log_pending_payment(
             payment.tenant_id, payment.payment_date, payment.payment_type,
             payment.reference, payment.amount, actual_error_message
@@ -312,7 +363,7 @@ async def process_single_payment(payment: Payment, term: str, headers: dict) -> 
         return PaymentResult(
             success=False,
             tenant_id=payment.tenant_id,
-            message=actual_error_message  # Ensure the message for the PaymentResult is descriptive
+            message=actual_error_message
         )
 
 async def process_payments_batch(payments: List[Payment], term: str, headers: dict):
