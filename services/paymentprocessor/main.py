@@ -129,15 +129,77 @@ def _get_tenant_cache_key(padded_reference: str, organization_id: str) -> str:
 
 async def get_tenant_by_reference(padded_reference: str, headers: dict) -> Optional[Dict]:
     tenant_url = f"{settings.gateway_url}/api/v2/tenants?reference={padded_reference}"
-    response = await app.state.http_client.get(tenant_url, headers=headers)
+    organization_id = headers.get('organizationId', 'N/A')
 
-    if response.status_code != 200:
-        return None
+    logger.debug("Attempting to fetch tenant", url=tenant_url, reference=padded_reference,
+                 organization_id=organization_id)
 
-    tenant_data = response.json()
-    if isinstance(tenant_data, list):
-        return next((t for t in tenant_data if str(t.get('reference', '')).strip() == padded_reference), None)
-    return tenant_data if str(tenant_data.get('reference', '')).strip() == padded_reference else None
+    try:
+        response = await app.state.http_client.get(tenant_url, headers=headers)
+        logger.debug("Tenant fetch response received", url=tenant_url, status_code=response.status_code)
+
+        if response.status_code != 200:
+            logger.warning("Tenant API returned non-200 status",
+                           url=tenant_url,
+                           status_code=response.status_code,
+                           response_text=response.text[:500],  # Log up to 500 chars of response body
+                           reference=padded_reference)
+            return None
+
+        tenant_data = response.json()
+        if isinstance(tenant_data, list):
+            found_tenant = next((t for t in tenant_data if str(t.get('reference', '')).strip() == padded_reference),
+                                None)
+            if not found_tenant:
+                logger.warning("Tenant not found in list response from Gateway", url=tenant_url,
+                               reference=padded_reference, response_data=tenant_data)
+            return found_tenant
+
+        if str(tenant_data.get('reference', '')).strip() == padded_reference:
+            return tenant_data
+        else:
+            logger.warning("Tenant reference mismatch in single response from Gateway", url=tenant_url,
+                           expected_ref=padded_reference, actual_ref=tenant_data.get('reference', 'N/A'))
+            return None
+
+    except httpx.TimeoutException as e:
+        # Crucial: Log specific httpx timeout info
+        logger.error("HTTP Timeout fetching tenant",
+                     url=tenant_url, reference=padded_reference,
+                     error_type=type(e).__name__,
+                     error_message=str(e),
+                     error_repr=repr(e),  # Log full representation for deep debug
+                     exc_info=True)
+        raise  # Re-raise to be caught by process_single_payment
+
+    except httpx.RequestError as e:
+        # Crucial: Log specific httpx request error info
+        logger.error("HTTP Request Error fetching tenant (connection/DNS issue)",
+                     url=tenant_url, reference=padded_reference,
+                     error_type=type(e).__name__,
+                     error_message=str(e),
+                     error_repr=repr(e),
+                     exc_info=True)
+        raise  # Re-raise to be caught by process_single_payment
+
+    except json.JSONDecodeError as e:  # Catch JSON decoding errors if response is not valid JSON
+        logger.error("JSON decode error from Gateway response",
+                     url=tenant_url, reference=padded_reference,
+                     error_type=type(e).__name__,
+                     error_message=str(e),
+                     error_repr=repr(e),
+                     response_text=response.text[:500] if 'response' in locals() else 'N/A',  # Check if response exists
+                     exc_info=True)
+        raise
+
+    except Exception as e:
+        logger.error("Unexpected error fetching tenant",
+                     url=tenant_url, reference=padded_reference,
+                     error_type=type(e).__name__,
+                     error_message=str(e),
+                     error_repr=repr(e),
+                     exc_info=True)
+        raise
 
 
 async def log_pending_payment(tenant_id: str, payment_date: str, payment_type: str,
@@ -174,29 +236,34 @@ async def check_payment_exists(payment_reference: str) -> bool:
 
 # Core processing
 async def process_single_payment(payment: Payment, term: str, headers: dict) -> PaymentResult:
+    padded_reference = ""  # Initialize for logging if padding fails early
     try:
         padded_reference = await pad_tenant_id(payment.tenant_id)
         tenant = await get_tenant_by_reference(padded_reference, headers)
 
         if not tenant:
-            error_msg = f"No tenant found with reference {padded_reference}"
+            error_msg = f"Tenant not found for reference '{padded_reference}' via Gateway."
             await log_pending_payment(
                 payment.tenant_id, payment.payment_date, payment.payment_type,
                 payment.reference, payment.amount, error_msg
             )
+            logger.warning("Payment processing logical failure: Tenant not found",
+                           tenant_id=payment.tenant_id, reference=payment.reference, message=error_msg)
             return PaymentResult(
                 success=False,
                 tenant_id=payment.tenant_id,
                 message=error_msg
             )
 
-        tenant_id = tenant.get('_id')
-        if not tenant_id:
-            error_msg = f"Tenant missing ID for reference {padded_reference}"
+        tenant_id_from_gateway = tenant.get('_id')
+        if not tenant_id_from_gateway:
+            error_msg = f"Gateway returned tenant with reference '{padded_reference}' but no '_id' field."
             await log_pending_payment(
                 payment.tenant_id, payment.payment_date, payment.payment_type,
                 payment.reference, payment.amount, error_msg
             )
+            logger.warning("Payment processing logical failure: Tenant missing ID",
+                           tenant_id=payment.tenant_id, reference=payment.reference, message=error_msg)
             return PaymentResult(
                 success=False,
                 tenant_id=payment.tenant_id,
@@ -204,34 +271,49 @@ async def process_single_payment(payment: Payment, term: str, headers: dict) -> 
             )
 
         # Process payment (rest of your existing logic)
-        # For demonstration, we'll simulate success
-        # In a real scenario, this would involve updating the tenant's payment records in MongoDB
-        # For example:
+        # Assuming success for now.
+        # This is where your actual payment integration logic would go.
+        # Example of simulating an internal success:
+        # For a real scenario, you'd interact with MongoDB here to record the payment.
         # async with get_mongo_client() as client:
         #     db = client['bomatech']
+        #     # Example update logic (adjust to your actual schema)
         #     await db['occupants'].update_one(
-        #         {"_id": tenant_id, "rents.term": term},
-        #         {"$push": {"rents.$.payments": payment.dict(exclude={'tenant_id'})}}
+        #         {"_id": tenant_id_from_gateway, "rents.term": term},
+        #         {"$push": {"rents.$.payments": payment.dict(exclude={'tenant_id'})}},
+        #         upsert=False # Do not create if parent rent/occupant doesn't exist
         #     )
+        # logger.info("Payment successfully processed and recorded", tenant_id=tenant_id_from_gateway, reference=payment.reference)
 
         return PaymentResult(
             success=True,
-            tenant_id=tenant_id,
-            message=f"Payment {payment.reference} processed successfully for tenant {padded_reference}"
+            tenant_id=tenant_id_from_gateway,
+            message=f"Payment {payment.reference} processed successfully for tenant {padded_reference} (ID: {tenant_id_from_gateway})"
         )
 
     except Exception as e:
-        logger.error("Payment processing error", error=str(e), tenant_id=payment.tenant_id)
+        # This catches exceptions from get_tenant_by_reference, pad_tenant_id, or internal logic
+        actual_error_message = str(e) if str(e) else f"Unknown error (type: {type(e).__name__}, repr: {repr(e)})"
+
+        # Log this specific event with comprehensive details
+        logger.error("Payment processing error (caught in process_single_payment)",
+                     error_message=actual_error_message,
+                     error_type=type(e).__name__,
+                     error_repr=repr(e),  # The full repr of the exception
+                     tenant_id=payment.tenant_id,
+                     payment_reference=payment.reference,
+                     exc_info=True)  # Ensure full traceback is logged
+
+        # Ensure pending payment has the actual error message
         await log_pending_payment(
             payment.tenant_id, payment.payment_date, payment.payment_type,
-            payment.reference, payment.amount, str(e)
+            payment.reference, payment.amount, actual_error_message
         )
         return PaymentResult(
             success=False,
             tenant_id=payment.tenant_id,
-            message=str(e)
+            message=actual_error_message  # Ensure the message for the PaymentResult is descriptive
         )
-
 
 async def process_payments_batch(payments: List[Payment], term: str, headers: dict):
     return await asyncio.gather(
