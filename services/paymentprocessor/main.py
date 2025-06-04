@@ -366,9 +366,310 @@ async def process_single_payment(payment: Payment, term: str, headers: dict) -> 
             message=actual_error_message
         )
 
+# Core processing
+async def process_single_payment(payment: Payment, term: str, organization_id: str,
+                                 auth_token: str = None) -> PaymentResult:
+    """Process a single payment by calling the rent API endpoint."""
+    try:
+        # Pad the tenant reference with leading zeros
+        padded_reference = await pad_tenant_id(payment.tenant_id)
+        logger.debug(f"Looking up tenant with reference: {padded_reference}")
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Accept-Language": "en",
+            "organizationId": organization_id,
+        }
+
+        # Add authorization header if token is provided
+        if auth_token:
+            headers["Authorization"] = auth_token
+
+        # Get tenant by reference number using the reference field
+        # Using the http_client from app.state for consistency
+        tenant_url = f"{settings.gateway_url}/api/v2/tenants?reference={padded_reference}"
+        logger.debug(f"Looking up tenant with reference {padded_reference} at URL: {tenant_url}")
+
+        tenant_response = await app.state.http_client.get(tenant_url, headers=headers)
+        logger.debug(f"Tenant lookup response status: {tenant_response.status_code}")
+
+        if tenant_response.status_code != 200:
+            error_msg = f"Failed to find tenant with reference {padded_reference}: {tenant_response.text}"
+            logger.error(error_msg)
+            await log_pending_payment(
+                tenant_id=payment.tenant_id,
+                payment_date=payment.payment_date,
+                payment_type=payment.payment_type,
+                payment_reference=payment.reference,
+                amount=payment.amount,
+                narration=error_msg
+            )
+            return PaymentResult(
+                success=False,
+                tenant_id=payment.tenant_id,
+                message=error_msg
+            )
+
+        tenant_data = tenant_response.json()
+        logger.debug(f"Raw tenant data: {json.dumps(tenant_data, indent=2)}")
+
+        # Handle both list and single object responses
+        if isinstance(tenant_data, list):
+            if not tenant_data:
+                error_msg = f"No tenant found with reference {padded_reference}"
+                log_pending_payment(
+                    tenant_id=payment.tenant_id,
+                    payment_date=payment.payment_date,
+                    payment_type=payment.payment_type,
+                    payment_reference=payment.reference,
+                    amount=payment.amount,
+                    narration=error_msg
+                )
+                logger.error(error_msg)
+                return PaymentResult(
+                    success=False,
+                    tenant_id=payment.tenant_id,
+                    message=error_msg
+                )
+            # Find the tenant with matching reference
+            tenant = None
+            for t in tenant_data:
+                if str(t.get('reference', '')).strip() == padded_reference:
+                    tenant = t
+                    break
+            if not tenant:
+                error_msg = f"No tenant found with exact reference {padded_reference}"
+                log_pending_payment(
+                    tenant_id=payment.tenant_id,
+                    payment_date=payment.payment_date,
+                    payment_type=payment.payment_type,
+                    payment_reference=payment.reference,
+                    amount=payment.amount,
+                    narration=error_msg
+                )
+                logger.error(error_msg)
+                return PaymentResult(
+                    success=False,
+                    tenant_id=payment.tenant_id,
+                    message=error_msg
+                )
+        else:
+            # Verify the reference matches
+            if str(tenant_data.get('reference', '')).strip() != padded_reference:
+                error_msg = f"Tenant reference mismatch. Expected {padded_reference}, got {tenant_data.get('reference', '')}"
+                log_pending_payment(
+                    tenant_id=payment.tenant_id,
+                    payment_date=payment.payment_date,
+                    payment_type=payment.payment_type,
+                    payment_reference=payment.reference,
+                    amount=payment.amount,
+                    narration=error_msg
+                )
+                logger.error(error_msg)
+                return PaymentResult(
+                    success=False,
+                    tenant_id=payment.tenant_id,
+                    message=error_msg
+                )
+            tenant = tenant_data
+
+        tenant_id = tenant.get('_id')
+        if not tenant_id:
+            error_msg = f"Tenant data missing _id field for reference {padded_reference}"
+            log_pending_payment(
+                tenant_id=payment.tenant_id,
+                payment_date=payment.payment_date,
+                payment_type=payment.payment_type,
+                payment_reference=payment.reference,
+                amount=payment.amount,
+                narration=error_msg
+            )
+            logger.error(error_msg)
+            return PaymentResult(
+                success=False,
+                tenant_id=payment.tenant_id,
+                message=error_msg
+            )
+
+        # Check if the tenant has previous payments (by looking at 'hasPayments' field or trying to fetch)
+        has_payments = tenant.get("hasPayments", False)
+        existing_payments = [] # Initialize as empty
+
+        if has_payments: # Only fetch if 'hasPayments' is True in tenant data
+            logger.debug(f"Tenant {tenant_id} has previous payments. Fetching payment history.")
+
+            # Assuming term is in the format 'YYYY.MM'
+            year, month = term.split('.')
+            # Format to YYYYMMDDHH (e.g., 2025050100) as per your Gateway's expected format
+            formatted_term_for_get = f"{year}{month.zfill(2)}0100"
+
+            # Fetch existing payments for the tenant from Gateway
+            get_payments_url = f"{settings.gateway_url}/api/v2/rents/tenant/{tenant_id}/{formatted_term_for_get}"
+
+            payments_response = await app.state.http_client.get(get_payments_url, headers=headers)
+            logger.debug(f"Payments lookup response status: {payments_response.status_code}")
+
+            if payments_response.status_code != 200:
+                # If fetching existing payments fails, log and proceed with new payment only
+                # OR return failure if existing payments are mandatory.
+                # For this flow, let's allow new payment to proceed, but log warning.
+                # The Gateway's PATCH will handle the replacement logic.
+                error_msg = f"Failed to fetch existing payments for tenant {tenant_id} and term {formatted_term_for_get}: {payments_response.text}"
+                logger.warning(error_msg)
+                # We don't return False here immediately as the PATCH might still succeed to create the term.
+                # The log_pending_payment is also commented out based on your original snippet where it wasn't called here.
+            else:
+                existing_payments = payments_response.json().get('payments', [])
+                if not existing_payments:
+                    logger.info(f"No existing payments found for tenant {tenant_id} and term {term} despite hasPayments=True")
+                logger.debug(f"Existing payments for tenant {tenant_id}: {json.dumps(existing_payments, indent=2)}")
+        else:
+            logger.debug(f"Tenant {tenant_id} has no previous payments. Starting with an empty payment history.")
+
+
+        # Format the new payment to be sent to Gateway
+        # Use the date format the Gateway expects (e.g., ISO or YYYY-MM-DD)
+        # Your Payment model's validator formats to DD/MM/YYYY.
+        # It's better to ensure Gateway consumes DD/MM/YYYY or reformat here if Gateway expects ISO.
+        # Assuming Gateway can parse DD/MM/YYYY from your Payment model or expects ISO from parse_payment_date.
+        # Let's assume parse_payment_date formats to ISO string (YYYY-MM-DDTHH:MM:SSZ)
+        # based on previous examples that use it in payment_data.
+        formatted_date = datetime.strptime(payment.payment_date, '%d/%m/%Y').isoformat() + 'Z'
+
+
+        new_payment = {
+            "type": payment.payment_type.lower() if payment.payment_type else "cash",
+            "date": formatted_date,
+            "reference": payment.reference,
+            "amount": float(payment.amount)
+        }
+
+        # Merge existing payments with the new payment.
+        # This merged array will be sent to the Gateway for replacement.
+        updated_payments = existing_payments + [new_payment]
+
+        # Build the complete payload for the Gateway's PATCH endpoint
+        payment_data_for_gateway = {
+            "_id": tenant_id,
+            "payments": updated_payments, # Send the entire merged array
+            "description": payment.description or "",
+            "promo": float(payment.promo_amount or 0),
+            "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
+            "extracharge": float(payment.extra_charge or 0),
+            "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
+            "term": term # Send the original YYYY.MM term in the body as well
+        }
+        logger.debug(f"Payment data for Gateway for tenant {tenant_id}: {json.dumps(payment_data_for_gateway, indent=2)}")
+
+        # Construct the URL for the Gateway's PATCH endpoint
+        update_payments_url = f"{settings.gateway_url}/api/v2/rents/payment/{tenant_id}/{term}"
+
+        # Send the PATCH request to the Gateway
+        payment_response = await app.state.http_client.patch(
+            update_payments_url,
+            headers=headers,
+            json=payment_data_for_gateway
+        )
+        logger.info(f"Payment response for tenant {tenant_id} - Status: {payment_response.status_code}")
+        logger.info(f"Payment response body: {payment_response.text}")
+
+        if payment_response.status_code != 200:
+            error_msg = f"Failed to process payment for tenant {tenant_id} via Gateway: {payment_response.text}"
+            logger.error(error_msg)
+            # Log to pendingPayments if the payment fails
+            log_pending_payment(
+                tenant_id=payment.tenant_id,
+                payment_date=payment.payment_date,
+                payment_type=payment.payment_type,
+                payment_reference=payment.reference,
+                amount=payment.amount,
+                narration=error_msg
+            )
+            return PaymentResult(
+                success=False,
+                tenant_id=tenant_id,
+                message=error_msg
+            )
+
+        logger.info(f"Successfully processed payment for tenant {tenant_id} via Gateway.")
+        return PaymentResult(
+            success=True,
+            tenant_id=tenant_id,
+            message=f"Successfully processed payment for tenant {tenant_id}"
+        )
+
+    except httpx.TimeoutException as e:
+        error_msg = f"HTTP Timeout during payment processing for tenant {payment.tenant_id}: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        log_pending_payment(
+            tenant_id=payment.tenant_id,
+            payment_date=payment.payment_date,
+            payment_type=payment.payment_type,
+            payment_reference=payment.reference,
+            amount=payment.amount,
+            narration=error_msg
+        )
+        return PaymentResult(
+            success=False,
+            tenant_id=payment.tenant_id,
+            message=error_msg
+        )
+    except httpx.RequestError as e:
+        error_msg = f"HTTP Request Error during payment processing for tenant {payment.tenant_id}: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        log_pending_payment(
+            tenant_id=payment.tenant_id,
+            payment_date=payment.payment_date,
+            payment_type=payment.payment_type,
+            payment_reference=payment.reference,
+            amount=payment.amount,
+            narration=error_msg
+        )
+        return PaymentResult(
+            success=False,
+            tenant_id=payment.tenant_id,
+            message=error_msg
+        )
+    except json.JSONDecodeError as e:
+        error_msg = f"JSON Decode Error from Gateway response for tenant {payment.tenant_id}: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        log_pending_payment(
+            tenant_id=payment.tenant_id,
+            payment_date=payment.payment_date,
+            payment_type=payment.payment_type,
+            payment_reference=payment.reference,
+            amount=payment.amount,
+            narration=error_msg
+        )
+        return PaymentResult(
+            success=False,
+            tenant_id=payment.tenant_id,
+            message=error_msg
+        )
+    except Exception as e:
+        error_msg = f"Unexpected error processing payment for tenant {payment.tenant_id}: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        log_pending_payment(
+            tenant_id=payment.tenant_id,
+            payment_date=payment.payment_date,
+            payment_type=payment.payment_type,
+            payment_reference=payment.reference,
+            amount=payment.amount,
+            narration=error_msg
+        )
+        return PaymentResult(
+            success=False,
+            tenant_id=payment.tenant_id,
+            message=error_msg
+        )
+
 async def process_payments_batch(payments: List[Payment], term: str, headers: dict):
+    organization_id = headers.get('organizationId')
+    auth_token = headers.get('Authorization')
+
     return await asyncio.gather(
-        *(process_single_payment(p, term, headers) for p in payments),
+        *(process_single_payment(p, term, auth_token) for p in payments),
         return_exceptions=True
     )
 
