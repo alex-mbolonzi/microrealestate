@@ -664,12 +664,10 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             message=error_msg
         )
 
-async def process_payments_batch(payments: List[Payment], term: str, headers: dict):
-    organization_id = headers.get('organizationId')
-    auth_token = headers.get('Authorization')
+async def process_payments_batch(payments: List[Payment], term: str, organization_id: str, auth_token: str) -> List[PaymentResult]:
 
     return await asyncio.gather(
-        *(process_single_payment(p, term, auth_token) for p in payments),
+        *(process_single_payment(p, term, organization_id, auth_token) for p in payments),
         return_exceptions=True
     )
 
@@ -688,13 +686,17 @@ async def process_payments(
             contents = await file.read()
             df = pd.read_csv(StringIO(contents.decode()))
 
-            # Prepare headers
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "organizationId": request.headers.get('organizationid'),
-                "Authorization": request.headers.get('authorization', "")
-            }
+            # # Prepare headers
+            # headers = {
+            #     "Content-Type": "application/json",
+            #     "Accept": "application/json",
+            #     "organizationId": request.headers.get('organizationid'),
+            #     "Authorization": request.headers.get('authorization', "")
+            # }
+
+            # Get organization ID from headers
+            organization_id = request.headers.get('organizationid')
+            auth_token = request.headers.get('authorization')
 
             all_payments: List[Payment] = []
             for _, row in df.iterrows():
@@ -759,7 +761,7 @@ async def process_payments(
             for i in range(0, total_to_process, batch_size):
                 batch = payments_to_process[i:i + batch_size]
 
-                results = await process_payments_batch(batch, term, headers)
+                results = await process_payments_batch(batch, term, organization_id, auth_token)
                 processed_count += len(batch)
 
                 # Collect successful results and errors for the current batch
