@@ -446,7 +446,9 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         logger.info(f"Payment response for tenant {tenant_id} - Status: {payment_response.status_code}")
         logger.info(f"Payment response body: {payment_response.text}")
 
-        if payment_response.status_code != 200:
+        successful_status_codes = [200, 202, 204, 201]  # Add any other successful codes as needed
+
+        if (payment_response.status_code not in successful_status_codes):
             error_msg = f"Failed to process payment for tenant {tenant_id} via Gateway: {payment_response.text}"
             logger.error(error_msg)
             # Log to pendingPayments if the payment fails
