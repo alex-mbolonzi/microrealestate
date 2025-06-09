@@ -299,14 +299,14 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         if isinstance(tenant_data, list):
             if not tenant_data:
                 error_msg = f"No tenant found with reference {padded_reference}"
-                log_pending_payment(
-                    tenant_id=payment.tenant_id,
-                    payment_date=payment.payment_date,
-                    payment_type=payment.payment_type,
-                    payment_reference=payment.reference,
-                    amount=payment.amount,
-                    narration=error_msg
-                )
+                await log_pending_payment(
+                         tenant_id=payment.tenant_id,
+                         payment_date=payment.payment_date,
+                         payment_type=payment.payment_type,
+                         payment_reference=payment.reference,
+                         amount=payment.amount,
+                         narration=error_msg
+                       )
                 logger.error(error_msg)
                 return PaymentResult(
                     success=False,
@@ -321,14 +321,14 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
                     break
             if not tenant:
                 error_msg = f"No tenant found with exact reference {padded_reference}"
-                log_pending_payment(
-                    tenant_id=payment.tenant_id,
-                    payment_date=payment.payment_date,
-                    payment_type=payment.payment_type,
-                    payment_reference=payment.reference,
-                    amount=payment.amount,
-                    narration=error_msg
-                )
+                await log_pending_payment(
+                        tenant_id=payment.tenant_id,
+                        payment_date=payment.payment_date,
+                        payment_type=payment.payment_type,
+                        payment_reference=payment.reference,
+                        amount=payment.amount,
+                        narration=error_msg
+                      )
                 logger.error(error_msg)
                 return PaymentResult(
                     success=False,
@@ -339,14 +339,14 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             # Verify the reference matches
             if str(tenant_data.get('reference', '')).strip() != padded_reference:
                 error_msg = f"Tenant reference mismatch. Expected {padded_reference}, got {tenant_data.get('reference', '')}"
-                log_pending_payment(
-                    tenant_id=payment.tenant_id,
-                    payment_date=payment.payment_date,
-                    payment_type=payment.payment_type,
-                    payment_reference=payment.reference,
-                    amount=payment.amount,
-                    narration=error_msg
-                )
+                await log_pending_payment(
+                         tenant_id=payment.tenant_id,
+                         payment_date=payment.payment_date,
+                         payment_type=payment.payment_type,
+                         payment_reference=payment.reference,
+                         amount=payment.amount,
+                         narration=error_msg
+                       )
                 logger.error(error_msg)
                 return PaymentResult(
                     success=False,
@@ -358,14 +358,14 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         tenant_id = tenant.get('_id')
         if not tenant_id:
             error_msg = f"Tenant data missing _id field for reference {padded_reference}"
-            log_pending_payment(
-                tenant_id=payment.tenant_id,
-                payment_date=payment.payment_date,
-                payment_type=payment.payment_type,
-                payment_reference=payment.reference,
-                amount=payment.amount,
-                narration=error_msg
-            )
+            await log_pending_payment(
+                     tenant_id=payment.tenant_id,
+                     payment_date=payment.payment_date,
+                     payment_type=payment.payment_type,
+                     payment_reference=payment.reference,
+                     amount=payment.amount,
+                     narration=error_msg
+                   )
             logger.error(error_msg)
             return PaymentResult(
                 success=False,
@@ -450,14 +450,15 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             error_msg = f"Failed to process payment for tenant {tenant_id} via Gateway: {payment_response.text}"
             logger.error(error_msg)
             # Log to pendingPayments if the payment fails
-            log_pending_payment(
-                tenant_id=payment.tenant_id,
-                payment_date=payment.payment_date,
-                payment_type=payment.payment_type,
-                payment_reference=payment.reference,
-                amount=payment.amount,
-                narration=error_msg
-            )
+            await log_pending_payment(
+                    tenant_id=payment.tenant_id,
+                    payment_date=payment.payment_date,
+                    payment_type=payment.payment_type,
+                    payment_reference=payment.reference,
+                    amount=payment.amount,
+                    narration=error_msg
+                   )
+
             return PaymentResult(
                 success=False,
                 tenant_id=tenant_id,
@@ -474,14 +475,14 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
     except httpx.TimeoutException as e:
         error_msg = f"HTTP Timeout during payment processing for tenant {payment.tenant_id}: {str(e)}"
         logger.error(error_msg, exc_info=True)
-        log_pending_payment(
-            tenant_id=payment.tenant_id,
-            payment_date=payment.payment_date,
-            payment_type=payment.payment_type,
-            payment_reference=payment.reference,
-            amount=payment.amount,
-            narration=error_msg
-        )
+        await log_pending_payment(
+                tenant_id=payment.tenant_id,
+                payment_date=payment.payment_date,
+                payment_type=payment.payment_type,
+                payment_reference=payment.reference,
+                amount=payment.amount,
+                narration=error_msg
+               )
         return PaymentResult(
             success=False,
             tenant_id=payment.tenant_id,
@@ -490,14 +491,15 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
     except httpx.RequestError as e:
         error_msg = f"HTTP Request Error during payment processing for tenant {payment.tenant_id}: {str(e)}"
         logger.error(error_msg, exc_info=True)
-        log_pending_payment(
-            tenant_id=payment.tenant_id,
-            payment_date=payment.payment_date,
-            payment_type=payment.payment_type,
-            payment_reference=payment.reference,
-            amount=payment.amount,
-            narration=error_msg
-        )
+        await log_pending_payment(
+                tenant_id=payment.tenant_id,
+                payment_date=payment.payment_date,
+                payment_type=payment.payment_type,
+                payment_reference=payment.reference,
+                amount=payment.amount,
+                narration=error_msg
+               )
+
         return PaymentResult(
             success=False,
             tenant_id=payment.tenant_id,
@@ -506,14 +508,15 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
     except json.JSONDecodeError as e:
         error_msg = f"JSON Decode Error from Gateway response for tenant {payment.tenant_id}: {str(e)}"
         logger.error(error_msg, exc_info=True)
-        log_pending_payment(
-            tenant_id=payment.tenant_id,
-            payment_date=payment.payment_date,
-            payment_type=payment.payment_type,
-            payment_reference=payment.reference,
-            amount=payment.amount,
-            narration=error_msg
-        )
+        await log_pending_payment(
+                tenant_id=payment.tenant_id,
+                payment_date=payment.payment_date,
+                payment_type=payment.payment_type,
+                payment_reference=payment.reference,
+                amount=payment.amount,
+                narration=error_msg
+               )
+
         return PaymentResult(
             success=False,
             tenant_id=payment.tenant_id,
@@ -522,14 +525,15 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
     except Exception as e:
         error_msg = f"Unexpected error processing payment for tenant {payment.tenant_id}: {str(e)}"
         logger.error(error_msg, exc_info=True)
-        log_pending_payment(
-            tenant_id=payment.tenant_id,
-            payment_date=payment.payment_date,
-            payment_type=payment.payment_type,
-            payment_reference=payment.reference,
-            amount=payment.amount,
-            narration=error_msg
-        )
+        await log_pending_payment(
+                tenant_id=payment.tenant_id,
+                payment_date=payment.payment_date,
+                payment_type=payment.payment_type,
+                payment_reference=payment.reference,
+                amount=payment.amount,
+                narration=error_msg
+             )
+
         return PaymentResult(
             success=False,
             tenant_id=payment.tenant_id,
