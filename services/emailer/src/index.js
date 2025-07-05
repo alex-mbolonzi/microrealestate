@@ -81,6 +81,7 @@ async function Main() {
     await service.init({
       name: 'Emailer',
       useMongo: true,
+      useRedis: true,
       onStartUp
     });
     await service.startUp();

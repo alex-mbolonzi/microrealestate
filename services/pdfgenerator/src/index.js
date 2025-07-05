@@ -51,6 +51,7 @@ async function Main() {
     await service.init({
       name: 'PdfGenerator',
       useMongo: true,
+      useRedis: true,
       onStartUp,
       onShutDown
     });
