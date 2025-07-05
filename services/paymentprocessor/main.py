@@ -570,7 +570,7 @@ async def startup():
 
     # Initialize Redis connection pool with password if provided
     redis_kwargs = {
-        "max_connections": 100,
+        "max_connections": 200,
         "decode_responses": True
     }
 
