@@ -416,6 +416,17 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             )
 
         logger.info(f"Successfully processed payment for tenant {tenant_id} via Gateway.")
+
+        # --- ADD THIS BLOCK TO INVALIDATE THE CACHE ---
+        try:
+            redis_client = await get_redis()
+            cache_key_payment_exists = _get_payment_check_cache_key(payment.reference)
+            await redis_client.delete(cache_key_payment_exists)
+            logger.debug("Invalidated payment existence cache after successful processing", reference=payment.reference)
+        except Exception as e:
+            logger.warning("Failed to invalidate payment existence cache", reference=payment.reference, error=str(e))
+        # --- END ADDITION ---
+
         return PaymentResult(
             success=True,
             tenant_id=tenant_id,
