@@ -384,7 +384,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
             "term": term
         }
-        logger.debug(
+        logger.info(
             f"Payment data for Gateway for tenant {tenant_id}: {json.dumps(payment_data_for_gateway, indent=2)}")
 
         update_payments_url = f"{settings.gateway_url}/api/v2/rents/payment/{tenant_id}/{term}"
