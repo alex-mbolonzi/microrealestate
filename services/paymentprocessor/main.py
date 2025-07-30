@@ -263,10 +263,10 @@ async def check_payment_exists(payment_reference: str) -> bool:
     try:
         cached_result = await redis_client.get(cache_key)
         if cached_result:
-            logger.debug("Retrieved payment check from cache", reference=payment_reference)
+            logger.info("Retrieved payment check from cache", reference=payment_reference)
             return json.loads(cached_result)
     except Exception as e:
-        logger.warning("Redis cache read failed, falling back to DB", error=str(e))
+        logger.info("Redis cache read failed, falling back to DB", error=str(e))
 
     # Cache miss or error - check MongoDB
     async with get_mongo_client() as client:
@@ -284,13 +284,14 @@ async def check_payment_exists(payment_reference: str) -> bool:
                     timedelta(seconds=settings.payment_check_cache_ttl),
                     json.dumps(exists)
                 )
-                logger.debug("Cached payment check result", reference=payment_reference)
+                logger.info("Cached payment check result", reference=payment_reference)
             except Exception as e:
-                logger.warning("Failed to cache payment check result", error=str(e))
+                logger.info("Failed to cache payment check result", error=str(e))
 
             return exists
+
         except Exception as e:
-            logger.error("Error checking payment existence", reference=payment_reference, error=str(e))
+            logger.info("Error checking payment existence", reference=payment_reference, error=str(e))
             raise
 
 
