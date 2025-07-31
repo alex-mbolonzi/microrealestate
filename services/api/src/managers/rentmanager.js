@@ -390,7 +390,7 @@ async function _updateByTerm(
       const duplicate = await Collections.Tenant.findOne({
         'rents.payments.reference': payment.reference
       }).lean();
-      if (duplicate) {
+      if (duplicate !== null) {
         throw new ServiceError(`Duplicate payment reference at index ${index}: ${payment.reference}`);
       }
     }
