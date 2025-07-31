@@ -363,17 +363,21 @@ async function _updateByTerm(
         throw new ServiceError(`Invalid payment at index ${index}: amount must be a number`);
       }
     }
-    // Check for duplicate payment.reference globally
-    if (payment.reference) {
-      const duplicate = Collections.Tenant.findOne({
-        'rents.payments.reference': payment.reference,
-         realmId: realm._id
-      }).lean();
-      if (duplicate) {
-        throw new ServiceError(`Duplicate payment reference at index ${index}: ${payment.reference}`);
-      }
-    }
   });
+
+  // Only check the last payment for duplicate reference
+  const lastIndex = paymentData.payments.length - 1;
+  const lastPayment = paymentData.payments[lastIndex];
+
+  if (lastPayment && lastPayment.reference) {
+    const duplicate = await Collections.Tenant.findOne({
+      'rents.payments.reference': lastPayment.reference,
+      realmId: realm._id
+    }).lean();
+    if (duplicate) {
+      throw new ServiceError(`Duplicate payment reference at index ${lastIndex}: ${lastPayment.reference}`);
+    }
+  }
 
   // Validate each payment in the array
   // for (const [index, payment] of paymentData.payments.entries()) {
