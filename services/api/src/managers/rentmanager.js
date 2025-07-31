@@ -388,9 +388,10 @@ async function _updateByTerm(
     // Check for duplicate payment.reference globally
     if (payment.reference) {
       const duplicate = await Collections.Tenant.findOne({
-        'rents.payments.reference': payment.reference
+        'rents.payments.reference': payment.reference,
+         realmId: realm._id
       }).lean();
-      if (duplicate !== null) {
+      if (duplicate) {
         throw new ServiceError(`Duplicate payment reference at index ${index}: ${payment.reference}`);
       }
     }
