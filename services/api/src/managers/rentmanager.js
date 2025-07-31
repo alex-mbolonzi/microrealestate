@@ -1,6 +1,6 @@
+import * as BL from '../businesslogic/index.js';
 import * as Contract from './contract.js';
 import * as FD from './frontdata.js';
-import * as BL from '../businesslogic/index.js';
 import {
   Collections,
   logger,
@@ -361,6 +361,15 @@ async function _updateByTerm(
       payment.amount = Number(payment.amount);
       if (isNaN(payment.amount)) {
         throw new ServiceError(`Invalid payment at index ${index}: amount must be a number`);
+      }
+    }
+    // Check for duplicate payment.reference globally
+    if (payment.reference) {
+      const duplicate = await Collections.Tenant.findOne({
+        'rents.payments.reference': payment.reference
+      }).lean();
+      if (duplicate) {
+        throw new ServiceError(`Duplicate payment reference at index ${index}: ${payment.reference}`);
       }
     }
   });
