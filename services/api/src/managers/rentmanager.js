@@ -392,7 +392,7 @@ async function _updateByTerm(
          realmId: realm._id
       }).lean();
       if (duplicate) {
-        throw new ServiceError(`Duplicate payment reference at index ${index}: ${payment.reference}`);
+        throw new ServiceError(`Duplicate payment reference at ${duplicate}: ${payment.reference}`);
       }
     }
   }
