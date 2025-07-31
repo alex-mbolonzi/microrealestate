@@ -352,8 +352,21 @@ async function _updateByTerm(
     throw new ServiceError(`Invalid payment data: payments must be an array`);
   }
 
+  //Validate each payment in the array
+  paymentData.payments.forEach((payment, index) => {
+    if (!payment.date || !payment.type || !payment.amount) {
+      throw new ServiceError(`Invalid payment at index ${index}: missing required fields (date, type, amount)`);
+    }
+    if (typeof payment.amount !== 'number') {
+      payment.amount = Number(payment.amount);
+      if (isNaN(payment.amount)) {
+        throw new ServiceError(`Invalid payment at index ${index}: amount must be a number`);
+      }
+    }
+  });
+
   // Validate each payment in the array
-  // paymentData.payments.forEach((payment, index) => {
+  // for (const [index, payment] of paymentData.payments.entries()) {
   //   if (!payment.date || !payment.type || !payment.amount) {
   //     throw new ServiceError(`Invalid payment at index ${index}: missing required fields (date, type, amount)`);
   //   }
@@ -366,36 +379,14 @@ async function _updateByTerm(
   //   // Check for duplicate payment.reference globally
   //   if (payment.reference) {
   //     const duplicate = await Collections.Tenant.findOne({
-  //       'rents.payments.reference': payment.reference
+  //       'rents.payments.reference': payment.reference,
+  //        realmId: realm._id
   //     }).lean();
   //     if (duplicate) {
-  //       throw new ServiceError(`Duplicate payment reference at index ${index}: ${payment.reference}`);
+  //       throw new ServiceError(`Duplicate payment reference at ${duplicate}: ${payment.reference}`);
   //     }
   //   }
-  // });
-
-  // Validate each payment in the array
-  for (const [index, payment] of paymentData.payments.entries()) {
-    if (!payment.date || !payment.type || !payment.amount) {
-      throw new ServiceError(`Invalid payment at index ${index}: missing required fields (date, type, amount)`);
-    }
-    if (typeof payment.amount !== 'number') {
-      payment.amount = Number(payment.amount);
-      if (isNaN(payment.amount)) {
-        throw new ServiceError(`Invalid payment at index ${index}: amount must be a number`);
-      }
-    }
-    // Check for duplicate payment.reference globally
-    if (payment.reference) {
-      const duplicate = await Collections.Tenant.findOne({
-        'rents.payments.reference': payment.reference,
-         realmId: realm._id
-      }).lean();
-      if (duplicate) {
-        throw new ServiceError(`Duplicate payment reference at ${duplicate}: ${payment.reference}`);
-      }
-    }
-  }
+  // }
 
   const occupant = await Collections.Tenant.findOne({
     _id: paymentData._id,
