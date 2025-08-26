@@ -39,7 +39,8 @@ async function Main() {
         DOMAIN_URL: process.env.DOMAIN_URL || 'http://localhost', // deprecated
         APP_DOMAIN: process.env.APP_DOMAIN,
         CORS_ENABLED: process.env.CORS_ENABLED === 'true',
-        TENANTAPI_URL: process.env.TENANTAPI_URL
+        TENANTAPI_URL: process.env.TENANTAPI_URL,
+        PAYMENT_PROCESSOR_URL: process.env.PAYMENT_PROCESSOR_URL
       })
     );
     await service.init({
@@ -133,16 +134,15 @@ function exposeServices(application: Express.Application) {
   application.use(
     '/api/v2/paymentprocessor',
     createProxyMiddleware({
-      target: config.API_URL,
-      pathRewrite: { '^/api/v2/paymentprocessor': '' }
+      target: config.PAYMENT_PROCESSOR_URL,
+      pathRewrite: { '^/paymentprocessor/process-payments': '' }
     })
   );
 
   application.use(
     '/api/v2',
     createProxyMiddleware({
-      target: config.API_URL,
-      pathRewrite: { '^/api/v2': '' }
+      target: config.API_URL
     })
   );
 
