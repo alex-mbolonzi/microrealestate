@@ -534,31 +534,78 @@ async def process_payments(
             for skipped in skipped_duplicates:
                 yield json.dumps(skipped) + "\n\n"
 
-            total_to_process = len(payments_to_process)
-            processed_count = 0
-            batch_size = settings.payment_batch_size
+            # Group payments by tenant_id for sequential processing per tenant
+            payments_by_tenant: Dict[str, List[Payment]] = {}
+            for payment in payments_to_process:
+                if payment.tenant_id not in payments_by_tenant:
+                    payments_by_tenant[payment.tenant_id] = []
+                payments_by_tenant[payment.tenant_id].append(payment)
 
-            for i in range(0, total_to_process, batch_size):
-                batch = payments_to_process[i:i + batch_size]
-                results = await process_payments_batch(batch, term, organization_id, auth_token)
-                processed_count += len(batch)
+            total_payments_for_progress = len(payments_to_process) # Total individual payments to track progress against
+            processed_payments_count = 0 # Accumulate processed payments across all batches
+            
+            tenant_ids_to_process = list(payments_by_tenant.keys())
+            total_unique_tenants = len(tenant_ids_to_process)
 
-                batch_successes = []
-                batch_errors = []
-                for r in results:
-                    if isinstance(r, Exception):
-                        batch_errors.append(str(r))
+            # This helper function will process all payments for a single tenant sequentially.
+            async def process_single_tenant_payments(tenant_id: str):
+                results_for_tenant = []
+                payments_list = payments_by_tenant[tenant_id]
+                for p in payments_list:
+                    result = await process_single_payment(p, term, organization_id, auth_token)
+                    results_for_tenant.append(result)
+                return { "tenant_id": tenant_id, "results": results_for_tenant }
+
+
+            # Iterate through unique tenants in batches, controlled by settings.payment_batch_size
+            for i in range(0, total_unique_tenants, settings.payment_batch_size):
+                tenant_id_batch = tenant_ids_to_process[i:i + settings.payment_batch_size]
+                
+                # Create a list of coroutines, one for each tenant in the current batch.
+                # These tasks will run concurrently.
+                tasks = [process_single_tenant_payments(tid) for tid in tenant_id_batch]
+                
+                # Execute the current batch of tenant processing tasks concurrently.
+                # `return_exceptions=True` ensures that if any task (processing a single tenant's payments)
+                # raises an unhandled exception, it's returned as an exception object instead of stopping `gather`.
+                batch_tenant_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Initialize lists to store results for the current streaming yield.
+                batch_successes_for_yield = []
+                batch_errors_for_yield = []
+                
+                # Process the results from the concurrent tenant batches.
+                for tenant_batch_result in batch_tenant_results:
+                    if isinstance(tenant_batch_result, Exception):
+                        # If an entire tenant group's processing failed unexpectedly (e.g., a critical unhandled error)
+                        error_msg = f"Fatal error processing a tenant group: {str(tenant_batch_result)}"
+                        batch_errors_for_yield.append({"message": error_msg})
+                        # Note: For accurate progress tracking in this rare case,
+                        # you might want to estimate how many payments were affected for this tenant.
                     else:
-                        batch_successes.append(r.dict())
+                        # tenant_batch_result is a dictionary: {"tenant_id": ..., "results": [...]}
+                        # Iterate through the individual payment results for this tenant.
+                        for single_payment_result in tenant_batch_result["results"]:
+                            # Increment the overall counter for processed payments.
+                            processed_payments_count += 1
+                            # Separate successful and failed payment results.
+                            if single_payment_result.success:
+                                batch_successes_for_yield.append(single_payment_result.dict())
+                            else:
+                                batch_errors_for_yield.append(single_payment_result.dict())
 
-                progress = min(100, int(processed_count / total_to_process * 100))
+                # Calculate progress based on the total number of individual payments processed so far.
+                progress = min(100, int(processed_payments_count / total_payments_for_progress * 100))
+                
+                # Yield the results for the current batch of tenants to the client.
                 yield json.dumps({
                     "status": "processing",
                     "progress": progress,
-                    "results": batch_successes,
-                    "errors": batch_errors
+                    "results": batch_successes_for_yield,
+                    "errors": batch_errors_for_yield
                 }) + "\n\n"
 
+            # After all tenants have been processed, send a final completion status.
             yield json.dumps({
                 "status": "complete",
                 "progress": 100,
