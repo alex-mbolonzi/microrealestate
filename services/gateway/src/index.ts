@@ -40,7 +40,7 @@ async function Main() {
         APP_DOMAIN: process.env.APP_DOMAIN,
         CORS_ENABLED: process.env.CORS_ENABLED === 'true',
         TENANTAPI_URL: process.env.TENANTAPI_URL,
-        PAYMENT_PROCESSOR_URL: process.env.PAYMENT_PROCESSOR_URL
+        PAYMENTPROCESSOR_URL: process.env.PAYMENTPROCESSOR_URL || process.env.PAYMENT_PROCESSOR_URL
       })
     );
     await service.init({
@@ -134,7 +134,7 @@ function exposeServices(application: Express.Application) {
   application.use(
     '/api/v2/paymentprocessor',
     createProxyMiddleware({
-      target: config.PAYMENT_PROCESSOR_URL,
+      target: config.PAYMENTPROCESSOR_URL,
       pathRewrite: { '^/paymentprocessor/process-payments': '' }
     })
   );
