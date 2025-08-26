@@ -133,7 +133,8 @@ function exposeServices(application: Express.Application) {
   application.use(
     '/api/v2',
     createProxyMiddleware({
-      target: config.API_URL
+      target: config.API_URL,
+      pathRewrite: { '^/api/v2': '' }
     })
   );
 
