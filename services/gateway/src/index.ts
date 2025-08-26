@@ -1,5 +1,4 @@
 import * as Express from 'express';
-import bodyParser from 'body-parser';
 import {
   EnvironmentConfig,
   logger,
@@ -9,6 +8,7 @@ import {
   URLUtils
 } from '@microrealestate/common';
 import axios from 'axios';
+import bodyParser from 'body-parser';
 import cors from 'cors';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
