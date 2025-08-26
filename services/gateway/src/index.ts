@@ -8,7 +8,6 @@ import {
   URLUtils
 } from '@microrealestate/common';
 import axios from 'axios';
-import bodyParser from 'body-parser';
 import cors from 'cors';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
@@ -134,10 +133,10 @@ function exposeServices(application: Express.Application) {
   // Ensure paymentprocessor routes are proxied before the generic /api/v2 catch-all
   application.use(
     '/api/v2/paymentprocessor',
-    bodyParser.json(), // Parse JSON bodies before proxying
     createProxyMiddleware({
       target: config.PAYMENTPROCESSOR_URL,
-      pathRewrite: { '^/api/v2': '' }
+      pathRewrite: { '^/api/v2': '' },
+      changeOrigin: true
     })
   );
 
