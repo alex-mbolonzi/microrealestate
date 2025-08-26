@@ -1,4 +1,5 @@
 import * as Express from 'express';
+import bodyParser from 'body-parser';
 import {
   EnvironmentConfig,
   logger,
@@ -133,6 +134,7 @@ function exposeServices(application: Express.Application) {
   // Ensure paymentprocessor routes are proxied before the generic /api/v2 catch-all
   application.use(
     '/api/v2/paymentprocessor',
+    bodyParser.json(), // Parse JSON bodies before proxying
     createProxyMiddleware({
       target: config.PAYMENTPROCESSOR_URL,
       pathRewrite: { '^/api/v2': '' }
