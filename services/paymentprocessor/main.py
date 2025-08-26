@@ -64,7 +64,7 @@ logger = configure_logging()
 # Application setup
 app = FastAPI(title="Payment Processor Service")
 router = APIRouter(
-    prefix="/api/v2/paymentprocessor",
+    prefix="/paymentprocessor",
     tags=["payments"],
     responses={404: {"description": "Not found"}},
 )
