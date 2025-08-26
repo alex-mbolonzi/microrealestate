@@ -130,19 +130,19 @@ function exposeServices(application: Express.Application) {
     })
   );
 
-  // Ensure paymentprocessor routes are proxied before the generic /api/v2 catch-all
-  application.use(
-    '/api/v2/paymentprocessor',
-    createProxyMiddleware({
-      target: config.PAYMENTPROCESSOR_URL,
-      pathRewrite: { '^/paymentprocessor/process-payments': '' }
-    })
-  );
-
   application.use(
     '/api/v2',
     createProxyMiddleware({
       target: config.API_URL
+    })
+  );
+
+  // Ensure paymentprocessor routes are proxied before the generic /api/v2 catch-all
+  application.use(
+    '/paymentprocessor',
+    createProxyMiddleware({
+      target: config.PAYMENTPROCESSOR_URL,
+      pathRewrite: { '^/paymentprocessor/process-payments': '' }
     })
   );
 
