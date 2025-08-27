@@ -351,18 +351,16 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         has_payments = tenant.get("hasPayments", False)
         existing_payments = []
 
-        if has_payments:
-            logger.debug(f"Tenant {tenant_id} has previous payments. Fetching payment history.")
-            year, month = term.split('.')
-            formatted_term_for_get = f"{year}{month.zfill(2)}0100"
+        # Always fetch current payments for the tenant and append the new payment
+        year, month = term.split('.')
+        formatted_term_for_get = f"{year}{month.zfill(2)}0100"
+        get_payments_url = f"{settings.gateway_url}/api/v2/rents/tenant/{tenant_id}/{formatted_term_for_get}"
+        payments_response = await app.state.http_client.get(get_payments_url, headers=headers)
+        logger.debug(f"Payments lookup response status: {payments_response.status_code}")
 
-            get_payments_url = f"{settings.gateway_url}/api/v2/rents/tenant/{tenant_id}/{formatted_term_for_get}"
-            payments_response = await app.state.http_client.get(get_payments_url, headers=headers)
-            logger.debug(f"Payments lookup response status: {payments_response.status_code}")
-
-            if payments_response.status_code == 200:
-                existing_payments = payments_response.json().get('payments', [])
-                logger.debug(f"Existing payments for tenant {tenant_id}: {json.dumps(existing_payments, indent=2)}")
+        if payments_response.status_code == 200:
+            existing_payments = payments_response.json().get('payments', [])
+            logger.debug(f"Existing payments for tenant {tenant_id}: {json.dumps(existing_payments, indent=2)}")
 
         formatted_date = await parse_payment_date(payment.payment_date)
 
@@ -373,6 +371,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             "amount": float(payment.amount)
         }
 
+        # Append the new payment to the existing payments
         updated_payments = existing_payments + [new_payment]
 
         payment_data_for_gateway = {
