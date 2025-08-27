@@ -442,29 +442,29 @@ async function _updateByTerm(
 
   // If nothing new to apply (no new payments, no promo/extracharge, no description),
   // return current rent without updating the DB (idempotent behavior)
-  if (
-    formattedPaymentData.length === 0 &&
-    !(formattedPaymentData.promo > 0) &&
-    !(formattedPaymentData.extracharge > 0) &&
-    !formattedPaymentData.description
-  ) {
-    const existing = occupant.rents.filter((r) => r.term === Number(term))[0];
-    if (!existing) {
-      throw new ServiceError('rent not found for term ' + term);
-    }
-    const emailStatus =
-      (await _getEmailStatus(
-        authorizationHeader,
-        locale,
-        realm,
-        Number(term)
-      ).catch(logger.error)) || {};
-    return FD.toRentData(
-      existing,
-      occupant,
-      emailStatus?.[String(occupant._id)]
-    );
-  }
+  // if (
+  //   formattedPaymentData.length === 0 &&
+  //   !(formattedPaymentData.promo > 0) &&
+  //   !(formattedPaymentData.extracharge > 0) &&
+  //   !formattedPaymentData.description
+  // ) {
+  //   // const existing = occupant.rents.filter((r) => r.term === Number(term))[0];
+  //   if (!existing) {
+  //     throw new ServiceError('rent not found for term ' + term);
+  //   }
+  //   const emailStatus =
+  //     (await _getEmailStatus(
+  //       authorizationHeader,
+  //       locale,
+  //       realm,
+  //       Number(term)
+  //     ).catch(logger.error)) || {};
+  //   return FD.toRentData(
+  //     existing,
+  //     occupant,
+  //     emailStatus?.[String(occupant._id)]
+  //   );
+  // }
 
   const settlements = {
     payments: formattedPaymentData,
