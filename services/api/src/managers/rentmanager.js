@@ -366,12 +366,12 @@ async function _updateByTerm(
   paymentData
 ) {
   if (!paymentData || !paymentData._id) {
-    throw new ServiceError(`Invalid payment data: missing tenant ID`);
+    throw new ServiceError('Invalid payment data: missing tenant ID');
   }
 
   // Validate payments array
   if (!Array.isArray(paymentData.payments)) {
-    throw new ServiceError(`Invalid payment data: payments must be an array`);
+    throw new ServiceError('Invalid payment data: payments must be an array');
   }
 
   // Validate each payment in the array
@@ -406,86 +406,58 @@ async function _updateByTerm(
     realmId: realm._id
   }).lean();
 
-  if (!occupant) {
-    throw new ServiceError(`Tenant not found with ID ${paymentData._id}`);
-  }
-
-  // // Ensure all payment data fields are properly formatted
-  // const formattedPaymentData = {
-  //   promo: Number(paymentData.promo) || 0,
-  //   notepromo: paymentData.promo > 0 ? (paymentData.notepromo || null) : null,
-  //   extracharge: Number(paymentData.extracharge) || 0,
-  //   noteextracharge: paymentData.extracharge > 0 ? (paymentData.noteextracharge || null) : null,
-  //   description: paymentData.description || '',
-  //   payments: Array.isArray(paymentData.payments) ? paymentData.payments : [],
-  //   _id: paymentData._id
-  // };
-
-
-
-  const beginDate = occupant.beginDate instanceof Date ? occupant.beginDate : new Date(occupant.beginDate);
-  const endDate = occupant.endDate instanceof Date ? occupant.endDate : new Date(occupant.endDate);
-
-  if (!beginDate || isNaN(beginDate.getTime()) || !endDate || isNaN(endDate.getTime())) {
-    throw new ServiceError(`Tenant ${paymentData._id} has invalid contract dates (beginDate: ${occupant.beginDate}, endDate: ${occupant.endDate})`);
-  }
-
   const contract = {
-    frequency: 'months',  // Always use monthly frequency for payments
-    begin: beginDate,
-    end: endDate,
+    frequency: occupant.frequency || 'months',
+    begin: occupant.beginDate,
+    end: occupant.endDate,
     discount: occupant.discount || 0,
-    vatRate: occupant.vatRatio || 0,
-    properties: occupant.properties || [],
-    rents: occupant.rents || []
+    vatRate: occupant.vatRatio,
+    properties: occupant.properties,
+    rents: occupant.rents
   };
-
-  // If nothing new to apply (no new payments, no promo/extracharge, no description),
-  // return current rent without updating the DB (idempotent behavior)
-  // if (
-  //   formattedPaymentData.length === 0 &&
-  //   !(formattedPaymentData.promo > 0) &&
-  //   !(formattedPaymentData.extracharge > 0) &&
-  //   !formattedPaymentData.description
-  // ) {
-  //   // const existing = occupant.rents.filter((r) => r.term === Number(term))[0];
-  //   if (!existing) {
-  //     throw new ServiceError('rent not found for term ' + term);
-  //   }
-  //   const emailStatus =
-  //     (await _getEmailStatus(
-  //       authorizationHeader,
-  //       locale,
-  //       realm,
-  //       Number(term)
-  //     ).catch(logger.error)) || {};
-  //   return FD.toRentData(
-  //     existing,
-  //     occupant,
-  //     emailStatus?.[String(occupant._id)]
-  //   );
-  // }
 
   const settlements = {
-    payments: paymentData,
+    payments: [],
     debts: [],
     discounts: [],
-    description: paymentData.description
+    description: ''
   };
 
-  if (paymentData.promo > 0) {
-    settlements.discounts.push({
-      origin: 'settlement',
-      description: paymentData.notepromo || '',
-      amount: paymentData.promo * (contract.vatRate ? 1 / (1 + contract.vatRate) : 1)
-    });
-  }
+  if (paymentData) {
+    if (paymentData.payments && paymentData.payments.length) {
+      settlements.payments = paymentData.payments
+        .filter(({ amount }) => amount && Number(amount) > 0)
+        .map((payment) => ({
+          date: payment.date || '',
+          amount: Number(payment.amount),
+          type: payment.type || '',
+          reference: payment.reference || '',
+          description: payment.description || ''
+        }));
+    }
 
-  if (paymentData.extracharge > 0) {
-    settlements.debts.push({
-      description: paymentData.noteextracharge || '',
-      amount: paymentData.extracharge * (contract.vatRate ? 1 / (1 + contract.vatRate) : 1)
-    });
+    if (paymentData.promo) {
+      settlements.discounts.push({
+        origin: 'settlement',
+        description: paymentData.notepromo || '',
+        amount:
+          paymentData.promo *
+          (contract.vatRate ? 1 / (1 + contract.vatRate) : 1)
+      });
+    }
+
+    if (paymentData.extracharge) {
+      settlements.debts.push({
+        description: paymentData.noteextracharge || '',
+        amount:
+          paymentData.extracharge *
+          (contract.vatRate ? 1 / (1 + contract.vatRate) : 1)
+      });
+    }
+
+    if (paymentData.description) {
+      settlements.description = paymentData.description;
+    }
   }
 
   occupant.rents = Contract.payTerm(contract, term, settlements).rents;
