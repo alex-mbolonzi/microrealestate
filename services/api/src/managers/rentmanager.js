@@ -9,6 +9,27 @@ import {
 import axios from 'axios';
 import moment from 'moment';
 
+// Normalize various term formats to canonical 'YYYYMMDDHH' string
+function normalizeTerm(input) {
+  if (input == null) return input;
+  let s = String(input).trim();
+  // already canonical 10 digits
+  if (/^\d{10}$/.test(s)) return s;
+  // formats: YYYY.MM or YYYY-MM
+  if (/^\d{4}[.-]\d{2}$/.test(s)) {
+    const [y, m] = s.split(/[.-]/);
+    return `${y}${m}0100`;
+  }
+  // format: YYYYMM
+  if (/^\d{6}$/.test(s)) {
+    const y = s.slice(0, 4);
+    const m = s.slice(4, 6);
+    return `${y}${m}0100`;
+  }
+  // fallback: return as-is
+  return s;
+}
+
 async function _findOccupants(realm, tenantId, startTerm, endTerm) {
   const filter = {
     $query: {
@@ -180,7 +201,8 @@ async function update(req, res) {
 
 async function updateByTerm(req, res) {
   const realm = req.realm;
-  const term = req.params.term;
+  const termParam = req.params.term;
+  const term = normalizeTerm(termParam);
   const authorizationHeader = req.headers.authorization;
   const locale = req.headers['accept-language'];
   const paymentData = req.body;
@@ -479,9 +501,10 @@ async function _rentOfOccupant(
   tenantId,
   term
 ) {
+  const normalized = Number(normalizeTerm(term));
   const [dbOccupants = [], emailStatus = {}] = await Promise.all([
-    _findOccupants(realm, tenantId, Number(term)).catch(logger.error),
-    _getEmailStatus(authorizationHeader, locale, realm, Number(term)).catch(
+    _findOccupants(realm, tenantId, normalized).catch(logger.error),
+    _getEmailStatus(authorizationHeader, locale, realm, normalized).catch(
       logger.error
     )
   ]);
