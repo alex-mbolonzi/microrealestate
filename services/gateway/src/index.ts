@@ -136,14 +136,14 @@ function exposeServices(application: Express.Application) {
     createProxyMiddleware({
       target: config.PAYMENTPROCESSOR_URL,
       pathRewrite: { '^/api/v2': '' },
-      changeOrigin: true,
-      onProxyReq: (proxyReq, req, res) => {
-        if (req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data')) {
-          if (req.body) {
-            proxyReq.write(req.body);
-          }
-        }
-      }
+      // changeOrigin: true,
+      // onProxyReq: (proxyReq, req, res) => {
+      //   if (req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data')) {
+      //     if (req.body) {
+      //       proxyReq.write(req.body);
+      //     }
+      //   }
+      // }
     })
   );
 
