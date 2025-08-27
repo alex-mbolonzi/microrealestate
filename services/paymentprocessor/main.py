@@ -382,7 +382,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
             "notepromo": payment.promo_note if payment.promo_amount and payment.promo_amount > 0 else "",
             "extracharge": float(payment.extra_charge or 0),
             "noteextracharge": payment.extra_charge_note if payment.extra_charge and payment.extra_charge > 0 else "",
-            "term": formatted_term_for_get
+            "term": term
         }
         logger.info(
             f"Payment data for Gateway for tenant {tenant_id}: {json.dumps(payment_data_for_gateway, indent=2)}")
