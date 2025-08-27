@@ -421,14 +421,7 @@ async function _updateByTerm(
     _id: paymentData._id
   };
 
-  // Idempotency: drop payments already recorded (by same date and amount)
-  const incomingPayments = formattedPaymentData.payments.map((p) => ({
-    ...p,
-    amount: typeof p.amount === 'number' ? p.amount : Number(p.amount)
-  }));
-  const newPayments = incomingPayments.filter(
-    (p) => !_checkDuplicatePayment(occupant, p.date, p.amount)
-  );
+
 
   const beginDate = occupant.beginDate instanceof Date ? occupant.beginDate : new Date(occupant.beginDate);
   const endDate = occupant.endDate instanceof Date ? occupant.endDate : new Date(occupant.endDate);
@@ -450,7 +443,7 @@ async function _updateByTerm(
   // If nothing new to apply (no new payments, no promo/extracharge, no description),
   // return current rent without updating the DB (idempotent behavior)
   if (
-    newPayments.length === 0 &&
+    formattedPaymentData.length === 0 &&
     !(formattedPaymentData.promo > 0) &&
     !(formattedPaymentData.extracharge > 0) &&
     !formattedPaymentData.description
@@ -474,7 +467,7 @@ async function _updateByTerm(
   }
 
   const settlements = {
-    payments: newPayments,
+    payments: formattedPaymentData,
     debts: [],
     discounts: [],
     description: formattedPaymentData.description
@@ -565,16 +558,16 @@ async function _rentOfOccupant(
   return rent;
 }
 
-function _checkDuplicatePayment(tenant, paymentDate, amount) {
-  return tenant.rents.some((rent) => {
-    return rent.payments.some((payment) => {
-      return (
-        payment.date === paymentDate &&
-        payment.amount === amount
-      );
-    });
-  });
-}
+// function _checkDuplicatePayment(tenant, paymentDate, amount) {
+//   return tenant.rents.some((rent) => {
+//     return rent.payments.some((payment) => {
+//       return (
+//         payment.date === paymentDate &&
+//         payment.amount === amount
+//       );
+//     });
+//   });
+// }
 
 export {
   update,
