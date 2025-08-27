@@ -387,7 +387,7 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         logger.info(
             f"Payment data for Gateway for tenant {tenant_id}: {json.dumps(payment_data_for_gateway, indent=2)}")
 
-        update_payments_url = f"{settings.gateway_url}/api/v2/payment/{tenant_id}/{term}"
+        update_payments_url = f"{settings.gateway_url}/api/v2/rents/payment/{tenant_id}/{term}"
 
         payment_response = await app.state.http_client.patch(
             update_payments_url,
