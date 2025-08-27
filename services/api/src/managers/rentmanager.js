@@ -421,6 +421,15 @@ async function _updateByTerm(
     _id: paymentData._id
   };
 
+  // Idempotency: drop payments already recorded (by same date and amount)
+  const incomingPayments = formattedPaymentData.payments.map((p) => ({
+    ...p,
+    amount: typeof p.amount === 'number' ? p.amount : Number(p.amount)
+  }));
+  const newPayments = incomingPayments.filter(
+    (p) => !_checkDuplicatePayment(occupant, p.date, p.amount)
+  );
+
   const beginDate = occupant.beginDate instanceof Date ? occupant.beginDate : new Date(occupant.beginDate);
   const endDate = occupant.endDate instanceof Date ? occupant.endDate : new Date(occupant.endDate);
 
@@ -438,8 +447,34 @@ async function _updateByTerm(
     rents: occupant.rents || []
   };
 
+  // If nothing new to apply (no new payments, no promo/extracharge, no description),
+  // return current rent without updating the DB (idempotent behavior)
+  if (
+    newPayments.length === 0 &&
+    !(formattedPaymentData.promo > 0) &&
+    !(formattedPaymentData.extracharge > 0) &&
+    !formattedPaymentData.description
+  ) {
+    const existing = occupant.rents.filter((r) => r.term === Number(term))[0];
+    if (!existing) {
+      throw new ServiceError('rent not found for term ' + term);
+    }
+    const emailStatus =
+      (await _getEmailStatus(
+        authorizationHeader,
+        locale,
+        realm,
+        Number(term)
+      ).catch(logger.error)) || {};
+    return FD.toRentData(
+      existing,
+      occupant,
+      emailStatus?.[String(occupant._id)]
+    );
+  }
+
   const settlements = {
-    payments: formattedPaymentData.payments,
+    payments: newPayments,
     debts: [],
     discounts: [],
     description: formattedPaymentData.description

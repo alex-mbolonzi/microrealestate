@@ -135,7 +135,7 @@ function exposeServices(application: Express.Application) {
     '/api/v2/paymentprocessor',
     createProxyMiddleware({
       target: config.PAYMENTPROCESSOR_URL,
-      pathRewrite: { '^/api/v2': '' },
+      pathRewrite: { '^/api/v2': '' }
       // changeOrigin: true,
       // onProxyReq: (proxyReq, req, res) => {
       //   if (req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data')) {
