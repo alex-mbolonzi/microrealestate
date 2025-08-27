@@ -1,7 +1,10 @@
 import moment from 'moment';
 
 export function toRentData(inputRent, inputOccupant, emailStatus) {
-  const rent = JSON.parse(JSON.stringify(inputRent));
+  if (inputRent == null) {
+    throw new Error('toRentData: inputRent is undefined or null');
+  }
+  const rent = typeof inputRent === 'string' ? JSON.parse(inputRent) : JSON.parse(JSON.stringify(inputRent));
   const rentMoment = moment(String(rent.term), 'YYYYMMDDHH');
 
   let rentToReturn = {

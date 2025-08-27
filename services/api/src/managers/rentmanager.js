@@ -461,6 +461,10 @@ async function _updateByTerm(
     (rent) => rent.term === Number(term)
   )[0];
 
+  if (!rent) {
+    throw new ServiceError('rent not found for term ' + term);
+  }
+
   return FD.toRentData(
     rent,
     savedOccupant,
