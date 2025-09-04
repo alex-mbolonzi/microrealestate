@@ -19,7 +19,7 @@ coverage
 # Rest client vscode plugin
 *.rest
 
-.pnp.*
+#.pnp.*
 #.yarn/*
 #!.yarn/patches
 #!.yarn/plugins
