@@ -20,10 +20,10 @@ coverage
 *.rest
 
 .pnp.*
-.yarn/*
+#.yarn/*
 !.yarn/patches
 !.yarn/plugins
-!.yarn/releases
+#!.yarn/releases
 !.yarn/sdks
 !.yarn/versions
 
