@@ -312,58 +312,8 @@ export async function update(req, res) {
         modification.discount = newOccupant.discount;
       }
 
-      // Detect if schedule changes (only then recompute). Changes in expenses must NOT trigger recompute.
-      const scheduleChanged = (() => {
-        const datesChanged =
-          !moment(originalOccupant.beginDate).isSame(newOccupant.beginDate, 'day') ||
-          !moment(originalOccupant.endDate).isSame(newOccupant.endDate, 'day') ||
-          !!(
-            originalOccupant.terminationDate ||
-            newOccupant.terminationDate
-          ) &&
-          !moment(originalOccupant.terminationDate).isSame(
-            newOccupant.terminationDate,
-            'day'
-          );
-
-        const frequencyChanged = (originalOccupant.frequency || 'months') !== termFrequency;
-
-        const propertiesChanged = (() => {
-          const orig = originalOccupant.properties || [];
-          const next = newOccupant.properties || [];
-          if (orig.length !== next.length) return true;
-
-          const byKey = (p) => `${p.propertyId}-${moment(p.entryDate).format('YYYY-MM-DD')}-${moment(p.exitDate).format('YYYY-MM-DD')}-${p.rent}`;
-          const setOrig = new Set(orig.map(byKey));
-          const setNext = new Set(next.map(byKey));
-          if (setOrig.size !== setNext.size) return true;
-          for (const k of setOrig) if (!setNext.has(k)) return true;
-          return false;
-        })();
-
-        return datesChanged || frequencyChanged || propertiesChanged;
-      })();
-
-      if (!scheduleChanged) {
-        // Keep the existing rents untouched (thus preserving payments/discounts)
-        newOccupant.rents = originalOccupant.rents;
-      } else {
-        const newContract = Contract.update(contract, modification);
-
-        // Merge back payments and discounts by term to preserve history
-        const byTerm = new Map(
-          (originalOccupant.rents || []).map((r) => [r.term, r])
-        );
-
-        newOccupant.rents = (newContract.rents || []).map((r) => {
-          const prev = byTerm.get(r.term);
-          return {
-            ...r,
-            payments: prev?.payments || [],
-            discounts: prev?.discounts || []
-          };
-        });
-      }
+      const newContract = Contract.update(contract, modification);
+      newOccupant.rents = newContract.rents;
     } catch (e) {
       throw new ServiceError(e, 409);
     }
