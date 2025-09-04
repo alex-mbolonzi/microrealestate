@@ -34,6 +34,10 @@ COPY webapps/landlord/tailwind.config.js webapps/landlord
 COPY webapps/landlord/tsconfig.json webapps/landlord
 RUN  yarn install
 RUN  yarn workspace @microrealestate/landlord run build
+# following lines needed to be able to run webapps/commonui/scripts at container runtime
+RUN touch /usr/app/webapps/landlord/public/__ENV.js
+RUN chown -R 1000 /usr/app/webapps/landlord/.next && \
+    chown -R 1000 /usr/app/webapps/landlord/public
 
 FROM gcr.io/distroless/nodejs20-debian12
 WORKDIR /usr/app
@@ -45,4 +49,6 @@ COPY --from=build /usr/app/webapps/landlord/.next/static ./.next/static
 COPY --from=build /usr/app/webapps/commonui/scripts/generateruntimeenvfile.js ./
 COPY --from=build /usr/app/webapps/commonui/scripts/replacebasepath.js ./
 COPY --from=build /usr/app/webapps/commonui/scripts/runner.js ./
+
+USER 1000
 CMD ["runner.js"]

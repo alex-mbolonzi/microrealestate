@@ -115,31 +115,31 @@ const initValues = (tenant) => {
       : null,
     properties: tenant?.properties?.length
       ? tenant.properties.map((property) => {
-        return {
-          key: property.property._id,
-          _id: property.property._id,
-          rent: property.rent || '',
-          expenses: property.expenses.map((expense) => ({
-            ...expense,
-            beginDate: moment(expense.beginDate, 'DD/MM/YYYY'),
-            endDate: moment(expense.endDate, 'DD/MM/YYYY')
-          })) || [...emptyExpense(), beginDate, endDate],
-          entryDate: property.entryDate
-            ? moment(property.entryDate, 'DD/MM/YYYY')
-            : moment(beginDate),
-          exitDate: property.exitDate
-            ? moment(property.exitDate, 'DD/MM/YYYY')
-            : moment(endDate)
-        };
-      })
+          return {
+            key: property.property._id,
+            _id: property.property._id,
+            rent: property.rent || '',
+            expenses: property.expenses.map((expense) => ({
+              ...expense,
+              beginDate: moment(expense.beginDate, 'DD/MM/YYYY'),
+              endDate: moment(expense.endDate, 'DD/MM/YYYY')
+            })) || [...emptyExpense(), beginDate, endDate],
+            entryDate: property.entryDate
+              ? moment(property.entryDate, 'DD/MM/YYYY')
+              : moment(beginDate),
+            exitDate: property.exitDate
+              ? moment(property.exitDate, 'DD/MM/YYYY')
+              : moment(endDate)
+          };
+        })
       : [
-        {
-          ...emptyProperty(),
-          expenses: [{ ...emptyExpense(), beginDate, endDate }],
-          entryDate: beginDate,
-          exitDate: endDate
-        }
-      ],
+          {
+            ...emptyProperty(),
+            expenses: [{ ...emptyExpense(), beginDate, endDate }],
+            entryDate: beginDate,
+            exitDate: endDate
+          }
+        ],
     guaranty: tenant?.guaranty || 0,
     guarantyPayback: tenant?.guarantyPayback || 0
   };
@@ -201,8 +201,8 @@ function LeaseContractForm({ readOnly, onSubmit }) {
             status === 'occupied'
               ? !currentProperties.includes(_id)
                 ? t('occupied by {{tenantName}}', {
-                  tenantName: occupantLabel
-                })
+                    tenantName: occupantLabel
+                  })
                 : t('occupied by current tenant')
               : t('vacant')
         })
@@ -229,10 +229,10 @@ function LeaseContractForm({ readOnly, onSubmit }) {
               rent: property.rent,
               expenses: property.expenses.length
                 ? property.expenses.map((expense) => ({
-                  ...expense,
-                  beginDate: expense.beginDate.format('DD/MM/YYYY'),
-                  endDate: expense.endDate.format('DD/MM/YYYY')
-                }))
+                    ...expense,
+                    beginDate: expense.beginDate.format('DD/MM/YYYY'),
+                    endDate: expense.endDate.format('DD/MM/YYYY')
+                  }))
                 : [],
               entryDate: property.entryDate?.format('DD/MM/YYYY'),
               exitDate: property.exitDate?.format('DD/MM/YYYY')

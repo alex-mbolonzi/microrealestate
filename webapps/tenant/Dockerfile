@@ -31,6 +31,9 @@ COPY webapps/tenant/public webapps/tenant/public
 COPY webapps/tenant/src webapps/tenant/src
 RUN yarn workspace @microrealestate/types run build && \
     yarn workspace @microrealestate/tenant run build
+# following lines needed to be able to run webapps/commonui/scripts at container runtime
+RUN chown -R 1000 /usr/app/webapps/tenant/.next && \
+    chown -R 1000 /usr/app/webapps/tenant/public
 
 FROM gcr.io/distroless/nodejs20-debian12
 WORKDIR /usr/app
@@ -41,4 +44,6 @@ COPY --from=build /usr/app/webapps/tenant/.next/standalone/webapps/tenant ./
 COPY --from=build /usr/app/webapps/tenant/.next/static ./.next/static
 COPY --from=build /usr/app/webapps/commonui/scripts/replacebasepath.js ./
 COPY --from=build /usr/app/webapps/commonui/scripts/runner.js ./
+
+USER 1000
 CMD ["runner.js"]

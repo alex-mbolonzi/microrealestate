@@ -200,7 +200,9 @@ export default function () {
   const landlordRouter = express.Router();
 
   // parse locale
-  landlordRouter.use(locale(['fr-FR', 'en-US', 'pt-BR', 'de-DE'], 'en-US'));
+  landlordRouter.use(
+    locale(['fr-FR', 'en-US', 'pt-BR', 'de-DE', 'es-CO'], 'en-US')
+  );
 
   if (SIGNUP) {
     landlordRouter.post(
@@ -218,8 +220,8 @@ export default function () {
           email: email.toLowerCase()
         });
         if (existingAccount) {
-          // TODO: change the error code to 200 to avoid account enumeration
-          throw new ServiceError('account already registered', 409);
+          // status code 200 to avoid account enumeration
+          return res.sendStatus(201);
         }
         await Collections.Account.create({
           firstname,

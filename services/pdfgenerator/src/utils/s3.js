@@ -35,50 +35,58 @@ export function downloadFile(b2Config, url) {
 export function uploadFile(b2Config, { file, fileName, url }) {
   logger.debug(`upload ${url} to s3`);
   return new Promise((resolve, reject) => {
-    const s3 = _initS3(b2Config);
-    const fileStream = fs.createReadStream(file.path);
-    s3.putObject(
-      {
-        Bucket: b2Config.bucket,
-        Key: url,
-        Body: fileStream
-      },
-      (err, data) => {
-        if (err) {
-          return reject(err);
+    try {
+      const s3 = _initS3(b2Config);
+      const fileStream = fs.createReadStream(file.path);
+      s3.putObject(
+        {
+          Bucket: b2Config.bucket,
+          Key: url,
+          Body: fileStream
+        },
+        (err, data) => {
+          if (err) {
+            return reject(err);
+          }
+          resolve({
+            fileName,
+            key: url,
+            versionId: data.VersionId
+          });
         }
-        resolve({
-          fileName,
-          key: url,
-          versionId: data.VersionId
-        });
-      }
-    );
+      );
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
 export function deleteFiles(b2Config, urlsIds) {
   logger.debug(`delete ${JSON.stringify(urlsIds)} from s3`);
   return new Promise((resolve, reject) => {
-    const s3 = _initS3(b2Config);
-    s3.deleteObjects(
-      {
-        Bucket: b2Config.bucket,
-        Delete: {
-          Objects: urlsIds.map(({ url, versionId }) => ({
-            Key: url,
-            VersionId: versionId
-          }))
+    try {
+      const s3 = _initS3(b2Config);
+      s3.deleteObjects(
+        {
+          Bucket: b2Config.bucket,
+          Delete: {
+            Objects: urlsIds.map(({ url, versionId }) => ({
+              Key: url,
+              VersionId: versionId
+            }))
+          }
+        },
+        (err, data) => {
+          if (err) {
+            logger.error(err);
+            return reject(err);
+          }
+          logger.debug({ data });
+          resolve(data);
         }
-      },
-      (err, data) => {
-        if (err) {
-          logger.error(err);
-          return reject(err);
-        }
-        logger.debug({ data });
-        resolve(data);
-      }
-    );
+      );
+    } catch (error) {
+      reject(error);
+    }
   });
 }

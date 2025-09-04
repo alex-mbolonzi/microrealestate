@@ -78,7 +78,8 @@ const languages = [
   { id: 'pt-BR', label: 'Brasileiro', value: 'pt-BR' },
   { id: 'en', label: 'English', value: 'en' },
   { id: 'fr-FR', label: 'Français (France)', value: 'fr-FR' },
-  { id: 'de-DE', label: 'Deutsch (Deutschland)', value: 'de-DE' }
+  { id: 'de-DE', label: 'Deutsch (Deutschland)', value: 'de-DE' },
+  { id: 'es-CO', label: 'Español (Colombia)', value: 'es-CO' }
 ];
 
 export default function LandlordForm({ organization, firstAccess }) {

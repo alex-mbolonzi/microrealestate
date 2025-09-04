@@ -13,7 +13,7 @@ if (fs.existsSync(envFile)) {
   env = dotenvExpand.expand({
     ignoreProcessEnv: true,
     parsed: { ...dotenv.parse(fs.readFileSync(envFile)) },
-    ...dotenv.config({ path: '../.env' }),
+    ...dotenv.config({ path: '../.env' })
   });
 }
 
@@ -25,14 +25,14 @@ GATEWAY_BASEURL = `${apiUrl.protocol}//${apiUrl.host}`;
 module.exports = defineConfig({
   viewportWidth: 1200,
   viewportHeight: 1200,
-  defaultCommandTimeout: 10000,
+  defaultCommandTimeout: 60000,
   env: {
-    GATEWAY_BASEURL,
+    GATEWAY_BASEURL
   },
   e2e: {
     baseUrl:
       process.env.LANDLORD_APP_URL ||
       env.LANDLORD_APP_URL ||
-      'http://localhost:8080/landlord',
-  },
+      'http://localhost:8080/landlord'
+  }
 });

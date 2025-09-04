@@ -74,11 +74,11 @@ async function findCRI() {
 }
 
 function getBackupPath() {
-  // Path when run from the mre binary
-  let backupPath = path.resolve(process.execPath, '..', 'backup');
+  // Path when run from npm
+  let backupPath = path.resolve(__dirname, '..', '..', 'backup');
   if (!fs.existsSync(backupPath)) {
-    // Path when run from npm
-    backupPath = path.resolve(__dirname, '..', '..', 'backup');
+    // Path when run from the mre binary
+    backupPath = path.resolve(process.execPath, '..', 'backup');
   }
   if (!fs.existsSync(backupPath)) {
     throw new Error(
@@ -255,8 +255,8 @@ async function consoleMoveCursorToPrevLine(countLine) {
   if (!process.stdout) {
     return;
   }
-  
-  for (let count=0; count < countLine; count++) {
+
+  for (let count = 0; count < countLine; count++) {
     await new Promise((resolve) => process.stdout.moveCursor(0, -1, resolve));
     await new Promise((resolve) => process.stdout.clearLine(0, resolve));
   }

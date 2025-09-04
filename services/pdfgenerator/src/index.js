@@ -12,7 +12,7 @@ async function onStartUp(express) {
   await pdf.start();
 
   // parse locale
-  express.use(locale(['fr-FR', 'en-US', 'pt-BR', 'de-DE'], 'en-US'));
+  express.use(locale(['fr-FR', 'en-US', 'pt-BR', 'de-DE', 'es-CO'], 'en-US'));
 
   // api
   express.use(routes());
@@ -31,7 +31,7 @@ async function Main() {
     service = Service.getInstance(
       new EnvironmentConfig({
         PORT: Number(process.env.PORT || 8082),
-        CHROMIUM_BIN: process.env.CHROMIUM_BIN || '/usr/bin/chromium', 
+        CHROMIUM_BIN: process.env.CHROMIUM_BIN || '/usr/bin/chromium',
         DATA_DIRECTORY:
           process.env.DATA_DIRECTORY || path.join(root_dir, '/data'),
         TEMPLATES_DIRECTORY:
