@@ -5,9 +5,9 @@ RUN corepack enable && \
     corepack prepare yarn@4.9.4 --activate
 WORKDIR /usr/app
 COPY package.json .
-#COPY .yarnrc.yml .
-#COPY yarn.lock .
-#COPY .yarn/plugins .yarn/plugins
+COPY .yarnrc.yml .
+COPY yarn.lock .
+COPY .yarn .yarn
 #COPY .yarn/releases .yarn/releases
 COPY webapps/commonui/package.json webapps/commonui/package.json
 COPY webapps/landlord/package.json webapps/landlord/package.json
