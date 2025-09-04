@@ -1,8 +1,6 @@
 FROM node:20-bookworm-slim AS base
 
 FROM base AS build
-RUN corepack enable && \
-    corepack prepare yarn@3.3.0 --activate
 WORKDIR /usr/app
 COPY package.json .
 COPY .yarnrc.yml .
