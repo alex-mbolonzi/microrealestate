@@ -5,7 +5,7 @@ WORKDIR /usr/app
 COPY package.json .
 COPY .yarnrc.yml .
 COPY yarn.lock .
-#COPY .yarn .yarn
+COPY .yarn/plugins .yarn/plugins
 COPY .yarn/releases .yarn/releases
 COPY types types
 COPY services/common services/common
