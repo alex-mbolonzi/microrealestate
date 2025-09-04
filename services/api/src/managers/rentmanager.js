@@ -277,7 +277,7 @@ async function all(req, res) {
   let currentDate = moment().startOf('month');
   if (req.params.year && req.params.month) {
     currentDate = moment(`${req.params.month}/${req.params.year}`, 'MM/YYYY');
-    
+
     // Validate that the requested date is not in the future
     const now = moment().endOf('month');
     if (currentDate.isAfter(now)) {
@@ -322,14 +322,14 @@ async function all(req, res) {
         // Create rent for the current period if within contract dates
         const momentBegin = moment(contract.begin);
         const momentEnd = moment(contract.end);
-        
+
         if (currentDate.isBetween(momentBegin, momentEnd, 'month', '[]')) {
           const rent = BL.computeRent(
             contract,
             currentDate.format('DD/MM/YYYY HH:mm'),
             tenant.rents[tenant.rents.length - 1]
           );
-          
+
           // Save the new rent
           await Collections.Tenant.updateOne(
             { _id: tenant._id },
