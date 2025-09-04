@@ -6,8 +6,8 @@ RUN corepack enable && \
 WORKDIR /usr/app
 COPY package.json .
 COPY .yarnrc.yml .
-#COPY yarn.lock .
-COPY .yarn .yarn
+COPY yarn.lock .
+#COPY .yarn .yarn
 COPY .yarn/releases .yarn/releases
 COPY types types
 COPY services/common services/common
