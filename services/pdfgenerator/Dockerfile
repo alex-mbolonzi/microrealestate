@@ -7,7 +7,7 @@ RUN corepack enable && \
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD 1
 WORKDIR /usr/app
 COPY package.json .
-COPY .yarnrc.yml .
+#COPY .yarnrc.yml .
 COPY yarn.lock .
 COPY .yarn .yarn
 #COPY .yarn/releases .yarn/releases
