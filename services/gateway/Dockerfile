@@ -5,10 +5,10 @@ RUN corepack enable && \
     corepack prepare yarn@4.9.4 --activate
 WORKDIR /usr/app
 COPY package.json .
-COPY .yarnrc.yml .
-COPY yarn.lock .
-COPY .yarn/plugins .yarn/plugins
-COPY .yarn/releases .yarn/releases
+#COPY .yarnrc.yml .
+#COPY yarn.lock .
+#COPY .yarn/plugins .yarn/plugins
+#COPY .yarn/releases .yarn/releases
 COPY types types
 COPY services/common services/common
 COPY services/gateway services/gateway
