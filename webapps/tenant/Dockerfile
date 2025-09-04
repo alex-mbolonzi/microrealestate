@@ -5,10 +5,10 @@ RUN corepack enable && \
     corepack prepare yarn@4.9.4 --activate
 WORKDIR /usr/app
 COPY package.json .
-#COPY .yarnrc.yml .
+COPY .yarnrc.yml .
 COPY yarn.lock .
-COPY .yarn .yarn
-#COPY .yarn/releases .yarn/releases
+#COPY .yarn .yarn
+COPY .yarn/releases .yarn/releases
 COPY types/package.json types/package.json
 COPY webapps/tenant/package.json webapps/tenant/package.json
 RUN --mount=type=cache,id=node_modules,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn \
