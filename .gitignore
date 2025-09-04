@@ -21,11 +21,11 @@ coverage
 
 .pnp.*
 #.yarn/*
-!.yarn/patches
+#!.yarn/patches
 #!.yarn/plugins
 #!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
+#!.yarn/sdks
+#!.yarn/versions
 
 backup/*
 !backup/demodb.dump

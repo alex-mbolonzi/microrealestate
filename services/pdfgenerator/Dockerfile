@@ -3,7 +3,7 @@ FROM node:20.17-alpine3.20 AS base
 FROM base AS build
 RUN apk --no-cache add build-base python3
 RUN corepack enable && \
-    corepack prepare yarn@3.3.0 --activate
+    corepack prepare yarn@4.9.4 --activate
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD 1
 WORKDIR /usr/app
 COPY package.json .
