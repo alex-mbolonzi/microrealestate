@@ -85,7 +85,7 @@ export function update(inputContract, modification) {
 
   const updatedContract = create(modifiedContract);
 
-  if (inputContract.rents && inputContract.rents.length > 0) {
+  if (inputContract.rents) {
     const settlementsByTerm = new Map(
       inputContract.rents.map((rent) => [
         rent.term,
@@ -102,16 +102,17 @@ export function update(inputContract, modification) {
     );
 
     let previousRent;
-    updatedContract.rents = updatedContract.rents.map((rent) => {
+    updatedContract.rents.forEach((rent, index) => {
       const settlements = settlementsByTerm.get(rent.term);
-      const newRent = BL.computeRent(
-        updatedContract,
-        moment(rent.term, 'YYYYMMDDHH').format('DD/MM/YYYY HH:mm'),
-        previousRent,
-        settlements
-      );
-      previousRent = newRent;
-      return newRent;
+      if (settlements) {
+        updatedContract.rents[index] = BL.computeRent(
+          updatedContract,
+          moment(rent.term, 'YYYYMMDDHH').format('DD/MM/YYYY HH:mm'),
+          previousRent,
+          settlements
+        );
+      }
+      previousRent = updatedContract.rents[index];
     });
   }
 
