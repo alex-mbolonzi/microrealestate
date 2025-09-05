@@ -108,16 +108,14 @@ export default class Service {
       }
     }
 
-    this.expressServer.use(
-      expressWinston.logger({
-        transports: Logger.transports,
-        format: winston.format.simple(),
-        meta: false,
-        msg: '{{req.method}} {{res.statusCode}} {{res.responseTime}}ms {{req.url}}',
-        expressFormat: false,
-        colorize: false
-      })
-    );
+    this.expressServer.use('/', expressWinston.logger({
+      transports: Logger.transports,
+      format: winston.format.simple(),
+      meta: false,
+      msg: '{{req.method}} {{res.statusCode}} {{res.responseTime}}ms {{req.url}}',
+      expressFormat: false,
+      colorize: false
+    }));
   }
 
   private async startService() {
@@ -170,7 +168,7 @@ export default class Service {
     await this.onStartUp?.(this.expressServer);
 
     // add error middleware
-    this.expressServer.use(Middlewares.errorHandler);
+    this.expressServer.use('/', Middlewares.errorHandler);
     await this.startService();
   }
 
