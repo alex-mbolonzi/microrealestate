@@ -15,16 +15,20 @@ jobs:
       - name: Queue workflow if already running
         uses: ahmadnassri/action-workflow-queue@v1
 
-      - name: Setup Node.js
+      - name: Setup Node.js with Corepack
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           cache: 'yarn'
+          corepack: true  # This enables Corepack
 
-      - name: Enable Corepack and install correct Yarn version
+      - name: Install correct Yarn version
         run: |
-          corepack enable
           corepack prepare yarn@3.3.0 --activate
+          yarn set version 3.3.0  # Alternative approach
+
+      - name: Verify Yarn version
+        run: yarn --version
 
       - name: Install dependencies
         run: yarn install
@@ -39,15 +43,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js with Corepack
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           cache: 'yarn'
+          corepack: true
 
-      - name: Enable Corepack and install correct Yarn version
+      - name: Install correct Yarn version
         run: |
-          corepack enable
           corepack prepare yarn@3.3.0 --activate
 
       - name: Install dependencies
