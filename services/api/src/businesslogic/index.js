@@ -65,7 +65,7 @@ export function computeRent(contract, rentDate, previousRent, settlements) {
     }
   };
 
-  [
+  const tasks = [
     taskBase,
     taskDebts,
     taskDiscounts,
@@ -73,9 +73,11 @@ export function computeRent(contract, rentDate, previousRent, settlements) {
     taskBalance,
     taskPayments,
     taskTotal
-  ].forEach(async (task) => {
+  ];
+
+  for (const task of tasks) {
     rent = task(contract, rentDate, previousRent, settlements, rent);
-  });
+  }
 
   return rent;
 }

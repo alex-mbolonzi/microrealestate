@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import moment from 'moment';
-import useTranslation from 'next-translate/useTranslation';
 import { useRouter } from 'next/router';
+import useTranslation from 'next-translate/useTranslation';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { GrDocumentPdf } from 'react-icons/gr';
 import {
@@ -9,15 +9,15 @@ import {
   LuChevronDown,
   LuRotateCw,
   LuSend,
-  LuUpload
+  LuUpload,
 } from 'react-icons/lu';
 import { toast } from 'sonner';
 
 import { withAuthentication } from '../../../../components/Authentication';
+import BulkPaymentUpload from '../../../../components/rents/BulkPaymentUpload';
 import ConfirmDialog from '../../../../components/ConfirmDialog';
 import Page from '../../../../components/Page';
 import { List } from '../../../../components/ResourceList';
-import BulkPaymentUpload from '../../../../components/rents/BulkPaymentUpload';
 import { RentOverview } from '../../../../components/rents/RentOverview';
 import RentTable from '../../../../components/rents/RentTable';
 import { Alert } from '../../../../components/ui/alert';
@@ -25,7 +25,7 @@ import { Button } from '../../../../components/ui/button';
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger
+  PopoverTrigger,
 } from '../../../../components/ui/popover';
 import { StoreContext } from '../../../../store';
 import { fetchRents, QueryKeys } from '../../../../utils/restcalls';
@@ -64,7 +64,7 @@ function _filterData(data, filters) {
             ?.map(({ contact = '', email = '', phone = '' }) => ({
               contact: contact.replace(regExp, '').toLowerCase(),
               email: email.toLowerCase(),
-              phone: phone.replace(regExp, '')
+              phone: phone.replace(regExp, ''),
             }))
             .filter(
               ({ contact, email, phone }) =>
@@ -124,7 +124,7 @@ function Actions({ values, onDone }) {
       const sendStatus = await store.rent.sendEmail({
         document: selectedDocumentName,
         tenantIds: values.map((r) => r._id),
-        terms: values.map((r) => r.term)
+        terms: values.map((r) => r.term),
       });
 
       if (sendStatus !== 200) {
@@ -201,7 +201,7 @@ function Actions({ values, onDone }) {
       {selectedDocumentName ? (
         <ConfirmDialog
           title={t('Are you sure to send "{{docName}}"?', {
-            docName: t(selectedDocumentName)
+            docName: t(selectedDocumentName),
           })}
           open={showConfirmDlg}
           setOpen={setShowConfirmDlg}
@@ -228,7 +228,7 @@ function Rents() {
   const { yearMonth } = router.query;
   const { data, isError, isLoading } = useQuery({
     queryKey: [QueryKeys.RENTS, yearMonth],
-    queryFn: () => fetchRents(store, yearMonth)
+    queryFn: () => fetchRents(store, yearMonth),
   });
   const [rentSelected, setRentSelected] = useState([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
@@ -275,7 +275,7 @@ function Rents() {
         filters={[
           { id: 'notpaid', label: t('Not paid') },
           { id: 'partiallypaid', label: t('Partially paid') },
-          { id: 'paid', label: t('Paid') }
+          { id: 'paid', label: t('Paid') },
         ]}
         filterFn={_filterData}
         renderActions={() => (
