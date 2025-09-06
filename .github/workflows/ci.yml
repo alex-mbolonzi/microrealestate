@@ -6,7 +6,7 @@ on:
       - demo
 
 jobs:
-  setup:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -15,18 +15,14 @@ jobs:
       - name: Queue workflow if already running
         uses: ahmadnassri/action-workflow-queue@v1
 
-  lint:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
          node-version: '20.x'
          cache: 'yarn'
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
         run: yarn
