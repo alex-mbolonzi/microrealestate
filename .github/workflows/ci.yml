@@ -21,15 +21,19 @@ jobs:
           node-version: '20.x'
           cache: 'yarn'
 
-      - name: Enable Corepack and install Yarn 3.3.0
+      - name: Remove global yarn and setup Corepack
         run: |
+          # Remove any globally installed yarn
+          npm uninstall -g yarn || true
+          # Enable corepack
           corepack enable
-          # Remove the global yarn to prevent conflicts
-          npm uninstall -g yarn
-          # Install and activate the correct yarn version
+          # Install and activate the specific yarn version
           corepack prepare yarn@3.3.0 --activate
-          # Verify the correct yarn is being used
-          echo "Using yarn version: $(yarn --version)"
+          # Ensure corepack yarn is in PATH
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          # Verify which yarn is being used
+          which yarn
+          echo "Yarn version: $(yarn --version)"
 
       - name: Install dependencies
         run: yarn install
@@ -50,12 +54,14 @@ jobs:
           node-version: '20.x'
           cache: 'yarn'
 
-      - name: Enable Corepack and install Yarn 3.3.0
+      - name: Remove global yarn and setup Corepack
         run: |
+          npm uninstall -g yarn || true
           corepack enable
-          npm uninstall -g yarn
           corepack prepare yarn@3.3.0 --activate
-          echo "Using yarn version: $(yarn --version)"
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          which yarn
+          echo "Yarn version: $(yarn --version)"
 
       - name: Install dependencies
         run: yarn install
