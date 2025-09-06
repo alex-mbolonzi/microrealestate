@@ -34,12 +34,31 @@ jobs:
       - name: Lint
         run: yarn lint
 
+  build:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build all workspaces
+        run: yarn workspaces foreach -pt run build
+
   build-push-images:
     permissions:
       contents: read
       packages: write
     runs-on: ubuntu-latest
-    needs: lint
+    needs: build
     strategy:
       matrix:
         include:
