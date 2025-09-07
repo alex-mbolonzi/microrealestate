@@ -7,7 +7,14 @@
     "strict": true,
     "target": "ESNext",
     "outDir": "dist",
-    "composite": true
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@microrealestate/types": ["../../types/src"]
+    }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../../types" }
+  ]
 }
