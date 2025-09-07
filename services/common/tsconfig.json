@@ -6,15 +6,7 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "ESNext",
-    "outDir": "dist",
-    "composite": true,
-    "baseUrl": ".",
-    "paths": {
-      "@microrealestate/types": ["../../types/src"]
-    }
+    "outDir": "dist"
   },
-  "include": ["src/**/*"],
-  "references": [
-    { "path": "../../types" }
-  ]
+  "include": ["src/**/*"]
 }
