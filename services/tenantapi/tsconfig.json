@@ -5,7 +5,12 @@
     "outDir": "dist",
     "skipLibCheck": true,
     "strict": true,
-    "target": "ESNext"
+    "target": "ESNext",
+    "composite": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../../types" },
+    { "path": "../common" }
+  ]
 }
