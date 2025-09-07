@@ -3,9 +3,7 @@ const nextTranslate = require('next-translate-plugin');
 
 module.exports = nextTranslate({
   output: 'standalone',
-  experimental: {
-    externalDir: true
-  },
+  transpilePackages: ['@microrealestate/commonui', '@microrealestate/types'],
   webpack: (
     config /*,
     {
