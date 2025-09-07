@@ -61,15 +61,15 @@ export default class Service {
   }
 
   async init({
-    name,
-    useMongo,
-    useRedis,
-    useAxios,
-    useRequestParsers = true,
-    exposeHealthCheck = true,
-    onStartUp,
-    onShutDown
-  }: ServiceOptions) {
+               name,
+               useMongo,
+               useRedis,
+               useAxios,
+               useRequestParsers = true,
+               exposeHealthCheck = true,
+               onStartUp,
+               onShutDown
+             }: ServiceOptions) {
     this.name = name;
     this.port = this.envConfig.getValues().PORT;
     this.useAxios = useAxios;
@@ -98,17 +98,21 @@ export default class Service {
       this.expressServer.use(Express.json());
       this.expressServer.use(_methodOverride());
       if (this.useMongo) {
-        mongoSanitize({
-          allowDots: true,
-          replaceWith: '_',
-          onSanitize: ({ req, key }: { req: Express.Request; key: string }) => {
-            console.warn(`request[${key}] has been sanitized`, req);
-          }
-        });
+        this.expressServer.use(
+          '/',
+          mongoSanitize({
+            allowDots: true,
+            replaceWith: '_',
+            onSanitize: ({ req, key }: { req: Express.Request; key: string }) => {
+              console.warn(`request[${key}] has been sanitized`, req);
+            }
+          })
+        );
       }
     }
 
     this.expressServer.use(
+      '/',
       expressWinston.logger({
         transports: Logger.transports,
         format: winston.format.simple(),
