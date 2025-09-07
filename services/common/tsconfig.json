@@ -6,7 +6,8 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "ESNext",
-    "outDir": "dist"
+    "outDir": "dist",
+    "composite": true
   },
   "include": ["src/**/*"]
 }
