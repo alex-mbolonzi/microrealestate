@@ -98,12 +98,8 @@ const emptyProperty = () => ({
 });
 
 const initValues = (tenant) => {
-  const beginDate = tenant?.beginDate
-    ? moment(tenant.beginDate, 'DD/MM/YYYY').startOf('day')
-    : null;
-  const endDate = tenant?.endDate
-    ? moment(tenant.endDate, 'DD/MM/YYYY').endOf('day')
-    : null;
+  const beginDate = tenant?.beginDate ? moment(tenant.beginDate) : null;
+  const endDate = tenant?.endDate ? moment(tenant.endDate) : null;
 
   return {
     leaseId: tenant?.leaseId || '',
@@ -111,7 +107,7 @@ const initValues = (tenant) => {
     endDate,
     terminated: !!tenant?.terminationDate,
     terminationDate: tenant?.terminationDate
-      ? moment(tenant.terminationDate, 'DD/MM/YYYY').endOf('day')
+      ? moment(tenant.terminationDate)
       : null,
     properties: tenant?.properties?.length
       ? tenant.properties.map((property) => {
@@ -121,14 +117,14 @@ const initValues = (tenant) => {
             rent: property.rent || '',
             expenses: property.expenses.map((expense) => ({
               ...expense,
-              beginDate: moment(expense.beginDate, 'DD/MM/YYYY'),
-              endDate: moment(expense.endDate, 'DD/MM/YYYY')
+              beginDate: moment(expense.beginDate),
+              endDate: moment(expense.endDate)
             })) || [...emptyExpense(), beginDate, endDate],
             entryDate: property.entryDate
-              ? moment(property.entryDate, 'DD/MM/YYYY')
+              ? moment(property.entryDate)
               : moment(beginDate),
             exitDate: property.exitDate
-              ? moment(property.exitDate, 'DD/MM/YYYY')
+              ? moment(property.exitDate)
               : moment(endDate)
           };
         })
@@ -216,9 +212,9 @@ function LeaseContractForm({ readOnly, onSubmit }) {
         leaseId: lease.leaseId,
         frequency: store.lease.items.find(({ _id }) => _id === lease.leaseId)
           .timeRange,
-        beginDate: lease.beginDate?.format('DD/MM/YYYY') || '',
-        endDate: lease.endDate?.format('DD/MM/YYYY') || '',
-        terminationDate: lease.terminationDate?.format('DD/MM/YYYY') || '',
+        beginDate: lease.beginDate,
+        endDate: lease.endDate,
+        terminationDate: lease.terminationDate,
         guaranty: lease.guaranty || 0,
         guarantyPayback: lease.guarantyPayback || 0,
         properties: lease.properties
@@ -230,12 +226,12 @@ function LeaseContractForm({ readOnly, onSubmit }) {
               expenses: property.expenses.length
                 ? property.expenses.map((expense) => ({
                     ...expense,
-                    beginDate: expense.beginDate?.format('DD/MM/YYYY'),
-                    endDate: expense.endDate?.format('DD/MM/YYYY')
+                    beginDate: expense.beginDate,
+                    endDate: expense.endDate
                   }))
                 : [],
-              entryDate: property.entryDate?.format('DD/MM/YYYY'),
-              exitDate: property.exitDate?.format('DD/MM/YYYY')
+              entryDate: property.entryDate,
+              exitDate: property.exitDate
             };
           })
       });
