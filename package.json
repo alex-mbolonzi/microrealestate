@@ -40,7 +40,7 @@
     "start": "yarn run mre start",
     "stop": "yarn run mre stop",
     "ci": "yarn run mre ci",
-    "prepare": "husky"
+    "prepare": "husky install"
   },
   "lint-staged": {
     "*.{js,ts,tsx,jsx}": [
@@ -54,12 +54,11 @@
   },
   "devDependencies": {
     "cross-env": "7.0.3",
-    "husky": "^9.1.7",
+    "husky": "9.1.7",
     "lint-staged": "15.4.3",
     "prettier": "3.5.2"
   },
   "resolutions": {
-    "@types/express": "4.17.17",
     "axios": "1.8.4",
     "braces": "3.0.3",
     "cross-spawn": "7.0.5",
