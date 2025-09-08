@@ -1,10 +1,7 @@
 import moment from 'moment';
 
 export function toRentData(inputRent, inputOccupant, emailStatus) {
-  if (inputRent == null) {
-    throw new Error('toRentData: inputRent is undefined or null');
-  }
-  const rent = typeof inputRent === 'string' ? JSON.parse(inputRent) : JSON.parse(JSON.stringify(inputRent));
+  const rent = JSON.parse(JSON.stringify(inputRent));
   const rentMoment = moment(String(rent.term), 'YYYYMMDDHH');
 
   let rentToReturn = {
@@ -170,6 +167,17 @@ export function toRentData(inputRent, inputOccupant, emailStatus) {
         ...emailStatus
       };
 
+      // if (emailStatus.rentcall_reminder && emailStatus.rentcall_reminder.length) {
+      //     const lastRentCallReminder = emailStatus.rentcall_reminder[0];
+      //     if (computedEmailStatus.last.rentcall) {
+      //         if (moment(computedEmailStatus.last.rentcall.sentDate).isBefore(moment(lastRentCallReminder.sentDate))){
+      //             computedEmailStatus.last.rentcall = lastRentCallReminder;
+      //         }
+      //     } else {
+      //         computedEmailStatus.last.rentcall = lastRentCallReminder;
+      //     }
+      // }
+
       Object.assign(rentToReturn, { emailStatus: computedEmailStatus });
     }
 
@@ -233,6 +241,8 @@ export function toOccupantData(inputOccupant) {
 
   // set default values for occupant
   Object.assign(occupant, {
+    beginDate: moment(occupant.beginDate).format('DD/MM/YYYY'),
+    endDate: moment(occupant.endDate).format('DD/MM/YYYY'),
     frequency: occupant.frequency || 'months',
     street1: occupant.street1 || '',
     street2: occupant.street2 || '',
@@ -251,14 +261,20 @@ export function toOccupantData(inputOccupant) {
     total: 0
   });
 
+  if (occupant.terminationDate) {
+    occupant.terminationDate = moment(occupant.terminationDate).format(
+      'DD/MM/YYYY'
+    );
+  }
+
   occupant.contactEmails =
     occupant.contacts && occupant.contacts.length
       ? occupant.contacts.reduce((acc, { email }) => {
-          if (email) {
-            return [...acc, email.toLowerCase()];
-          }
-          return acc;
-        }, [])
+        if (email) {
+          return [...acc, email.toLowerCase()];
+        }
+        return acc;
+      }, [])
       : [];
 
   occupant.hasContactEmails = occupant.contactEmails.length > 0;
@@ -267,7 +283,10 @@ export function toOccupantData(inputOccupant) {
   occupant.status = 'inprogress';
   occupant.terminated = false;
   const currentDate = moment();
-  const endMoment = moment(occupant.terminationDate || occupant.endDate);
+  const endMoment = moment(
+    occupant.terminationDate || occupant.endDate,
+    'DD/MM/YYYY'
+  );
   if (endMoment.isBefore(currentDate, 'day')) {
     occupant.terminated = true;
     occupant.status = 'stopped';
@@ -281,10 +300,14 @@ export function toOccupantData(inputOccupant) {
   if (occupant.properties) {
     occupant.office = {
       surface: 0,
+      // m2Price: 0,
+      // m2Expense: 0,
       price: 0
+      // expense: 0,
     };
     occupant.parking = {
       price: 0
+      // expense: 0,
     };
     occupant.properties.forEach((item) => {
       if (item.propertyId?._id) {
@@ -292,11 +315,31 @@ export function toOccupantData(inputOccupant) {
         item.propertyId = item.propertyId._id;
       }
       if (item.property) {
+        if (item.entryDate) {
+          item.entryDate = moment(item.entryDate).format('DD/MM/YYYY');
+        }
+        if (item.exitDate) {
+          item.exitDate = moment(item.exitDate).format('DD/MM/YYYY');
+        }
+        item.expenses.forEach((expense) => {
+          expense.beginDate = expense.beginDate
+            ? moment(expense.beginDate).format('DD/MM/YYYY')
+            : item.entryDate;
+          expense.endDate = expense.endDate
+            ? moment(expense.endDate).format('DD/MM/YYYY')
+            : item.exitDate;
+        });
         if (item.property.type === 'parking') {
           occupant.parking.price += item.property.price;
+          // if (item.property.expense) {
+          //   occupant.parking.expense += item.property.expense;
+          // }
         } else {
           occupant.office.surface += item.property.surface;
           occupant.office.price += item.property.price;
+          // if (item.property.expense) {
+          //   occupant.office.expense += item.property.expense;
+          // }
         }
       }
       occupant.rental += item.rent || 0;
@@ -312,15 +355,20 @@ export function toOccupantData(inputOccupant) {
       occupant.vat = occupant.preTaxTotal * occupant.vatRatio;
       occupant.total = occupant.preTaxTotal + occupant.vat;
     }
+    // if (occupant.office) {
+    //   occupant.office.m2Price = occupant.office.price / occupant.office.surface;
+    //   occupant.office.m2Expense =
+    //     occupant.office.expense / occupant.office.surface;
+    // }
   }
 
   occupant.hasPayments = occupant.rents
     ? occupant.rents.some(
-        (rent) =>
-          (rent.payments &&
-            rent.payments.some((payment) => payment.amount > 0)) ||
-          rent.discounts.some((discount) => discount.origin === 'settlement')
-      )
+      (rent) =>
+        (rent.payments &&
+          rent.payments.some((payment) => payment.amount > 0)) ||
+        rent.discounts.some((discount) => discount.origin === 'settlement')
+    )
     : false;
   delete occupant.rents;
   return occupant;
@@ -337,25 +385,42 @@ export function toProperty(inputProperty, inputOccupant, inputOccupants) {
     phone: inputProperty.phone,
     digicode: inputProperty.digicode,
     address: inputProperty.address,
+
     price: inputProperty.price,
+
     beginDate: '',
     endDate: '',
     lastBusyDay: '',
     occupantLabel: '',
     available: true,
     status: 'vacant',
+
+    // TODO moved in Occupant.properties model
+    // expense: inputProperty.expense || 0,
+    // priceWithExpenses:
+    //   Math.round((inputProperty.price + inputProperty.expense) * 100) / 100,
+    // m2Expense: inputProperty.surface
+    //   ? Math.round((inputProperty.expense / inputProperty.surface) * 100) / 100
+    //   : null,
+    // m2Price: inputProperty.surface
+    //   ? Math.round((inputProperty.price / inputProperty.surface) * 100) / 100
+    //   : null,
+
+    // TODO to remove, replaced by address
     location: inputProperty.location
   };
   if (inputOccupant) {
     property = {
       ...property,
-      beginDate: inputOccupant.entryDate,
-      endDate: inputOccupant.exitDate,
-      lastBusyDay: inputOccupant.terminationDate || inputOccupant.endDate,
+      beginDate: moment(inputOccupant.entryDate).format('DD/MM/YYYY'),
+      endDate: moment(inputOccupant.exitDate).format('DD/MM/YYYY'),
+      lastBusyDay: moment(
+        inputOccupant.terminationDate || inputOccupant.endDate
+      ).format('DD/MM/YYYY'),
       occupantLabel: inputOccupant.name
     };
     if (property.lastBusyDay) {
-      property.available = moment(property.lastBusyDay).isBefore(
+      property.available = moment(property.lastBusyDay, 'DD/MM/YYYY').isBefore(
         currentDate,
         'day'
       );
@@ -370,8 +435,10 @@ export function toProperty(inputProperty, inputOccupant, inputOccupants) {
       return {
         id: occupant._id,
         name: occupant.name,
-        beginDate: occupant.beginDate,
-        endDate: occupant.terminationDate || occupant.endDate
+        beginDate: moment(occupant.beginDate).format('DD/MM/YYYY'),
+        endDate: moment(occupant.terminationDate || occupant.endDate).format(
+          'DD/MM/YYYY'
+        )
       };
     });
   }

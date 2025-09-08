@@ -49,7 +49,7 @@ export function create(contract) {
   let previousRent;
   while (
     current.isSameOrBefore(momentTermination || momentEnd, contract.frequency)
-  ) {
+    ) {
     const rent = BL.computeRent(
       contract,
       current.format('DD/MM/YYYY HH:mm'),
@@ -86,34 +86,21 @@ export function update(inputContract, modification) {
   const updatedContract = create(modifiedContract);
 
   if (inputContract.rents) {
-    const settlementsByTerm = new Map(
-      inputContract.rents.map((rent) => [
-        rent.term,
-        {
-          payments: rent.payments,
-          vats: rent.vats.filter((vat) => vat.origin === 'settlement'),
-          discounts: rent.discounts.filter(
+    inputContract.rents
+      .filter((rent) => _isPayment(rent))
+      .forEach((paidRent) => {
+        payTerm(updatedContract, paidRent.term, {
+          payments: paidRent.payments,
+          vats: paidRent.vats.filter((vat) => vat.origin === 'settlement'),
+          discounts: paidRent.discounts.filter(
             (discount) => discount.origin === 'settlement'
           ),
-          debts: rent.debts.filter((debt) => debt.amount && debt.amount > 0),
-          description: rent.description
-        }
-      ])
-    );
-
-    let previousRent;
-    updatedContract.rents.forEach((rent, index) => {
-      const settlements = settlementsByTerm.get(rent.term);
-      if (settlements) {
-        updatedContract.rents[index] = BL.computeRent(
-          updatedContract,
-          moment(rent.term, 'YYYYMMDDHH').format('DD/MM/YYYY HH:mm'),
-          previousRent,
-          settlements
-        );
-      }
-      previousRent = updatedContract.rents[index];
-    });
+          debts: paidRent.debts.filter(
+            (debt) => debt.amount && debt.amount > 0
+          ),
+          description: paidRent.description
+        });
+      });
   }
 
   return updatedContract;

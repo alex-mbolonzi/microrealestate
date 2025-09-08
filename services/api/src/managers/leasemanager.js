@@ -45,14 +45,6 @@ export async function update(req, res) {
     throw new ServiceError('missing fields', 422);
   }
 
-  // Handle boolean conversion for active field
-  if (lease.active !== undefined) {
-    if (typeof lease.active === 'string') {
-      lease.active = lease.active.toLowerCase() === 'true';
-    }
-    // lease.active = Boolean(lease.active) && lease.numberOfTerms > 0 && !!lease.timeRange;
-  }
-
   if (lease.active === undefined) {
     lease.active = lease.numberOfTerms > 0 && !!lease.timeRange;
   }
@@ -67,12 +59,11 @@ export async function update(req, res) {
     // if lease already used by tenants, only allow to update name, description, active fields
     setOfUsedLeases.has(lease._id)
       ? {
-          name: lease.name || dbLease.name,
-          description: lease.description ?? dbLease.description,
-          active: lease.active ?? dbLease.active,
-          commission: lease.commission ?? dbLease.commission,
-          stepperMode: lease.stepperMode ?? dbLease.stepperMode
-        }
+        name: lease.name || dbLease.name,
+        description: lease.description ?? dbLease.description,
+        active: lease.active ?? dbLease.active,
+        stepperMode: lease.stepperMode ?? dbLease.stepperMode
+      }
       : lease,
     { new: true }
   ).lean();
