@@ -13,7 +13,7 @@ import moment from 'moment';
 const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 12);
 
 function _stringToDate(dateString) {
-  return dateString ? moment(dateString, 'DD/MM/YYYY').toDate() : undefined;
+  return dateString ? moment(dateString).toDate() : undefined;
 }
 
 function _formatTenant(tenant) {

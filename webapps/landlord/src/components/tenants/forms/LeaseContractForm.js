@@ -230,8 +230,8 @@ function LeaseContractForm({ readOnly, onSubmit }) {
               expenses: property.expenses.length
                 ? property.expenses.map((expense) => ({
                     ...expense,
-                    beginDate: expense.beginDate.format('DD/MM/YYYY'),
-                    endDate: expense.endDate.format('DD/MM/YYYY')
+                    beginDate: expense.beginDate?.format('DD/MM/YYYY'),
+                    endDate: expense.endDate?.format('DD/MM/YYYY')
                   }))
                 : [],
               entryDate: property.entryDate?.format('DD/MM/YYYY'),
@@ -281,6 +281,7 @@ function LeaseContractForm({ readOnly, onSubmit }) {
             previousProperty.rent = property?.price || '';
             previousProperty.expenses = [
               {
+                ...emptyExpense(),
                 title: t('General expenses'),
                 // TODO: find another way to have expenses configurable
                 amount: Math.round(property.price * 100 * 0.1) / 100,
