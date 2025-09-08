@@ -27,6 +27,7 @@
   "dependencies": {
     "@microrealestate/common": "*",
     "axios": "1.8.4",
+    "http-proxy-middleware": "^3.0.0",
     "i18n": "0.13.3",
     "json2csv": "5.0.6",
     "jsonwebtoken": "9.0.0",
