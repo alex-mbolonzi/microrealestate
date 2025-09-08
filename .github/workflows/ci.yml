@@ -96,9 +96,9 @@ jobs:
           - appname: emailer
             image: ghcr.io/${{ github.repository }}/emailer
             dockerfile: services/emailer/Dockerfile
-          - appname: resetservice
-            image: ghcr.io/${{ github.repository }}/resetservice
-            dockerfile: services/resetservice/Dockerfile
+          # - appname: resetservice
+          #   image: ghcr.io/${{ github.repository }}/resetservice
+          #   dockerfile: services/resetservice/Dockerfile
           - appname: landlord-frontend
             image: ghcr.io/${{ github.repository }}/landlord-frontend
             dockerfile: webapps/landlord/Dockerfile
