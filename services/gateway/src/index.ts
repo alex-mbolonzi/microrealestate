@@ -110,7 +110,8 @@ function exposeServices(application: Express.Application) {
     '/api/v2/authenticator',
     createProxyMiddleware({
       target: config.AUTHENTICATOR_URL,
-      pathRewrite: { '^/api/v2/authenticator': '' }
+      pathRewrite: { '^/api/v2/authenticator': '' },
+      proxyTimeout: 30000
     })
   );
 
@@ -118,7 +119,8 @@ function exposeServices(application: Express.Application) {
     '/api/v2/documents',
     createProxyMiddleware({
       target: config.PDFGENERATOR_URL,
-      pathRewrite: { '^/api/v2': '' }
+      pathRewrite: { '^/api/v2': '' },
+      proxyTimeout: 30000
     })
   );
 
@@ -126,7 +128,8 @@ function exposeServices(application: Express.Application) {
     '/api/v2/templates',
     createProxyMiddleware({
       target: config.PDFGENERATOR_URL,
-      pathRewrite: { '^/api/v2': '' }
+      pathRewrite: { '^/api/v2': '' },
+      proxyTimeout: 30000
     })
   );
 
@@ -135,7 +138,8 @@ function exposeServices(application: Express.Application) {
     '/api/v2/paymentprocessor',
     createProxyMiddleware({
       target: config.PAYMENTPROCESSOR_URL,
-      pathRewrite: { '^/api/v2': '' }
+      pathRewrite: { '^/api/v2': '' },
+      proxyTimeout: 30000
       // changeOrigin: true,
       // onProxyReq: (proxyReq, req, res) => {
       //   if (req.headers['content-type'] && req.headers['content-type'].startsWith('multipart/form-data')) {
@@ -151,7 +155,8 @@ function exposeServices(application: Express.Application) {
     '/api/v2',
     createProxyMiddleware({
       target: config.API_URL,
-      pathRewrite: { '^/api/v2': '' }
+      pathRewrite: { '^/api/v2': '' },
+      proxyTimeout: 30000
     })
   );
 
@@ -159,7 +164,8 @@ function exposeServices(application: Express.Application) {
     '/tenantapi',
     createProxyMiddleware({
       target: config.TENANTAPI_URL,
-      pathRewrite: { '^/tenantapi': '' }
+      pathRewrite: { '^/tenantapi': '' },
+      proxyTimeout: 30000
     })
   );
 
@@ -170,7 +176,8 @@ function exposeServices(application: Express.Application) {
       '/api/reset',
       createProxyMiddleware({
         target: config.RESETSERVICE_URL,
-        pathRewrite: { '^/api': '' }
+        pathRewrite: { '^/api': '' },
+        proxyTimeout: 30000
       })
     );
   }
