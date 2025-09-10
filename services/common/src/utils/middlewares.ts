@@ -145,7 +145,7 @@ export function checkOrganization() {
         // for the current user, add all subscribed organizations in request object
         req.realms = (
           await Realm.find<MongooseDocument<CollectionTypes.Realm>>({
-            members: { $elemMatch: { email: req.user.email } }
+            members: { $elemMatch: { email: new RegExp(`^${req.user.email}$`, 'i') } }
           })
         )
           .map((realm) => realm.toObject())
