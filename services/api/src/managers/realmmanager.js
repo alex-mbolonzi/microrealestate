@@ -238,32 +238,6 @@ export function one(req, res) {
   res.json(_escapeSecrets(realm));
 }
 
-export async function all(req, res) {
-  try {
-    let realms = Array.isArray(req.realms) ? req.realms : undefined;
-
-    // If middleware didn't populate realms (or provided an empty list),
-    // fallback to fetching realms by the signed-in user's email
-    if (!realms || realms.length === 0) {
-      const userEmail = req.user?.email;
-      if (!userEmail) {
-        // If we can't determine the user, return empty list (no access)
-        return res.json([]);
-      }
-      realms = await Collections.Realm.find({
-        'members.email': userEmail.toLowerCase()
-      }).lean();
-    }
-
-    // Map and escape secrets
-    const safeRealms = realms.map((realm) => _escapeSecrets(realm));
-
-    res.json(safeRealms);
-  } catch (error) {
-    logger.error(`Error fetching realms: ${error.message}`);
-    res.status(500).json({
-      message: 'Failed to fetch realms',
-      error: error.message
-    });
-  }
+export function all(req, res) {
+  res.json(req.realms.map((realm) => _escapeSecrets(realm)));
 }
