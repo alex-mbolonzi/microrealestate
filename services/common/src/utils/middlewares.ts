@@ -145,7 +145,7 @@ export function checkOrganization() {
         // for the current user, add all subscribed organizations in request object
         req.realms = (
           await Realm.find<MongooseDocument<CollectionTypes.Realm>>({
-            members: { $elemMatch: { email: new RegExp(`^${req.user.email}$`, 'i') } }
+            members: { $elemMatch: { email: req.user.email } }
           })
         )
           .map((realm) => realm.toObject())
@@ -221,7 +221,7 @@ export function checkOrganization() {
     req.realm._id = String(req.realm._id);
 
     // current user is not a member of the organization
-    if (!req.realms.find(({ _id }: { _id: string }) => _id === req.realm?._id)) {
+    if (!req.realms.find(({ _id }) => _id === req.realm?._id)) {
       logger.warn('current user is not a member of the organization');
       return res.sendStatus(404);
     }
@@ -231,13 +231,13 @@ export function checkOrganization() {
       case 'user': {
         const user = req.user as UserServicePrincipal;
         user.role = req.realm.members.find(
-          ({ email }: { email: string }) => email === user.email
+          ({ email }) => email === user.email
         )?.role;
         break;
       }
       case 'application':
         req.user.role = req.realm.applications.find(
-          ({ clientId }: { clientId: string }) =>
+          ({ clientId }) =>
             clientId === (req.user as ApplicationServicePrincipal).clientId
         )?.role;
         break;
