@@ -1,12 +1,13 @@
+# Applying absolute imports to resolve runtime errors
 from typing import Optional, Dict
 import json
 from datetime import timedelta
 import httpx
 
-from ..core.config import settings
-from ..core.logging_config import logger
-from ..db.redis_client import get_redis
-from ..core.clients import http_client
+from core.config import settings
+from core.logging_config import logger
+from db.redis_client import get_redis
+from core.clients import http_client
 
 
 def _get_tenant_cache_key(padded_reference: str, organization_id: str) -> str:
