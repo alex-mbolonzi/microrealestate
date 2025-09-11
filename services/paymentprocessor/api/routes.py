@@ -6,11 +6,11 @@ import json
 import asyncio
 from typing import List, Dict
 
-from ..core.logging_config import logger
-from ..core.config import settings
-from ..models.payment import Payment
-from ..db.mongo import check_payment_exists, log_pending_payment
-from ..core.processing import process_single_payment
+from core.logging_config import logger
+from core.config import settings
+from models.payment import Payment
+from db.mongo import check_payment_exists, log_pending_payment
+from core.processing import process_single_payment
 
 router = APIRouter(
     prefix="/paymentprocessor",

@@ -3,8 +3,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 import json
 
-from ..core.config import settings
-from ..core.logging_config import logger
+from core.config import settings
+from core.logging_config import logger
 from .redis_client import get_redis
 
 
