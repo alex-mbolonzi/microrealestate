@@ -1,5 +1,5 @@
 from dateutil import parser
-from ..core.logging_config import logger
+from core.logging_config import logger
 
 
 async def parse_payment_date(date_str: str) -> str:
