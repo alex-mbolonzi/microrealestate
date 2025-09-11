@@ -7,7 +7,7 @@ import httpx
 from core.config import settings
 from core.logging_config import logger
 from db.redis_client import get_redis
-from core.clients import http_client
+from core import clients
 
 
 def _get_tenant_cache_key(padded_reference: str, organization_id: str) -> str:
@@ -28,11 +28,11 @@ async def get_tenant_by_reference(padded_reference: str, headers: dict) -> Optio
     except Exception as e:
         logger.warning("Redis cache read failed, falling back to API", error=str(e))
 
-    tenant_url = f"{settings.gateway_url}/api/v2/tenants?reference={padded_reference}"
+    tenant_url = f"/api/v2/tenants?reference={padded_reference}"
     logger.debug("Attempting to fetch tenant", url=tenant_url, reference=padded_reference)
 
     try:
-        response = await http_client.get(tenant_url, headers=headers)
+        response = await clients.http_client.get(tenant_url, headers=headers)
         logger.debug("Tenant fetch response received", url=tenant_url, status_code=response.status_code)
 
         if response.status_code != 200:
