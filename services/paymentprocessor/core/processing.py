@@ -57,7 +57,11 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         logger.debug(f"Payments lookup response status: {payments_response.status_code}")
 
         if payments_response.status_code == 200:
-            existing_payments = payments_response.json().get('payments', [])
+            json_data = payments_response.json()
+            if json_data:
+                existing_payments = json_data.get('payments', [])
+            else:
+                existing_payments = []
             logger.debug(f"Existing payments for tenant {tenant_id}: {json.dumps(existing_payments, indent=2)}")
 
         formatted_date = await parse_payment_date(payment.payment_date)

@@ -47,13 +47,13 @@ async def get_tenant_by_reference(padded_reference: str, headers: dict) -> Optio
         found_tenant = None
 
         if isinstance(tenant_data, list):
-            found_tenant = next((t for t in tenant_data if str(t.get('reference', '')).strip() == padded_reference),
+            found_tenant = next((t for t in tenant_data if t and str(t.get('reference', '')).strip() == padded_reference),
                                 None)
             if not found_tenant:
                 logger.warning("Tenant not found in list response from Gateway",
                                url=tenant_url, reference=padded_reference)
         else:
-            if str(tenant_data.get('reference', '')).strip() == padded_reference:
+            if tenant_data and str(tenant_data.get('reference', '')).strip() == padded_reference:
                 found_tenant = tenant_data
             else:
                 logger.warning("Tenant reference mismatch in single response from Gateway",
@@ -74,7 +74,7 @@ async def get_tenant_by_reference(padded_reference: str, headers: dict) -> Optio
 
     except httpx.TimeoutException as e:
         logger.error("HTTP Timeout fetching tenant", url=tenant_url, reference=padded_reference, error=str(e), exc_info=True)
-        raise
+        return None
     except Exception as e:
         logger.error("Unexpected error fetching tenant", url=tenant_url, reference=padded_reference, error=str(e), exc_info=True)
-        raise
+        return None
