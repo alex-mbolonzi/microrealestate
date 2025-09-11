@@ -4,11 +4,11 @@ import httpx
 from redis.asyncio.connection import ConnectionPool
 import uvicorn
 
-from .core.config import settings
-from .core.logging_config import logger
-from .api.routes import router
-from .db import redis_client
-from .core import clients
+from core.config import settings
+from core.logging_config import logger
+from api.routes import router
+from db import redis_client
+from core import clients
 
 # Application setup
 app = FastAPI(title="Payment Processor Service")
