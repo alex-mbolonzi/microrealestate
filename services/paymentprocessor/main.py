@@ -39,7 +39,7 @@ async def startup():
     )
 
     # Initialize HTTP client
-    clients.http_client = httpx.AsyncClient(timeout=settings.http_timeout)
+    clients.http_client = httpx.AsyncClient(base_url=settings.gateway_url, timeout=settings.http_timeout)
     logger.info("Service starting", config=settings.dict(exclude={'redis_password'}))
 
 

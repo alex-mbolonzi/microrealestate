@@ -10,7 +10,7 @@ from db.mongo import log_pending_payment, _get_payment_check_cache_key
 from db.redis_client import get_redis
 from core.config import settings
 from core.logging_config import logger
-from core.clients import http_client
+from core import clients
 
 
 async def process_single_payment(payment: Payment, term: str, organization_id: str,
@@ -52,8 +52,8 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
 
         year, month = term.split('.')
         formatted_term_for_get = f"{year}{month.zfill(2)}0100"
-        get_payments_url = f"{settings.gateway_url}/api/v2/rents/tenant/{tenant_id}/{formatted_term_for_get}"
-        payments_response = await http_client.get(get_payments_url, headers=headers)
+        get_payments_url = f"/api/v2/rents/tenant/{tenant_id}/{formatted_term_for_get}"
+        payments_response = await clients.http_client.get(get_payments_url, headers=headers)
         logger.debug(f"Payments lookup response status: {payments_response.status_code}")
 
         if payments_response.status_code == 200:
@@ -88,9 +88,9 @@ async def process_single_payment(payment: Payment, term: str, organization_id: s
         logger.info(
             f"Payment data for Gateway for tenant {tenant_id}: {json.dumps(payment_data_for_gateway, indent=2)}")
 
-        update_payments_url = f"{settings.gateway_url}/api/v2/rents/payment/{tenant_id}/{term}"
+        update_payments_url = f"/api/v2/rents/payment/{tenant_id}/{term}"
 
-        payment_response = await http_client.patch(
+        payment_response = await clients.http_client.patch(
             update_payments_url,
             headers=headers,
             json=payment_data_for_gateway
