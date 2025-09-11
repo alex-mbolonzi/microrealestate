@@ -46,11 +46,11 @@ async def process_payments(
                     all_payments.append(payment)
                 except Exception as e:
                     logger.warning("Skipping invalid row during parsing", row_data=row.to_dict(), error=str(e))
-                    yield json.dumps({
+                    yield f"data: {json.dumps({
                         "status": "skipped",
                         "message": f"Invalid row skipped: {str(e)}",
                         "details": row.to_dict()
-                    }) + "\n\n"
+                    })}\n\n"
 
             payments_to_process: List[Payment] = []
             skipped_duplicates: List[Dict] = []
@@ -74,7 +74,7 @@ async def process_payments(
                     payments_to_process.append(payment)
 
             for skipped in skipped_duplicates:
-                yield json.dumps(skipped) + "\n\n"
+                yield f"data: {json.dumps(skipped)}\n\n"
 
             payments_by_tenant: Dict[str, List[Payment]] = {}
             for payment in payments_to_process:
@@ -118,24 +118,24 @@ async def process_payments(
 
                 progress = min(100, int(processed_payments_count / total_payments_for_progress * 100)) if total_payments_for_progress > 0 else 100
 
-                yield json.dumps({
+                yield f"data: {json.dumps({
                     "status": "processing",
                     "progress": progress,
                     "results": batch_successes_for_yield,
                     "errors": batch_errors_for_yield
-                }) + "\n\n"
+                })}\n\n"
 
-            yield json.dumps({
+            yield f"data: {json.dumps({
                 "status": "complete",
                 "progress": 100,
                 "message": "Processing completed"
-            }) + "\n\n"
+            })}\n\n"
 
         except Exception as e:
             logger.error("Bulk processing failed", error=str(e), exc_info=True)
-            yield json.dumps({
+            yield f"data: {json.dumps({
                 "status": "error",
                 "message": str(e)
-            }) + "\n\n"
+            })}\n\n"
 
     return StreamingResponse(generate_events(), media_type="text/event-stream")
