@@ -158,7 +158,7 @@ export default function BulkPaymentUpload({ isOpen, onClose, onSuccess }) {
                   
                   try {
                     console.log('Processing line:', line);
-                    const event = JSON.parse(line);
+                    const event = JSON.parse(line.replace('data: ', ''));
                     console.log('Parsed event:', event);
                     
                     if (event.status === 'processing') {
