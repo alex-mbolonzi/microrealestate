@@ -26,6 +26,7 @@ async def process_payments(
         term: str = Form(...)
 ):
     async def generate_events():
+        # This is a corrected version to fix the SyntaxError.
         try:
             contents = await file.read()
             df = pd.read_csv(StringIO(contents.decode()))
@@ -46,11 +47,12 @@ async def process_payments(
                     all_payments.append(payment)
                 except Exception as e:
                     logger.warning("Skipping invalid row during parsing", row_data=row.to_dict(), error=str(e))
-                    yield f"data: {json.dumps({
+                    payload = {
                         "status": "skipped",
                         "message": f"Invalid row skipped: {str(e)}",
                         "details": row.to_dict()
-                    })}\n\n"
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
 
             payments_to_process: List[Payment] = []
             skipped_duplicates: List[Dict] = []
@@ -111,31 +113,34 @@ async def process_payments(
                     else:
                         for single_payment_result in tenant_batch_result["results"]:
                             processed_payments_count += 1
-                            if single_payment_result.success:
+                            if single_payment_result and single_payment_result.success:
                                 batch_successes_for_yield.append(single_payment_result.dict())
-                            else:
+                            elif single_payment_result:
                                 batch_errors_for_yield.append(single_payment_result.dict())
 
                 progress = min(100, int(processed_payments_count / total_payments_for_progress * 100)) if total_payments_for_progress > 0 else 100
-
-                yield f"data: {json.dumps({
+                
+                payload = {
                     "status": "processing",
                     "progress": progress,
                     "results": batch_successes_for_yield,
                     "errors": batch_errors_for_yield
-                })}\n\n"
+                }
+                yield f"data: {json.dumps(payload)}\n\n"
 
-            yield f"data: {json.dumps({
+            payload = {
                 "status": "complete",
                 "progress": 100,
                 "message": "Processing completed"
-            })}\n\n"
+            }
+            yield f"data: {json.dumps(payload)}\n\n"
 
         except Exception as e:
             logger.error("Bulk processing failed", error=str(e), exc_info=True)
-            yield f"data: {json.dumps({
+            payload = {
                 "status": "error",
                 "message": str(e)
-            })}\n\n"
+            }
+            yield f"data: {json.dumps(payload)}\n\n"
 
     return StreamingResponse(generate_events(), media_type="text/event-stream")
