@@ -3,14 +3,14 @@ import json
 from typing import List
 import httpx
 
-from ..models.payment import Payment, PaymentResult
-from ..utils.helpers import pad_tenant_id, parse_payment_date
-from ..services.gateway import get_tenant_by_reference
-from ..db.mongo import log_pending_payment, _get_payment_check_cache_key
-from ..db.redis_client import get_redis
-from ..core.config import settings
-from ..core.logging_config import logger
-from ..core.clients import http_client
+from models.payment import Payment, PaymentResult
+from utils.helpers import pad_tenant_id, parse_payment_date
+from services.gateway import get_tenant_by_reference
+from db.mongo import log_pending_payment, _get_payment_check_cache_key
+from db.redis_client import get_redis
+from core.config import settings
+from core.logging_config import logger
+from core.clients import http_client
 
 
 async def process_single_payment(payment: Payment, term: str, organization_id: str,
