@@ -93,7 +93,7 @@ const emptyExpense = () => ({
 const emptyProperty = () => ({
   key: nanoid(),
   _id: '',
-  rent: 0,
+  rent: '',
   expenses: [{ ...emptyExpense() }]
 });
 
@@ -274,7 +274,7 @@ function LeaseContractForm({ readOnly, onSubmit }) {
           );
           if (previousProperty) {
             previousProperty._id = property?._id;
-            previousProperty.rent = property?.price || '';
+            previousProperty.rent = property?.price || 0;
             previousProperty.expenses = [
               {
                 ...emptyExpense(),
