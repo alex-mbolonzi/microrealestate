@@ -36,7 +36,15 @@ const validationSchema = Yup.object().shape({
     .of(
       Yup.object().shape({
         _id: Yup.string().required(),
-        rent: Yup.number().moreThan(0).required(),
+        rent: Yup.number()
+          .transform((value, originalValue) => {
+            if (typeof originalValue === 'string' && originalValue.trim() === '') {
+              return undefined;
+            }
+            return value;
+          })
+          .moreThan(0)
+          .required(),
         expenses: Yup.array().of(
           Yup.object().shape({
             title: Yup.mixed().when('amount', {
@@ -114,7 +122,7 @@ const initValues = (tenant) => {
           return {
             key: property.property._id,
             _id: property.property._id,
-            rent: property.rent || '',
+            rent: property.rent ?? '',
             expenses: property.expenses.map((expense) => ({
               ...expense,
               beginDate: moment(expense.beginDate),
@@ -254,7 +262,7 @@ function LeaseContractForm({ readOnly, onSubmit }) {
       validate={handleFormValidation}
       onSubmit={_onSubmit}
     >
-      {({ values, isSubmitting, handleChange }) => {
+      {({ values, isSubmitting, handleChange, setFieldValue }) => {
         const onLeaseChange = (evt) => {
           const lease = store.lease.items.find(
             ({ _id }) => _id === evt.target.value
@@ -265,26 +273,6 @@ function LeaseContractForm({ readOnly, onSubmit }) {
             );
           } else {
             setContractDuration();
-          }
-          handleChange(evt);
-        };
-        const onPropertyChange = (evt, previousProperty) => {
-          const property = store.property.items.find(
-            ({ _id }) => _id === evt.target.value
-          );
-          if (previousProperty) {
-            previousProperty._id = property?._id;
-            previousProperty.rent = property?.price || 0;
-            previousProperty.expenses = [
-              {
-                ...emptyExpense(),
-                title: t('General expenses'),
-                // TODO: find another way to have expenses configurable
-                amount: Math.round(property.price * 100 * 0.1) / 100,
-                beginDate: values.beginDate,
-                endDate: values.endDate
-              }
-            ];
           }
           handleChange(evt);
         };
@@ -360,7 +348,32 @@ function LeaseContractForm({ readOnly, onSubmit }) {
                           label={t('Property')}
                           name={`properties[${index}]._id`}
                           values={availableProperties}
-                          onChange={(evt) => onPropertyChange(evt, property)}
+                          onChange={(evt) => {
+                            handleChange(evt);
+                            const propertyId = evt.target.value;
+                            const property = store.property.items.find(
+                              ({ _id }) => _id === propertyId
+                            );
+                            setFieldValue(
+                              `properties[${index}].rent`,
+                              property?.price || ''
+                            );
+                            setFieldValue(
+                              `properties[${index}].expenses`,
+                              [
+                                {
+                                  ...emptyExpense(),
+                                  title: t('General expenses'),
+                                  amount:
+                                    Math.round(
+                                      (property?.price || 0) * 100 * 0.1
+                                    ) / 100,
+                                  beginDate: values.beginDate,
+                                  endDate: values.endDate
+                                }
+                              ]
+                            );
+                          }}
                           disabled={readOnly}
                         />
                       </div>
