@@ -62,12 +62,15 @@ async function _buildPropertyMap(realm) {
   }, {});
 }
 
-async function _fetchTenants(realmId, tenantId) {
+async function _fetchTenants(realmId, tenantId, reference) {
   const $match = {
     realmId
   };
   if (tenantId) {
     $match._id = Collections.ObjectId(tenantId);
+  }
+  if (reference) {
+    $match.reference = reference;
   }
 
   const tenants = await Collections.Tenant.aggregate([
@@ -428,7 +431,8 @@ export async function remove(req, res) {
 }
 
 export async function all(req, res) {
-  const tenants = await _fetchTenants(req.realm._id);
+  const { reference } = req.query;
+  const tenants = await _fetchTenants(req.realm._id, null, reference);
   res.json(tenants.map((tenant) => FD.toOccupantData(tenant)));
 }
 
