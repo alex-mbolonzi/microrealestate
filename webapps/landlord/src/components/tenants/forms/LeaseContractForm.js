@@ -36,15 +36,7 @@ const validationSchema = Yup.object().shape({
     .of(
       Yup.object().shape({
         _id: Yup.string().required(),
-        rent: Yup.number()
-          .transform((value, originalValue) => {
-            if (typeof originalValue === 'string' && originalValue.trim() === '') {
-              return undefined;
-            }
-            return value;
-          })
-          .moreThan(0)
-          .required(),
+        rent: Yup.number().moreThan(0).required(),
         expenses: Yup.array().of(
           Yup.object().shape({
             title: Yup.mixed().when('amount', {
@@ -101,13 +93,17 @@ const emptyExpense = () => ({
 const emptyProperty = () => ({
   key: nanoid(),
   _id: '',
-  rent: '',
+  rent: 0,
   expenses: [{ ...emptyExpense() }]
 });
 
 const initValues = (tenant) => {
-  const beginDate = tenant?.beginDate ? moment(tenant.beginDate) : null;
-  const endDate = tenant?.endDate ? moment(tenant.endDate) : null;
+  const beginDate = tenant?.beginDate
+    ? moment(tenant.beginDate, 'DD/MM/YYYY').startOf('day')
+    : null;
+  const endDate = tenant?.endDate
+    ? moment(tenant.endDate, 'DD/MM/YYYY').endOf('day')
+    : null;
 
   return {
     leaseId: tenant?.leaseId || '',
@@ -115,35 +111,35 @@ const initValues = (tenant) => {
     endDate,
     terminated: !!tenant?.terminationDate,
     terminationDate: tenant?.terminationDate
-      ? moment(tenant.terminationDate)
+      ? moment(tenant.terminationDate, 'DD/MM/YYYY').endOf('day')
       : null,
     properties: tenant?.properties?.length
       ? tenant.properties.map((property) => {
-          return {
-            key: property.property._id,
-            _id: property.property._id,
-            rent: property.rent ?? '',
-            expenses: property.expenses.map((expense) => ({
-              ...expense,
-              beginDate: moment(expense.beginDate),
-              endDate: moment(expense.endDate)
-            })) || [...emptyExpense(), beginDate, endDate],
-            entryDate: property.entryDate
-              ? moment(property.entryDate)
-              : moment(beginDate),
-            exitDate: property.exitDate
-              ? moment(property.exitDate)
-              : moment(endDate)
-          };
-        })
+        return {
+          key: property.property._id,
+          _id: property.property._id,
+          rent: property.rent || '',
+          expenses: property.expenses.map((expense) => ({
+            ...expense,
+            beginDate: moment(expense.beginDate, 'DD/MM/YYYY'),
+            endDate: moment(expense.endDate, 'DD/MM/YYYY')
+          })) || [...emptyExpense(), beginDate, endDate],
+          entryDate: property.entryDate
+            ? moment(property.entryDate, 'DD/MM/YYYY')
+            : moment(beginDate),
+          exitDate: property.exitDate
+            ? moment(property.exitDate, 'DD/MM/YYYY')
+            : moment(endDate)
+        };
+      })
       : [
-          {
-            ...emptyProperty(),
-            expenses: [{ ...emptyExpense(), beginDate, endDate }],
-            entryDate: beginDate,
-            exitDate: endDate
-          }
-        ],
+        {
+          ...emptyProperty(),
+          expenses: [{ ...emptyExpense(), beginDate, endDate }],
+          entryDate: beginDate,
+          exitDate: endDate
+        }
+      ],
     guaranty: tenant?.guaranty || 0,
     guarantyPayback: tenant?.guarantyPayback || 0
   };
@@ -205,8 +201,8 @@ function LeaseContractForm({ readOnly, onSubmit }) {
             status === 'occupied'
               ? !currentProperties.includes(_id)
                 ? t('occupied by {{tenantName}}', {
-                    tenantName: occupantLabel
-                  })
+                  tenantName: occupantLabel
+                })
                 : t('occupied by current tenant')
               : t('vacant')
         })
@@ -220,9 +216,9 @@ function LeaseContractForm({ readOnly, onSubmit }) {
         leaseId: lease.leaseId,
         frequency: store.lease.items.find(({ _id }) => _id === lease.leaseId)
           .timeRange,
-        beginDate: lease.beginDate,
-        endDate: lease.endDate,
-        terminationDate: lease.terminationDate,
+        beginDate: lease.beginDate?.format('DD/MM/YYYY') || '',
+        endDate: lease.endDate?.format('DD/MM/YYYY') || '',
+        terminationDate: lease.terminationDate?.format('DD/MM/YYYY') || '',
         guaranty: lease.guaranty || 0,
         guarantyPayback: lease.guarantyPayback || 0,
         properties: lease.properties
@@ -233,13 +229,13 @@ function LeaseContractForm({ readOnly, onSubmit }) {
               rent: property.rent,
               expenses: property.expenses.length
                 ? property.expenses.map((expense) => ({
-                    ...expense,
-                    beginDate: expense.beginDate,
-                    endDate: expense.endDate
-                  }))
+                  ...expense,
+                  beginDate: expense.beginDate.format('DD/MM/YYYY'),
+                  endDate: expense.endDate.format('DD/MM/YYYY')
+                }))
                 : [],
-              entryDate: property.entryDate,
-              exitDate: property.exitDate
+              entryDate: property.entryDate?.format('DD/MM/YYYY'),
+              exitDate: property.exitDate?.format('DD/MM/YYYY')
             };
           })
       });
@@ -262,7 +258,7 @@ function LeaseContractForm({ readOnly, onSubmit }) {
       validate={handleFormValidation}
       onSubmit={_onSubmit}
     >
-      {({ values, isSubmitting, handleChange, setFieldValue }) => {
+      {({ values, isSubmitting, handleChange }) => {
         const onLeaseChange = (evt) => {
           const lease = store.lease.items.find(
             ({ _id }) => _id === evt.target.value
@@ -273,6 +269,25 @@ function LeaseContractForm({ readOnly, onSubmit }) {
             );
           } else {
             setContractDuration();
+          }
+          handleChange(evt);
+        };
+        const onPropertyChange = (evt, previousProperty) => {
+          const property = store.property.items.find(
+            ({ _id }) => _id === evt.target.value
+          );
+          if (previousProperty) {
+            previousProperty._id = property?._id;
+            previousProperty.rent = property?.price || '';
+            previousProperty.expenses = [
+              {
+                title: t('General expenses'),
+                // TODO: find another way to have expenses configurable
+                amount: Math.round(property.price * 100 * 0.1) / 100,
+                beginDate: values.beginDate,
+                endDate: values.endDate
+              }
+            ];
           }
           handleChange(evt);
         };
@@ -348,32 +363,7 @@ function LeaseContractForm({ readOnly, onSubmit }) {
                           label={t('Property')}
                           name={`properties[${index}]._id`}
                           values={availableProperties}
-                          onChange={(evt) => {
-                            handleChange(evt);
-                            const propertyId = evt.target.value;
-                            const property = store.property.items.find(
-                              ({ _id }) => _id === propertyId
-                            );
-                            setFieldValue(
-                              `properties[${index}].rent`,
-                              property?.price || ''
-                            );
-                            setFieldValue(
-                              `properties[${index}].expenses`,
-                              [
-                                {
-                                  ...emptyExpense(),
-                                  title: t('General expenses'),
-                                  amount:
-                                    Math.round(
-                                      (property?.price || 0) * 100 * 0.1
-                                    ) / 100,
-                                  beginDate: values.beginDate,
-                                  endDate: values.endDate
-                                }
-                              ]
-                            );
-                          }}
+                          onChange={(evt) => onPropertyChange(evt, property)}
                           disabled={readOnly}
                         />
                       </div>
