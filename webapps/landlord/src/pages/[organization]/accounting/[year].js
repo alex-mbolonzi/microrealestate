@@ -167,32 +167,41 @@ function Accounting() {
               <p className="text-sm text-gray-600">View Tenant Monthly Balances.</p>
             </a>
             <a
-              href="https://lookerstudio.google.com/s/nA4vJCqFB8A"
+              href="https://eb2dc3a9.us1a.app.preset.io/superset/dashboard/10/?native_filters_key=-OPGPJT7TP7Ik_c_cQ2yeY9z_w-FKK3xhRFfCXnQBHE-m7xFZBZK7jObdwcJFTKD"
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
             >
-              <h3 className="font-semibold">Payment Details Report</h3>
-              <p className="text-sm text-gray-600">Explore payment breakdowns and trends.</p>
+              <h3 className="font-semibold">Monthly Payments</h3>
+              <p className="text-sm text-gray-600">View Tenants monthly payments.</p>
             </a>
-            <a
-              href="https://lookerstudio.google.com/s/kMxLw1mHDOs"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
-            >
-              <h3 className="font-semibold">Occupant Payment Summary</h3>
-              <p className="text-sm text-gray-600">See an overview of Occupants Monthly payments.</p>
-            </a>
-            <a
-              href="https://lookerstudio.google.com/s/lQ6TF_433b8"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
-            >
-              <h3 className="font-semibold">Property Occupancy Report</h3>
-              <p className="text-sm text-gray-600">See details of monthly occupancy and payments.</p>
-            </a>
+            {/*<a*/}
+            {/*  href="https://lookerstudio.google.com/s/nA4vJCqFB8A"*/}
+            {/*  target="_blank"*/}
+            {/*  rel="noopener noreferrer"*/}
+            {/*  className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"*/}
+            {/*>*/}
+            {/*  <h3 className="font-semibold">Payment Details Report</h3>*/}
+            {/*  <p className="text-sm text-gray-600">Explore payment breakdowns and trends.</p>*/}
+            {/*</a>*/}
+            {/*<a*/}
+            {/*  href="https://lookerstudio.google.com/s/kMxLw1mHDOs"*/}
+            {/*  target="_blank"*/}
+            {/*  rel="noopener noreferrer"*/}
+            {/*  className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"*/}
+            {/*>*/}
+            {/*  <h3 className="font-semibold">Occupant Payment Summary</h3>*/}
+            {/*  <p className="text-sm text-gray-600">See an overview of Occupants Monthly payments.</p>*/}
+            {/*</a>*/}
+            {/*<a*/}
+            {/*  href="https://lookerstudio.google.com/s/lQ6TF_433b8"*/}
+            {/*  target="_blank"*/}
+            {/*  rel="noopener noreferrer"*/}
+            {/*  className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"*/}
+            {/*>*/}
+            {/*  <h3 className="font-semibold">Property Occupancy Report</h3>*/}
+            {/*  <p className="text-sm text-gray-600">See details of monthly occupancy and payments.</p>*/}
+            {/*</a>*/}
           </div>
         </TabsContent>
       </Tabs>
