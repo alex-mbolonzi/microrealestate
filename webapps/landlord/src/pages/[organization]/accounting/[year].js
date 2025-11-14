@@ -139,8 +139,8 @@ function Accounting() {
           )} (${
             store.accounting.filteredData.settlements?.length || 0
           })`}</TabsTrigger>
-          <TabsTrigger value="lookerReports" className="min-w-48 sm:w-full">
-            {`${t('Looker Reports')}`}
+          <TabsTrigger value="analysisReports" className="min-w-48 sm:w-full">
+            {`${t('Analysis Reports')}`}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="incoming">
@@ -155,16 +155,16 @@ function Accounting() {
             onDownloadYearInvoices={getYearInvoices}
           />
         </TabsContent>
-        <TabsContent value="lookerReports">
+        <TabsContent value="analysisReports">
           <div className="flex flex-wrap gap-4">
             <a
-              href="https://lookerstudio.google.com/s/jnDMWbsD7WQ"
+              href="https://eb2dc3a9.us1a.app.preset.io/superset/dashboard/9/?native_filters_key=eoXjHhW1F65vVx9Jh1PhRJ5d87_hzRITu2R4JcHiF-cZ734h0lXaAXyyl4NkNk-R"
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 min-w-[200px] p-4 border rounded-lg hover:shadow-md transition-shadow"
             >
-              <h3 className="font-semibold">Pending Payments Report</h3>
-              <p className="text-sm text-gray-600">View un-posted payments information.</p>
+              <h3 className="font-semibold">Monthly Balance</h3>
+              <p className="text-sm text-gray-600">View Tenant Monthly Balances.</p>
             </a>
             <a
               href="https://lookerstudio.google.com/s/nA4vJCqFB8A"
